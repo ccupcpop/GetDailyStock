@@ -48,7 +48,7 @@ def mount_google_drive():
         base_dir = '/content/drive/MyDrive'
         print("✓ 已掛載 Google Drive\n")
         return base_dir
-    except:
+    except Exception as e:
         # 在 GitHub Actions 或本地環境中使用當前工作目錄
         base_dir = os.getcwd()
         print(f"✗ 無法掛載 Google Drive,使用本地目錄: {base_dir}\n")
@@ -645,7 +645,7 @@ def setup_config(market_type='TSE'):
     try:
         from google.colab import drive
         base_path = '/content/drive/MyDrive'
-    except:
+    except Exception:
         base_path = os.getcwd()
 
     if market_type == 'TSE':
@@ -2999,7 +2999,7 @@ def run_step3_charts(market_type='TSE'):
     try:
         from google.colab import drive
         base_dir = '/content/drive/MyDrive'
-    except:
+    except Exception:
         base_dir = os.getcwd()
     
     config = Config.setup_config(market_type=market_type)
