@@ -40,7 +40,7 @@ jobs:
       
       - name: Ensure data directories exist
         run: |
-          # 這些資料夾已經在 repo 中，這裡只確保臨時目錄存在
+          # 這些資料夾已經在 repo 中,這裡只確保臨時目錄存在
           mkdir -p StockHTML
           mkdir -p StockPNG
           mkdir -p StockOTCHTML
@@ -88,7 +88,7 @@ jobs:
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           
-          # 加入所有 CSV 資料檔案（原始資料 + 歷史資料）- 永久保存
+          # 加入所有 CSV 資料檔案(原始資料 + 歷史資料)- 永久保存
           git add -A StockDaily/*.csv \
                      StockShares/*.csv \
                      StockOTCDaily/*.csv \
@@ -98,20 +98,20 @@ jobs:
           
           # 檢查是否有變更
           if git diff --staged --quiet; then
-            echo "❌ 沒有資料變更，跳過 commit"
+            echo "❌ 沒有資料變更,跳過 commit"
             echo ""
-            echo "可能原因："
+            echo "可能原因:"
             echo "1. Python 程式沒有產生新檔案"
             echo "2. 產生的檔案不是 .csv 格式"
             echo "3. 檔案已經存在且內容相同"
           else
             # 顯示變更的檔案
-            echo "✅ 發現資料變更！"
+            echo "✅ 發現資料變更!"
             echo ""
-            echo "📝 新增/修改的檔案："
+            echo "📝 新增/修改的檔案:"
             git diff --staged --name-status
             echo ""
-            echo "📊 變更統計："
+            echo "📊 變更統計:"
             git diff --staged --stat
             
             git commit -m "📊 更新股票資料 $(TZ=Asia/Taipei date +'%Y-%m-%d %H:%M')"
@@ -132,14 +132,3 @@ jobs:
             StockOTCPNG/*.png
             *.xlsx
           retention-days: 30
-      
-      - name: Upload latest reports (最新報表)
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: latest-stock-reports
-          path: |
-            *.xlsx
-            StockHTML/*.html
-            StockOTCHTML/*.html
-          retention-days: 7
