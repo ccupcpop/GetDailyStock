@@ -1948,7 +1948,7 @@ def run_step2_analysis(base_dir, market_type):
     print(f"{'🔥'*40}\n")
     
     # 設定配置
-    config = setup_config(base_dir=base_dir, market_type=market_type)
+    config = setup_config(base_path=base_dir, market_type=market_type)
     
     # 讀取股票清單
     allowed_stock_codes, stock_sector_map, etf_stock_codes = load_stock_list(config['market_list_path'])
@@ -2796,7 +2796,7 @@ def run_step3_chart_generation(base_dir, market_type):
     print(f"{'🔥'*40}\n")
     
     # 設定配置
-    config = Config.setup_config(base_dir=base_dir, market_type=market_type)
+    config = Config.setup_config(base_path=base_dir, market_type=market_type)
     
     # 設定字體 (GitHub Actions 環境)
     Utils.setup_chinese_font_for_github(base_dir)
