@@ -70,10 +70,12 @@ def delete_folders(base_dir, folder_names):
 def create_required_directories(base_dir):
     """建立所需的資料夾結構"""
     required_dirs = [
+        'StockList',       # 股票清單和字體
         'StockDaily',
         'StockShares',
         'StockOTCDaily',
         'StockOTCShares',
+        'StockInfo',       # 分析報告
         'StockHistory',
         'StockOTCHistory',
         'StockHTML',
@@ -2039,19 +2041,19 @@ class Config:
             config = {
                 'market_type': market_type,
                 'market_name': '上市',
-                'history_folder': os.path.join(base_path, 'data', 'StockHistory'),
-                'html_output_folder': os.path.join(base_path, 'output', 'StockHTML'),
-                'png_output_folder': os.path.join(base_path, 'output', 'StockPNG'),
-                'stocklist_folder': os.path.join(base_path, 'data', 'StockList'),
+                'history_folder': os.path.join(base_path, 'StockHistory'),
+                'html_output_folder': os.path.join(base_path, 'StockHTML'),
+                'png_output_folder': os.path.join(base_path, 'StockPNG'),
+                'stocklist_folder': os.path.join(base_path, 'StockList'),
             }
         else:  # OTC
             config = {
                 'market_type': market_type,
                 'market_name': '上櫃',
-                'history_folder': os.path.join(base_path, 'data', 'StockOTCHistory'),
-                'html_output_folder': os.path.join(base_path, 'output', 'StockOTCHTML'),
-                'png_output_folder': os.path.join(base_path, 'output', 'StockOTCPNG'),
-                'stocklist_folder': os.path.join(base_path, 'data', 'StockList'),
+                'history_folder': os.path.join(base_path, 'StockOTCHistory'),
+                'html_output_folder': os.path.join(base_path, 'StockOTCHTML'),
+                'png_output_folder': os.path.join(base_path, 'StockOTCPNG'),
+                'stocklist_folder': os.path.join(base_path, 'StockList'),
             }
 
         # 建立輸出資料夾
@@ -2076,7 +2078,7 @@ class Utils:
     @staticmethod
     def setup_chinese_font(base_path='.'):
         """設定中文字體"""
-        font_path = os.path.join(base_path, 'data', 'StockList', 'Font.ttf')
+        font_path = os.path.join(base_path, 'StockList', 'Font.ttf')
 
         if os.path.exists(font_path):
             Config.FONT_PATH = font_path
@@ -2103,7 +2105,7 @@ class Utils:
     def get_stock_name(base_path, stock_code):
         """從 StockList 取得股票名稱"""
         try:
-            stocklist_path = os.path.join(base_path, 'data', 'StockList', 'StockList_simplified.csv')
+            stocklist_path = os.path.join(base_path, 'StockList', 'StockList_simplified.csv')
             if not os.path.exists(stocklist_path):
                 return ''
 
@@ -2810,6 +2812,66 @@ def run_step3_chart_generation(base_dir, market_type):
 # 主程式流程
 # ============================================================================
 
+def copy_data_to_repo(base_dir, repo_data_dir='data'):
+    """
+    將下載和處理的資料複製到 repo 的 data 資料夾
+    
+    Args:
+        base_dir: 工作目錄
+        repo_data_dir: repo 中的 data 資料夾路徑
+    """
+    print("\n" + "📦"*40)
+    print("複製資料到 Repository")
+    print("📦"*40 + "\n")
+    
+    # 確保 repo data 目錄存在
+    os.makedirs(repo_data_dir, exist_ok=True)
+    
+    # 定義需要複製的資料夾
+    folders_to_copy = [
+        'StockDaily',      # 上市每日交易
+        'StockShares',     # 上市三大法人
+        'StockOTCDaily',   # 上櫃每日交易
+        'StockOTCShares',  # 上櫃三大法人
+        'StockHistory',    # 上市歷史資料
+        'StockOTCHistory', # 上櫃歷史資料
+        'StockInfo',       # 分析報告
+        'StockHTML',       # 上市圖表 HTML
+        'StockPNG',        # 上市圖表 PNG
+        'StockOTCHTML',    # 上櫃圖表 HTML
+        'StockOTCPNG'      # 上櫃圖表 PNG
+    ]
+    
+    copied_count = 0
+    skipped_count = 0
+    
+    for folder_name in folders_to_copy:
+        source_path = os.path.join(base_dir, folder_name)
+        dest_path = os.path.join(repo_data_dir, folder_name)
+        
+        if os.path.exists(source_path):
+            try:
+                # 如果目標資料夾存在,先刪除
+                if os.path.exists(dest_path):
+                    shutil.rmtree(dest_path)
+                
+                # 複製整個資料夾
+                shutil.copytree(source_path, dest_path)
+                
+                # 計算檔案數量
+                file_count = len([f for f in os.listdir(dest_path) if os.path.isfile(os.path.join(dest_path, f))])
+                print(f"✓ {folder_name:<20} → {file_count} 個檔案")
+                copied_count += 1
+            except Exception as e:
+                print(f"✗ {folder_name:<20} 複製失敗: {e}")
+        else:
+            print(f"⊘ {folder_name:<20} 來源不存在")
+            skipped_count += 1
+    
+    print("\n" + "="*80)
+    print(f"複製完成: {copied_count} 個資料夾, 跳過: {skipped_count} 個")
+    print("="*80 + "\n")
+
 def main():
     """主程式 - 完整自動化流程"""
     
@@ -2817,6 +2879,10 @@ def main():
     parser = argparse.ArgumentParser(description='台灣股市資料完整處理流程')
     parser.add_argument('--base-dir', type=str, default=None,
                        help='指定工作目錄 (預設: 當前目錄)')
+    parser.add_argument('--repo-data-dir', type=str, default='data',
+                       help='Repository 的 data 資料夾路徑 (預設: data)')
+    parser.add_argument('--copy-to-repo', action='store_true',
+                       help='完成後將資料複製到 repo 的 data 資料夾')
     parser.add_argument('--start-date', type=str, default='2025-01-01',
                        help='爬蟲起始日期 (格式: YYYY-MM-DD)')
     parser.add_argument('--skip-crawler', action='store_true',
@@ -2888,6 +2954,10 @@ def main():
         
         if args.market in ['OTC', 'BOTH']:
             run_step3_chart_generation(base_dir, 'OTC')
+    
+    # ========== 步驟 8：複製到 Repository ==========
+    if args.copy_to_repo:
+        copy_data_to_repo(base_dir, args.repo_data_dir)
     
     # ========== 完成 ==========
     print("\n" + "🎉"*40)
