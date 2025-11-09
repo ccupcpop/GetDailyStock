@@ -45,7 +45,7 @@ def delete_folders(folder_names):
 # ============================================================================
 
 def filter_csv_content(csv_bytes):
-    """過濾 CSV 內容，只保留股票資料"""
+    """過濾 CSV 內容,只保留股票資料"""
     try:
         content = csv_bytes.decode('cp950')
         lines = content.split('\r\n')
@@ -68,11 +68,11 @@ def filter_csv_content(csv_bytes):
 
         filtered_content = '\r\n'.join(filtered_lines)
         filtered_bytes = filtered_content.encode('cp950')
-        print(f"   ✂️  過濾完成：保留 {stock_count} 檔股票")
+        print(f"   ✂️  過濾完成:保留 {stock_count} 檔股票")
         return filtered_bytes
 
     except Exception as e:
-        print(f"   ⚠️  過濾失敗: {e}，將儲存原始資料")
+        print(f"   ⚠️  過濾失敗: {e},將儲存原始資料")
         return csv_bytes
 
 def download_twse_daily(date_str):
@@ -109,7 +109,7 @@ def crawl_twse_daily(start_date, end_date, save_dir):
             file_path = os.path.join(save_dir, f'{date_formatted}.csv')
 
             if os.path.exists(file_path):
-                print(f"  {date_formatted}... [已存在，停止檢查] ✓")
+                print(f"  {date_formatted}... [已存在,停止檢查] ✓")
                 break
             else:
                 missing_dates.append(curr)
@@ -187,7 +187,7 @@ def crawl_twse_institutional(start_date, end_date, save_dir):
             file_path = os.path.join(save_dir, f'{date_formatted}.csv')
 
             if os.path.exists(file_path):
-                print(f"  {date_formatted}... [已存在，停止檢查] ✓")
+                print(f"  {date_formatted}... [已存在,停止檢查] ✓")
                 break
             else:
                 missing_dates.append(curr)
@@ -249,93 +249,57 @@ def process_otc_daily_columns(df):
 
     df = df.rename(columns=rename_mapping)
 
-    # 刪除不需要的欄位
-    columns_to_drop = ['均價', '發行股數', '次日參考價', '次日漲停價', '次日跌停價']
-    existing_cols_to_drop = [col for col in columns_to_drop if col in df.columns]
-    if existing_cols_to_drop:
-        df = df.drop(columns=existing_cols_to_drop)
+    numeric_columns = ['收盤價', '開盤價', '最高價', '最低價',
+                      '成交股數', '成交筆數', '成交金額']
 
-    # 新增漲跌(+/-)欄位
+    for col in numeric_columns:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', ''), errors='coerce')
+
     if '漲跌價差' in df.columns:
-        df['漲跌價差'] = pd.to_numeric(df['漲跌價差'], errors='coerce')
-        df['漲跌(+/-)'] = df['漲跌價差'].apply(lambda x: '+' if x > 0 else '-' if pd.notna(x) else '')
-        df['漲跌價差'] = df['漲跌價差'].abs()
-    else:
-        df['漲跌(+/-)'] = ''
+        def parse_change(val):
+            if pd.isna(val) or val == '':
+                return 0
+            val_str = str(val).replace(',', '').strip()
+            if val_str == '-' or val_str == '除權息' or val_str == '除息' or val_str == '除權':
+                return 0
+            try:
+                return float(val_str)
+            except:
+                return 0
 
-    # 新增本益比欄位
-    df['本益比'] = ''
-
-    # 調整欄位順序
-    desired_order = [
-        '證券代號', '證券名稱', '成交股數', '成交筆數', '成交金額',
-        '開盤價', '最高價', '最低價', '收盤價', '漲跌(+/-)', '漲跌價差',
-        '最後揭示買價', '最後揭示買量', '最後揭示賣價', '最後揭示賣量', '本益比'
-    ]
-
-    existing_desired_cols = [col for col in desired_order if col in df.columns]
-    other_cols = [col for col in df.columns if col not in desired_order]
-    final_order = existing_desired_cols + other_cols
-    df = df[final_order]
+        df['漲跌價差'] = df['漲跌價差'].apply(parse_change)
 
     return df
 
-def download_otc_daily(date_str):
+def download_otc_daily(date_str, max_retries=3):
     """下載上櫃每日交易資料"""
-    date_formatted = f"{date_str[:4]}%2F{date_str[4:6]}%2F{date_str[6:]}"
-    url = f'https://www.tpex.org.tw/www/zh-tw/afterTrading/dailyQuotes?date={date_formatted}&id=&response=csv'
+    if '-' in date_str:
+        date_str = date_str.replace('-', '')
 
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7',
-        'Referer': 'https://www.tpex.org.tw/zh-tw/aftertrading/quotes/daily.html'
-    }
+    minguo_year = str(int(date_str[:4]) - 1911)
+    date_formatted = f"{minguo_year}/{date_str[4:6]}/{date_str[6:8]}"
+    url = f"https://www.tpex.org.tw/web/stock/aftertrading/otc_quotes_no1430/stk_wn1430_result.php?l=zh-tw&d={date_formatted}"
 
-    try:
-        response = requests.get(url, headers=headers, timeout=15)
-        response.raise_for_status()
-
-        if not response.content or len(response.content) < 100:
+    for attempt in range(max_retries):
+        try:
+            response = requests.get(url, timeout=30)
+            if response.status_code == 200:
+                data = response.json()
+                if 'aaData' in data and len(data['aaData']) > 0:
+                    df = pd.DataFrame(data['aaData'])
+                    if len(df.columns) >= 14:
+                        df.columns = ['代號', '名稱', '收盤', '漲跌', '開盤', '最高', '最低',
+                                    '成交股數', '成交金額(元)', '成交筆數', '最後買價',
+                                    '最後買量(千股)', '最後賣價', '最後賣量(千股)']
+                        return process_otc_daily_columns(df)
             return None
-
-        encodings = ['big5', 'cp950', 'utf-8', 'utf-8-sig']
-
-        for encoding in encodings:
-            try:
-                text = response.content.decode(encoding)
-
-                if '查無資料' in text or '目前無資料' in text:
-                    return None
-
-                csv_data = StringIO(text)
-                df = pd.read_csv(csv_data, skiprows=2)
-
-                if df.empty:
-                    continue
-
-                df = df.dropna(how='all')
-
-                if len(df.columns) > 0:
-                    first_col = df.columns[0]
-                    df = df[df[first_col].notna()]
-                    df = df[~df[first_col].astype(str).str.contains('上櫃|總成交|註:', na=False)]
-
-                if len(df) == 0:
-                    continue
-
-                first_col = df.columns[0] if len(df.columns) > 0 else ''
-                if any('\u4e00' <= c <= '\u9fff' for c in first_col):
-                    df = process_otc_daily_columns(df)
-                    return df
-
-            except:
+        except Exception as e:
+            if attempt < max_retries - 1:
+                time.sleep(2)
                 continue
-
-        return None
-
-    except Exception as e:
-        return None
+            print(f"   ❌ 錯誤: {e}")
+            return None
 
 def crawl_otc_daily(start_date, end_date, save_dir):
     """抓取上櫃每日交易資料"""
@@ -354,15 +318,8 @@ def crawl_otc_daily(start_date, end_date, save_dir):
             file_path = os.path.join(save_dir, f'{date_formatted}.csv')
 
             if os.path.exists(file_path):
-                try:
-                    df_check = pd.read_csv(file_path)
-                    if len(df_check) > 1:
-                        print(f"  {date_formatted}... [已存在，停止檢查] ✓")
-                        break
-                    else:
-                        missing_dates.append(curr)
-                except:
-                    missing_dates.append(curr)
+                print(f"  {date_formatted}... [已存在,停止檢查] ✓")
+                break
             else:
                 missing_dates.append(curr)
 
@@ -388,15 +345,12 @@ def crawl_otc_daily(start_date, end_date, save_dir):
 
         if df is not None and not df.empty:
             df.to_csv(file_path, index=False, encoding='utf-8-sig')
-            print(f" ✓ ({len(df)} 筆)")
+            print(" ✓")
             success_count += 1
         else:
             print(" ✗")
 
-        if idx % 5 == 0:
-            time.sleep(4)
-        else:
-            time.sleep(2)
+        time.sleep(3)
 
     print(f"✓ 成功下載: {success_count} 個檔案\n")
     return success_count
@@ -405,98 +359,38 @@ def crawl_otc_daily(start_date, end_date, save_dir):
 # 4. 上櫃三大法人買賣超 (OTC Institutional)
 # ============================================================================
 
-def process_otc_institutional_columns(df):
-    """處理上櫃三大法人資料欄位"""
-    column_rename_map = {
-        '代號': '證券代號',
-        '名稱': '證券名稱',
-        '外資及陸資(不含外資自營商)-買進股數': '外陸資買進股數(不含外資自營商)',
-        '外資及陸資(不含外資自營商)-賣出股數': '外陸資賣出股數(不含外資自營商)',
-        '外資及陸資(不含外資自營商)-買賣超股數': '外陸資買賣超股數(不含外資自營商)',
-        '外資自營商-買進股數': '外資自營商買進股數',
-        '外資自營商-賣出股數': '外資自營商賣出股數',
-        '外資自營商-買賣超股數': '外資自營商買賣超股數',
-        '投信-買進股數': '投信買進股數',
-        '投信-賣出股數': '投信賣出股數',
-        '投信-買賣超股數': '投信買賣超股數',
-        '自營商(自行買賣)-買進股數': '自營商買進股數(自行買賣)',
-        '自營商(自行買賣)-賣出股數': '自營商賣出股數(自行買賣)',
-        '自營商(自行買賣)-買賣超股數': '自營商買賣超股數(自行買賣)',
-        '自營商(避險)-買進股數': '自營商買進股數(避險)',
-        '自營商(避險)-賣出股數': '自營商賣出股數(避險)',
-        '自營商(避險)-買賣超股數': '自營商買賣超股數(避險)',
-        '自營商-買賣超股數': '自營商買賣超股數',
-        '三大法人買賣超股數合計': '三大法人買賣超股數'
-    }
-
-    df = df.rename(columns=column_rename_map)
-
-    # 刪除指定欄位
-    columns_to_drop_indices = [8, 9, 10, 20, 21]
-    all_columns = list(df.columns)
-    columns_to_keep = [col for idx, col in enumerate(all_columns) if idx not in columns_to_drop_indices]
-    df = df[columns_to_keep]
-
-    # 調整欄位順序
-    current_columns = list(df.columns)
-    if '自營商買賣超股數' in current_columns and '投信買賣超股數' in current_columns:
-        current_columns.remove('自營商買賣超股數')
-        invest_trust_idx = current_columns.index('投信買賣超股數')
-        current_columns.insert(invest_trust_idx + 1, '自營商買賣超股數')
-        df = df[current_columns]
-
-    return df
-
 def download_otc_institutional(date_str):
     """下載上櫃三大法人資料"""
-    date_formatted = f"{date_str[:4]}%2F{date_str[4:6]}%2F{date_str[6:]}"
-    url = f'https://www.tpex.org.tw/www/zh-tw/insti/dailyTrade?type=Daily&sect=AL&date={date_formatted}&id=&response=csv'
+    if '-' in date_str:
+        date_str = date_str.replace('-', '')
 
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7',
-        'Referer': 'https://www.tpex.org.tw/zh-tw/mainboard/trading/major-institutional/detail/day.html'
-    }
+    minguo_year = str(int(date_str[:4]) - 1911)
+    date_formatted = f"{minguo_year}/{date_str[4:6]}/{date_str[6:8]}"
+    url = "https://www.tpex.org.tw/web/stock/3insti/daily_trade/3itrade_hedge_result.php"
+    params = {'l': 'zh-tw', 'd': date_formatted, 't': 'D'}
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
 
     try:
-        response = requests.get(url, headers=headers, timeout=15)
+        response = requests.get(url, params=params, headers=headers, timeout=30)
         response.raise_for_status()
+        data = response.json()
 
-        if not response.content or len(response.content) < 100:
-            return None
+        if 'aaData' in data and len(data['aaData']) > 0:
+            df = pd.DataFrame(data['aaData'])
+            columns = ['代號', '名稱', '外資及陸資(不含外資自營商)-買進股數', '外資及陸資(不含外資自營商)-賣出股數',
+                      '外資及陸資(不含外資自營商)-買賣超股數', '外資自營商-買進股數', '外資自營商-賣出股數',
+                      '外資自營商-買賣超股數', '投信-買進股數', '投信-賣出股數', '投信-買賣超股數',
+                      '自營商-買進股數(自行買賣)', '自營商-賣出股數(自行買賣)', '自營商-買賣超股數(自行買賣)',
+                      '自營商-買進股數(避險)', '自營商-賣出股數(避險)', '自營商-買賣超股數(避險)',
+                      '三大法人買賣超股數']
 
-        encodings = ['big5', 'cp950', 'utf-8', 'utf-8-sig']
-
-        for encoding in encodings:
-            try:
-                text = response.content.decode(encoding)
-
-                if '查無資料' in text or '目前無資料' in text:
-                    return None
-
-                csv_data = StringIO(text)
-                df = pd.read_csv(csv_data, skiprows=1)
-
-                if df.empty or len(df) == 0:
-                    continue
-
-                df = df.dropna(how='all')
-
-                if len(df) == 0:
-                    continue
-
-                first_col = df.columns[0] if len(df.columns) > 0 else ''
-                if any('\u4e00' <= c <= '\u9fff' for c in first_col):
-                    df = process_otc_institutional_columns(df)
-                    return df
-
-            except:
-                continue
+            if len(df.columns) == len(columns):
+                df.columns = columns
+                return df
 
         return None
-
     except Exception as e:
+        print(f"   ❌ 錯誤: {e}")
         return None
 
 def crawl_otc_institutional(start_date, end_date, save_dir):
@@ -516,15 +410,8 @@ def crawl_otc_institutional(start_date, end_date, save_dir):
             file_path = os.path.join(save_dir, f'{date_formatted}.csv')
 
             if os.path.exists(file_path):
-                try:
-                    df_check = pd.read_csv(file_path)
-                    if len(df_check) > 1:
-                        print(f"  {date_formatted}... [已存在，停止檢查] ✓")
-                        break
-                    else:
-                        missing_dates.append(curr)
-                except:
-                    missing_dates.append(curr)
+                print(f"  {date_formatted}... [已存在,停止檢查] ✓")
+                break
             else:
                 missing_dates.append(curr)
 
@@ -550,1489 +437,644 @@ def crawl_otc_institutional(start_date, end_date, save_dir):
 
         if df is not None and not df.empty:
             df.to_csv(file_path, index=False, encoding='utf-8-sig')
-            print(f" ✓ ({len(df)} 筆)")
+            print(" ✓")
             success_count += 1
         else:
             print(" ✗")
 
-        if idx % 5 == 0:
-            time.sleep(4)
-        else:
-            time.sleep(2)
+        time.sleep(3)
 
     print(f"✓ 成功下載: {success_count} 個檔案\n")
     return success_count
 
-# ============================================================================
-# 主程式
-# ============================================================================
-
-
 
 # ============================================================================
-# 第二步:分析程式
+# 第二步:分析程式 - 輔助函數
 # ============================================================================
-
-# -*- coding: utf-8 -*-
-"""第二步生成上市上櫃五日內買賣超統計[含ETF].ipynb
-
-Automatically generated by Colab.
-
-Original file is located at
-    https://colab.research.google.com/drive/1taZwu51VX73JFOvZ4ty0AfIt3r8z1owW
-"""
-
-import os
-import pandas as pd
-from google.colab import drive
-from datetime import datetime
-import glob
-from openpyxl import load_workbook
-from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-import numpy as np
-
-# ========================================
-# 模組 1: 配置與初始化
-# ========================================
-
-def mount_drive_old():
-    """掛載 Google Drive"""
-    drive.mount('/content/drive')
 
 def setup_config(market_type='TSE'):
-    """
-    設定所有路徑變數
-
-    Args:
-        market_type: 'TSE' (上市) 或 'OTC' (上櫃)
-
-    Returns:
-        dict: 包含所有路徑配置的字典
-    """
-    base_path = BASE_DIR
-
+    """設定配置"""
     if market_type == 'TSE':
-        config = {
+        return {
             'market_type': market_type,
-            'folder_path': os.path.join(base_path, 'StockShares'),
-            'stock_daily_folder': os.path.join(base_path, 'StockDaily'),
-            'output_folder': os.path.join(base_path, 'StockInfo'),
-            'history_folder': os.path.join(base_path, 'StockHistory'),
-            'market_list_filename': 'market_company_list.csv',
-            'output_filename': 'analysis_result.xlsx',
-            'sigma_threshold': 2.5,  # 標準差閾值
-            'aggregate_threshold': 10000,  # 彙整分析的買賣超張數閾值
-            'show_top_n': None  # 不使用排名模式
+            'market_name': '上市',
+            'folder_path': os.path.join(BASE_DIR, 'StockShares'),
+            'stock_daily_folder': os.path.join(BASE_DIR, 'StockDaily'),
+            'history_folder': os.path.join(BASE_DIR, 'StockHistory'),
+            'market_list_path': os.path.join(BASE_DIR, 'StockList', 'stockListTSE.csv'),
+            'output_path': os.path.join(BASE_DIR, 'TSE.xlsx'),
+            'sigma_threshold': 2,
+            'aggregate_threshold': 10000,
+            'show_top_n': None
         }
     else:  # OTC
-        config = {
+        return {
             'market_type': market_type,
-            'folder_path': os.path.join(base_path, 'StockOTCShares'),
-            'stock_daily_folder': os.path.join(base_path, 'StockOTCDaily'),
-            'output_folder': os.path.join(base_path, 'StockInfo'),
-            'history_folder': os.path.join(base_path, 'StockOTCHistory'),
-            'market_list_filename': 'otc_company_list.csv',
-            'output_filename': 'otc_analysis_result.xlsx',
-            'sigma_threshold': 2.5,
-            'aggregate_threshold': None,  # OTC不使用閾值
-            'show_top_n': 50  # OTC直接顯示前50名
+            'market_name': '上櫃',
+            'folder_path': os.path.join(BASE_DIR, 'StockOTCShares'),
+            'stock_daily_folder': os.path.join(BASE_DIR, 'StockOTCDaily'),
+            'history_folder': os.path.join(BASE_DIR, 'StockOTCHistory'),
+            'market_list_path': os.path.join(BASE_DIR, 'StockList', 'stockListOTC.csv'),
+            'output_path': os.path.join(BASE_DIR, 'OTC.xlsx'),
+            'sigma_threshold': 2,
+            'aggregate_threshold': 10000,
+            'show_top_n': None
         }
 
-    # 建立完整路徑
-    config['market_list_path'] = os.path.join(config['output_folder'], config['market_list_filename'])
-    config['output_path'] = os.path.join(config['output_folder'], config['output_filename'])
-
-    # 建立輸出資料夾
-    os.makedirs(config['output_folder'], exist_ok=True)
-    os.makedirs(config['history_folder'], exist_ok=True)
-
-    print(f"{'='*80}")
-    print(f"市場類型: {market_type} ({'上市' if market_type == 'TSE' else '上櫃'})")
-    print(f"三大法人資料夾: {config['folder_path']}")
-    print(f"個股日線資料夾: {config['stock_daily_folder']}")
-    print(f"輸出資料夾: {config['output_folder']}")
-    print(f"歷史數據資料夾: {config['history_folder']}")
-    print(f"股票清單檔案: {config['market_list_path']}")
-    print(f"輸出Excel檔案: {config['output_path']}")
-    if config['show_top_n'] is not None:
-        print(f"彙整分析模式: 顯示前 {config['show_top_n']} 名")
-    else:
-        print(f"彙整分析閾值: {config['aggregate_threshold']} 張")
-    print(f"{'='*80}\n")
-
-    return config
-
-# ========================================
-# 模組 2: 資料處理工具函數
-# ========================================
-
-def normalize_stock_code(code):
-    """
-    標準化股票代碼，確保像'56'會被轉換成'0056'
-    規則：如果是純數字且長度小於4，則補0到4位數
-    """
-    if pd.isna(code) or code == '':
-        return ''
-
-    code_str = str(code).strip()
-    code_str = code_str.replace('="', '').replace('"', '').replace("'", '')
-
-    if code_str.isdigit() and len(code_str) < 4:
-        return code_str.zfill(4)
-
-    return code_str
-
-def shares_to_lots(value):
-    """
-    將股數轉換為張數(除以1000後取整數)
-    小於1000股視為0張
-    """
+def load_stock_list(filepath):
+    """載入股票清單"""
     try:
-        if pd.isna(value) or value == '':
-            return 0
-        if isinstance(value, str):
-            value = value.replace(',', '')
-        num_value = float(value)
-        return int(num_value / 1000)
-    except:
-        return 0
+        df = pd.read_csv(filepath, encoding='utf-8-sig')
+        allowed_stock_codes = set(df['代號'].astype(str))
 
-def format_date_short(date_str):
-    """將 YYYY-MM-DD 格式轉換為 MM/DD"""
-    try:
-        parts = date_str.split('-')
-        if len(parts) == 3:
-            return f"{parts[1]}/{parts[2]}"
-        return date_str
-    except:
-        return date_str
+        stock_sector_map = dict(zip(df['代號'].astype(str), df['產業別']))
 
-# ========================================
-# 模組 3: 股票清單管理
-# ========================================
+        etf_stock_codes = set()
+        if '產業別' in df.columns:
+            etf_df = df[df['產業別'].str.contains('ETF', na=False)]
+            etf_stock_codes = set(etf_df['代號'].astype(str))
 
-def load_stock_list(market_list_path):
-    """
-    讀取允許的股票代碼清單和領域資訊
-
-    Returns:
-        tuple: (allowed_stock_codes, stock_sector_map, etf_stock_codes)
-    """
-    allowed_stock_codes = set()
-    stock_sector_map = {}
-    etf_stock_codes = set()
-
-    try:
-        market_df = pd.read_csv(market_list_path, encoding='utf-8')
-        first_column = market_df.iloc[:, 0].apply(normalize_stock_code)
-        allowed_stock_codes = set(first_column.tolist())
-
-        if len(market_df.columns) >= 3:
-            for idx, row in market_df.iterrows():
-                stock_code = normalize_stock_code(row.iloc[0])
-                sector = str(row.iloc[2]).strip() if pd.notna(row.iloc[2]) else ''
-                stock_sector_map[stock_code] = sector
-
-                if sector.upper() == 'ETF':
-                    etf_stock_codes.add(stock_code)
-
-            print(f"{'='*80}")
-            print(f"已載入允許的股票代碼清單: {len(allowed_stock_codes)} 檔")
-            print(f"已建立領域映射: {len(stock_sector_map)} 檔")
-            print(f"識別ETF股票: {len(etf_stock_codes)} 檔")
-            print(f"清單檔案: {market_list_path}")
-            print(f"前10個代碼: {list(allowed_stock_codes)[:10]}")
-            if etf_stock_codes:
-                print(f"ETF代碼: {sorted(etf_stock_codes)}")
-            print(f"{'='*80}\n")
-        else:
-            print(f"{'='*80}")
-            print(f"已載入允許的股票代碼清單: {len(allowed_stock_codes)} 檔")
-            print(f"警告: 欄位不足，無法讀取領域資訊（需要至少3欄）")
-            print(f"{'='*80}\n")
-
-    except FileNotFoundError:
-        print(f"警告: 找不到 {market_list_path}")
-        print("將處理所有股票代碼")
-        return None, {}, set()
+        return allowed_stock_codes, stock_sector_map, etf_stock_codes
     except Exception as e:
-        print(f"讀取股票清單時發生錯誤: {e}")
-        print("將處理所有股票代碼")
-        return None, {}, set()
+        print(f"❌ 無法載入股票清單: {e}")
+        return set(), {}, set()
 
-    return allowed_stock_codes, stock_sector_map, etf_stock_codes
-
-def is_allowed_stock(stock_code, allowed_stock_codes):
-    """檢查股票代碼是否在允許清單中"""
-    if allowed_stock_codes is None:
-        return True
-    normalized_code = normalize_stock_code(stock_code)
-    return normalized_code in allowed_stock_codes
-
-def get_stock_sector(stock_code, stock_sector_map):
-    """獲取股票代碼對應的領域"""
-    normalized_code = normalize_stock_code(stock_code)
-    return stock_sector_map.get(normalized_code, '')
-
-# ========================================
-# 模組 4: 價格資料讀取
-# ========================================
-
-def load_stock_daily_prices(stock_daily_folder, allowed_stock_codes, num_days=5):
-    """
-    讀取StockDaily的收盤價和漲跌價差
-
-    Returns:
-        dict: {日期: {證券代號: {'收盤價': x, '漲跌價差': y}}}
-    """
+def load_stock_daily_prices(folder_path, allowed_stock_codes):
+    """載入股票每日價格"""
     stock_daily_prices = {}
 
-    print(f"\n{'='*80}")
-    print("開始讀取 StockDaily 的收盤價和漲跌價差資料...")
-    print(f"{'='*80}")
-
-    if not os.path.exists(stock_daily_folder):
-        print(f"警告: StockDaily 資料夾不存在: {stock_daily_folder}")
-        print("將無法顯示收盤價和漲跌價差")
-        print(f"{'='*80}\n")
+    if not os.path.exists(folder_path):
+        print(f"⚠️  每日價格資料夾不存在: {folder_path}")
         return stock_daily_prices
 
-    all_daily_files = glob.glob(os.path.join(stock_daily_folder, '*.csv'))
-    daily_files_sorted = sorted(all_daily_files, key=lambda x: os.path.basename(x).replace('.csv', ''), reverse=True)
-    latest_files = daily_files_sorted[:num_days]
+    csv_files = glob.glob(os.path.join(folder_path, '*.csv'))
 
-    print(f"找到 {len(all_daily_files)} 個 StockDaily 檔案")
-    print(f"將讀取最近 {num_days} 個檔案的價格資料")
+    if not csv_files:
+        print(f"⚠️  找不到每日價格資料")
+        return stock_daily_prices
 
-    for daily_file in latest_files:
-        try:
-            # 先嘗試 cp950 編碼,失敗則用 utf-8
-            try:
-                df_daily = pd.read_csv(daily_file, encoding='cp950', low_memory=False)
-            except:
-                df_daily = pd.read_csv(daily_file, encoding='utf-8', low_memory=False)
+    latest_file = max(csv_files, key=os.path.getmtime)
 
-            file_date = os.path.basename(daily_file).replace('.csv', '')
+    try:
+        df = pd.read_csv(latest_file, encoding='cp950', dtype=str)
 
-            if '證券代號' in df_daily.columns:
-                df_daily['證券代號'] = df_daily['證券代號'].apply(normalize_stock_code)
+        if '證券代號' in df.columns and '收盤價' in df.columns:
+            df = df[df['證券代號'].isin(allowed_stock_codes)]
+            df['收盤價'] = df['收盤價'].str.replace(',', '').str.replace('+', '').str.replace('-', '')
+            df['收盤價'] = pd.to_numeric(df['收盤價'], errors='coerce')
+            stock_daily_prices = dict(zip(df['證券代號'], df['收盤價']))
 
-            if allowed_stock_codes is not None:
-                df_daily = df_daily[df_daily['證券代號'].isin(allowed_stock_codes)]
-
-            stock_daily_prices[file_date] = {}
-
-            for _, row in df_daily.iterrows():
-                stock_code = normalize_stock_code(row['證券代號'])
-                close_price = row.get('收盤價', '')
-
-                price_sign = ''
-                if len(df_daily.columns) > 9:
-                    j_col_name = df_daily.columns[9]
-                    price_sign = str(row.get(j_col_name, '')).strip()
-
-                price_value = ''
-                if len(df_daily.columns) > 10:
-                    k_col_name = df_daily.columns[10]
-                    price_value = str(row.get(k_col_name, '')).strip()
-
-                if price_sign and price_value and price_value not in ['', '--', 'X']:
-                    clean_value = price_value.replace(',', '')
-                    price_diff = f"{price_sign}{clean_value}"
-                else:
-                    price_diff = ''
-
-                stock_daily_prices[file_date][stock_code] = {
-                    '收盤價': close_price,
-                    '漲跌價差': price_diff
-                }
-
-            print(f"  已讀取: {os.path.basename(daily_file)} - {len(stock_daily_prices[file_date])} 檔股票")
-
-        except Exception as e:
-            print(f"讀取StockDaily檔案 {daily_file} 時發生錯誤: {e}")
-
-    print(f"完成讀取價格資料,共 {len(stock_daily_prices)} 天")
-    print(f"{'='*80}\n")
+    except Exception as e:
+        print(f"⚠️  讀取每日價格失敗: {e}")
 
     return stock_daily_prices
 
-# ========================================
-# 模組 5: 三大法人數據處理
-# ========================================
-
 def get_latest_files(folder_path, num_files=61):
-    """取得最新的N個檔案"""
+    """取得最近的檔案"""
     csv_files = glob.glob(os.path.join(folder_path, '*.csv'))
-    csv_files_sorted = sorted(csv_files, key=lambda x: os.path.basename(x).replace('.csv', ''), reverse=True)
-    return csv_files_sorted[:num_files]
+
+    if not csv_files:
+        return []
+
+    csv_files_with_time = [(f, os.path.getmtime(f)) for f in csv_files]
+    csv_files_with_time.sort(key=lambda x: x[1], reverse=True)
+    latest_files = [f for f, _ in csv_files_with_time[:num_files]]
+
+    return latest_files
+
+def read_shares_file(filepath):
+    """讀取單一三大法人檔案"""
+    try:
+        df = pd.read_csv(filepath, encoding='utf-8-sig')
+        return df
+    except Exception as e:
+        print(f"❌ 讀取失敗 {os.path.basename(filepath)}: {e}")
+        return pd.DataFrame()
 
 def process_shares_files(latest_files, allowed_stock_codes, stock_daily_prices,
-                         stock_sector_map, etf_stock_codes):
-    """
-    處理三大法人買賣超檔案
-
-    Returns:
-        tuple: (all_data, daily_buy_sell_data, etf_daily_data, buy_top20_tracker,
-                sell_top20_tracker, daily_buy_stocks, daily_sell_stocks,
-                daily_all_stocks, all_historical_data, statistics)
-    """
+                        stock_sector_map, etf_stock_codes):
+    """處理三大法人檔案"""
     all_data = []
-    daily_buy_sell_data = []
-    etf_daily_data = []
-    buy_top20_tracker = []
-    sell_top20_tracker = []
+    daily_buy_sell_data = {}
+    etf_daily_data = {}
+    buy_top20_tracker = {}
+    sell_top20_tracker = {}
     daily_buy_stocks = {}
     daily_sell_stocks = {}
     daily_all_stocks = {}
     all_historical_data = {}
+    statistics = {'processed': 0, 'skipped': 0}
 
-    filtered_out_count = 0
-    processed_count = 0
+    for filepath in latest_files:
+        date_str = os.path.basename(filepath).replace('.csv', '')
 
-    print(f"找到 {len(latest_files)} 個 CSV 檔案")
-    print(f"將處理最新的 {len(latest_files)} 個檔案用於標準差計算")
-    print(f"最近5個檔案:")
-    for i, file in enumerate(latest_files[:5], 1):
-        print(f"{i}. {os.path.basename(file)}")
+        df = read_shares_file(filepath)
 
-    for file_path in latest_files:
-        try:
-            df = pd.read_csv(file_path, encoding='utf-8')
+        if df.empty:
+            statistics['skipped'] += 1
+            continue
 
-            if '證券代號' in df.columns:
-                df['證券代號'] = df['證券代號'].apply(normalize_stock_code)
+        if '證券代號' not in df.columns or '三大法人買賣超股數' not in df.columns:
+            statistics['skipped'] += 1
+            continue
 
-            if allowed_stock_codes is not None:
-                original_count = len(df)
-                df = df[df['證券代號'].isin(allowed_stock_codes)]
-                filtered_count = original_count - len(df)
-                filtered_out_count += filtered_count
-                processed_count += len(df)
+        df = df[df['證券代號'].isin(allowed_stock_codes)].copy()
 
-            file_date = os.path.basename(file_path).replace('.csv', '')
+        df['三大法人買賣超股數'] = df['三大法人買賣超股數'].astype(str).str.replace(',', '')
+        df['三大法人買賣超股數'] = pd.to_numeric(df['三大法人買賣超股數'], errors='coerce')
+        df = df.dropna(subset=['三大法人買賣超股數'])
 
-            if '三大法人買賣超股數' in df.columns:
-                df['三大法人買賣超股數'] = pd.to_numeric(
-                    df['三大法人買賣超股數'].astype(str).str.replace(',', ''),
-                    errors='coerce'
-                )
-                df['買賣超張數'] = (df['三大法人買賣超股數'] / 1000).fillna(0).astype(int)
+        df['產業別'] = df['證券代號'].map(stock_sector_map)
+        df['收盤價'] = df['證券代號'].map(stock_daily_prices)
 
-                # 記錄每天所有股票的買賣超狀態
-                daily_all_stocks[file_date] = {}
-                for _, row in df.iterrows():
-                    if pd.notna(row['證券代號']) and pd.notna(row['買賣超張數']):
-                        stock_code = normalize_stock_code(row['證券代號'])
-                        if is_allowed_stock(stock_code, allowed_stock_codes):
-                            buy_sell_value = int(row['買賣超張數'])
-                            daily_all_stocks[file_date][stock_code] = buy_sell_value
+        # 記錄所有股票
+        daily_all_stocks[date_str] = set(df['證券代號'])
 
-                            if stock_code not in all_historical_data:
-                                all_historical_data[stock_code] = []
-                            all_historical_data[stock_code].append((file_date, buy_sell_value))
+        # 買超
+        buy_df = df[df['三大法人買賣超股數'] > 0].copy()
+        daily_buy_stocks[date_str] = set(buy_df['證券代號'])
 
-                # 只處理前5天的詳細資料
-                if file_path in latest_files[:5]:
-                    print(f"\n{'='*80}")
-                    print(f"檔案:{os.path.basename(file_path)}")
-                    print(f"{'='*80}")
+        # ETF 買超
+        etf_buy_df = buy_df[buy_df['證券代號'].isin(etf_stock_codes)].copy()
+        if not etf_buy_df.empty:
+            etf_buy_df = etf_buy_df.sort_values('三大法人買賣超股數', ascending=False).head(50)
+            etf_daily_data[date_str] = {'buy': etf_buy_df}
 
-                    display_count = 50
+        # 非 ETF 買超
+        buy_df = buy_df[~buy_df['證券代號'].isin(etf_stock_codes)]
 
-                    # 買超處理
-                    buy_top = df[df['買賣超張數'] > 0].nlargest(display_count, '買賣超張數')
-                    print(f"\n【買超 TOP {display_count}】")
-                    print("-" * 80)
+        if not buy_df.empty:
+            buy_df = buy_df.sort_values('三大法人買賣超股數', ascending=False).head(50)
+            daily_buy_sell_data[date_str] = {'buy': buy_df}
 
-                    if len(buy_top) > 0:
-                        display_df = buy_top[['證券代號', '證券名稱', '買賣超張數']].copy()
-                        print(display_df.to_string(index=False))
+            top20_buy = set(buy_df.head(20)['證券代號'])
+            for stock_code in top20_buy:
+                if stock_code not in buy_top20_tracker:
+                    buy_top20_tracker[stock_code] = []
+                buy_top20_tracker[stock_code].append(date_str)
 
-                        buy_top20 = df[df['買賣超張數'] > 0].nlargest(20, '買賣超張數')
-                        daily_buy_stocks[file_date] = set(buy_top20['證券代號'].tolist())
+        # 賣超
+        sell_df = df[df['三大法人買賣超股數'] < 0].copy()
+        daily_sell_stocks[date_str] = set(sell_df['證券代號'])
 
-                        buy_output = buy_top[['證券代號', '證券名稱', '買賣超張數']].copy()
-                        buy_output['日期'] = file_date
-                        buy_output['類別'] = '買超'
-                        buy_output['排名'] = range(1, len(buy_output) + 1)
+        sell_df = sell_df[~sell_df['證券代號'].isin(etf_stock_codes)]
 
-                        if file_date in stock_daily_prices:
-                            buy_output['收盤價'] = buy_output['證券代號'].apply(
-                                lambda x: stock_daily_prices[file_date].get(normalize_stock_code(x), {}).get('收盤價', '')
-                            )
-                            buy_output['漲跌價差'] = buy_output['證券代號'].apply(
-                                lambda x: stock_daily_prices[file_date].get(normalize_stock_code(x), {}).get('漲跌價差', '')
-                            )
-                        else:
-                            buy_output['收盤價'] = ''
-                            buy_output['漲跌價差'] = ''
+        if not sell_df.empty:
+            sell_df = sell_df.sort_values('三大法人買賣超股數').head(50)
 
-                        daily_buy_sell_data.append(buy_output)
+            if date_str in daily_buy_sell_data:
+                daily_buy_sell_data[date_str]['sell'] = sell_df
+            else:
+                daily_buy_sell_data[date_str] = {'sell': sell_df}
 
-                        for _, row in buy_top20.iterrows():
-                            buy_top20_tracker.append({
-                                '證券代號': normalize_stock_code(row['證券代號']),
-                                '證券名稱': row['證券名稱'],
-                                '日期': file_date,
-                                '買賣超張數': int(row['買賣超張數'])
-                            })
-                    else:
-                        print("無買超資料")
-                        daily_buy_stocks[file_date] = set()
+            top20_sell = set(sell_df.head(20)['證券代號'])
+            for stock_code in top20_sell:
+                if stock_code not in sell_top20_tracker:
+                    sell_top20_tracker[stock_code] = []
+                sell_top20_tracker[stock_code].append(date_str)
 
-                    # 賣超處理
-                    sell_top = df[df['買賣超張數'] < 0].nsmallest(display_count, '買賣超張數')
-                    print(f"\n【賣超 TOP {display_count}】")
-                    print("-" * 80)
+        all_data.append(df)
 
-                    if len(sell_top) > 0:
-                        display_df = sell_top[['證券代號', '證券名稱', '買賣超張數']].copy()
-                        print(display_df.to_string(index=False))
+        # 歷史資料
+        for _, row in df.iterrows():
+            stock_code = row['證券代號']
+            if stock_code not in all_historical_data:
+                all_historical_data[stock_code] = []
+            all_historical_data[stock_code].append(row['三大法人買賣超股數'])
 
-                        sell_top20 = df[df['買賣超張數'] < 0].nsmallest(20, '買賣超張數')
-                        daily_sell_stocks[file_date] = set(sell_top20['證券代號'].tolist())
-
-                        sell_output = sell_top[['證券代號', '證券名稱', '買賣超張數']].copy()
-                        sell_output['日期'] = file_date
-                        sell_output['類別'] = '賣超'
-                        sell_output['排名'] = range(1, len(sell_output) + 1)
-
-                        if file_date in stock_daily_prices:
-                            sell_output['收盤價'] = sell_output['證券代號'].apply(
-                                lambda x: stock_daily_prices[file_date].get(normalize_stock_code(x), {}).get('收盤價', '')
-                            )
-                            sell_output['漲跌價差'] = sell_output['證券代號'].apply(
-                                lambda x: stock_daily_prices[file_date].get(normalize_stock_code(x), {}).get('漲跌價差', '')
-                            )
-                        else:
-                            sell_output['收盤價'] = ''
-                            sell_output['漲跌價差'] = ''
-
-                        daily_buy_sell_data.append(sell_output)
-
-                        for _, row in sell_top20.iterrows():
-                            sell_top20_tracker.append({
-                                '證券代號': normalize_stock_code(row['證券代號']),
-                                '證券名稱': row['證券名稱'],
-                                '日期': file_date,
-                                '買賣超張數': int(row['買賣超張數'])
-                            })
-                    else:
-                        print("無賣超資料")
-                        daily_sell_stocks[file_date] = set()
-
-                    # ETF處理
-                    if len(etf_stock_codes) > 0:
-                        etf_df = df[df['證券代號'].isin(etf_stock_codes)].copy()
-
-                        if len(etf_df) > 0:
-                            # ETF買超
-                            etf_buy_top10 = etf_df[etf_df['買賣超張數'] > 0].nlargest(10, '買賣超張數')
-                            if len(etf_buy_top10) > 0:
-                                etf_buy_output = etf_buy_top10[['證券代號', '證券名稱', '買賣超張數']].copy()
-                                etf_buy_output['日期'] = file_date
-                                etf_buy_output['類別'] = 'ETF買超'
-                                etf_buy_output['排名'] = range(1, len(etf_buy_output) + 1)
-
-                                if file_date in stock_daily_prices:
-                                    etf_buy_output['收盤價'] = etf_buy_output['證券代號'].apply(
-                                        lambda x: stock_daily_prices[file_date].get(normalize_stock_code(x), {}).get('收盤價', '')
-                                    )
-                                    etf_buy_output['漲跌價差'] = etf_buy_output['證券代號'].apply(
-                                        lambda x: stock_daily_prices[file_date].get(normalize_stock_code(x), {}).get('漲跌價差', '')
-                                    )
-                                else:
-                                    etf_buy_output['收盤價'] = ''
-                                    etf_buy_output['漲跌價差'] = ''
-
-                                etf_daily_data.append(etf_buy_output)
-
-                            # ETF賣超
-                            etf_sell_top10 = etf_df[etf_df['買賣超張數'] < 0].nsmallest(10, '買賣超張數')
-                            if len(etf_sell_top10) > 0:
-                                etf_sell_output = etf_sell_top10[['證券代號', '證券名稱', '買賣超張數']].copy()
-                                etf_sell_output['日期'] = file_date
-                                etf_sell_output['類別'] = 'ETF賣超'
-                                etf_sell_output['排名'] = range(1, len(etf_sell_output) + 1)
-
-                                if file_date in stock_daily_prices:
-                                    etf_sell_output['收盤價'] = etf_sell_output['證券代號'].apply(
-                                        lambda x: stock_daily_prices[file_date].get(normalize_stock_code(x), {}).get('收盤價', '')
-                                    )
-                                    etf_sell_output['漲跌價差'] = etf_sell_output['證券代號'].apply(
-                                        lambda x: stock_daily_prices[file_date].get(normalize_stock_code(x), {}).get('漲跌價差', '')
-                                    )
-                                else:
-                                    etf_sell_output['收盤價'] = ''
-                                    etf_sell_output['漲跌價差'] = ''
-
-                                etf_daily_data.append(etf_sell_output)
-
-                    df_full = df.copy()
-                    df_full['檔案來源'] = os.path.basename(file_path)
-                    all_data.append(df_full)
-
-        except Exception as e:
-            print(f"讀取檔案 {file_path} 時發生錯誤:{e}")
-
-    statistics = {
-        'filtered_out_count': filtered_out_count,
-        'processed_count': processed_count
-    }
-
-    if allowed_stock_codes is not None:
-        print(f"\n{'='*80}")
-        print(f"股票代碼過濾統計:")
-        print(f"  - 允許的股票代碼總數: {len(allowed_stock_codes)}")
-        print(f"  - 處理的股票筆數: {processed_count}")
-        print(f"  - 過濾掉的股票筆數: {filtered_out_count}")
-        if len(etf_stock_codes) > 0:
-            print(f"  - ETF股票數量: {len(etf_stock_codes)}")
-        print(f"{'='*80}")
+        statistics['processed'] += 1
 
     return (all_data, daily_buy_sell_data, etf_daily_data, buy_top20_tracker,
             sell_top20_tracker, daily_buy_stocks, daily_sell_stocks,
             daily_all_stocks, all_historical_data, statistics)
 
-# ========================================
-# 模組 6: 標準差計算
-# ========================================
-
 def calculate_stock_statistics(all_historical_data, sigma_threshold):
-    """
-    計算每個證券的統計數據(使用今天往前60天，不含今天)
-
-    Returns:
-        dict: {證券代號: {'平均值': x, '標準差': y, '最新值': z, 'Z分數': w, '異常': bool}}
-    """
-    print(f"\n{'='*80}")
-    print("計算過去60天的標準差...")
-    print(f"{'='*80}")
-
+    """計算股票統計數據"""
     stock_statistics = {}
 
-    for stock_code, date_values in all_historical_data.items():
-        if len(date_values) >= 30:
-            sorted_values = sorted(date_values, key=lambda x: x[0], reverse=True)
-            latest_value = sorted_values[0][1] if len(sorted_values) > 0 else 0
-            historical_values = [v[1] for v in sorted_values[1:61]]
+    for stock_code, values in all_historical_data.items():
+        mean = np.mean(values)
+        std = np.std(values, ddof=1)
 
-            if len(historical_values) >= 30:
-                mean = np.mean(historical_values)
-                std = np.std(historical_values)
-
-                if std > 0:
-                    z_score = abs((latest_value - mean) / std)
-                else:
-                    z_score = 0
-
-                stock_statistics[stock_code] = {
-                    '平均值': mean,
-                    '標準差': std,
-                    '最新值': latest_value,
-                    'Z分數': z_score,
-                    '異常': z_score >= sigma_threshold
-                }
+        stock_statistics[stock_code] = {
+            'mean': mean,
+            'std': std,
+            'upper_threshold': mean + sigma_threshold * std,
+            'lower_threshold': mean - sigma_threshold * std
+        }
 
     return stock_statistics
 
-# ========================================
-# 模組 7: 新進榜與值得觀察分析
-# ========================================
-
 def analyze_new_entries_and_observables(latest_file, daily_buy_stocks, daily_sell_stocks,
-                                        daily_all_stocks, stock_statistics, allowed_stock_codes,
-                                        sigma_threshold):
-    """
-    找出最新一天的新進榜證券和值得觀察證券
-
-    Returns:
-        tuple: (new_buy_stocks, new_sell_stocks, observable_buy_stocks, observable_sell_stocks,
-                latest_date, latest_buy_stocks_50, latest_sell_stocks_50)
-    """
+                                       daily_all_stocks, stock_statistics,
+                                       allowed_stock_codes, sigma_threshold):
+    """分析新進榜與觀察股"""
+    latest_date = os.path.basename(latest_file).replace('.csv', '')
     sorted_dates = sorted(daily_buy_stocks.keys(), reverse=True)
-    observable_buy_stocks = {}
-    observable_sell_stocks = {}
-    new_buy_stocks = set()
-    new_sell_stocks = set()
-    latest_buy_stocks_50 = set()
-    latest_sell_stocks_50 = set()
-    latest_date = None
 
-    if len(sorted_dates) >= 2:
-        latest_date = sorted_dates[0]
-        previous_dates = sorted_dates[1:]
+    if len(sorted_dates) < 2:
+        return set(), set(), set(), set(), latest_date, [], []
 
-        latest_df = pd.read_csv(latest_file, encoding='utf-8')
+    latest_buy = daily_buy_stocks.get(sorted_dates[0], set())
+    latest_sell = daily_sell_stocks.get(sorted_dates[0], set())
 
-        if '證券代號' in latest_df.columns:
-            latest_df['證券代號'] = latest_df['證券代號'].apply(normalize_stock_code)
+    previous_dates = sorted_dates[1:6]
+    previous_buy = set()
+    previous_sell = set()
 
-        if allowed_stock_codes is not None:
-            latest_df = latest_df[latest_df['證券代號'].isin(allowed_stock_codes)]
+    for date in previous_dates:
+        previous_buy.update(daily_buy_stocks.get(date, set()))
+        previous_sell.update(daily_sell_stocks.get(date, set()))
 
-        latest_df['三大法人買賣超股數'] = pd.to_numeric(
-            latest_df['三大法人買賣超股數'].astype(str).str.replace(',', ''),
+    new_buy_stocks = latest_buy - previous_buy
+    new_sell_stocks = latest_sell - previous_sell
+
+    # 觀察股
+    observable_buy_stocks = set()
+    observable_sell_stocks = set()
+
+    df = read_shares_file(latest_file)
+    if not df.empty and '證券代號' in df.columns and '三大法人買賣超股數' in df.columns:
+        df = df[df['證券代號'].isin(allowed_stock_codes)]
+        df['三大法人買賣超股數'] = pd.to_numeric(
+            df['三大法人買賣超股數'].astype(str).str.replace(',', ''),
             errors='coerce'
         )
-        latest_df['買賣超張數'] = (latest_df['三大法人買賣超股數'] / 1000).fillna(0).astype(int)
+        df = df.dropna(subset=['三大法人買賣超股數'])
 
-        buy_top50 = latest_df[latest_df['買賣超張數'] > 0].nlargest(50, '買賣超張數')
-        sell_top50 = latest_df[latest_df['買賣超張數'] < 0].nsmallest(50, '買賣超張數')
+        for _, row in df.iterrows():
+            stock_code = row['證券代號']
+            value = row['三大法人買賣超股數']
 
-        latest_buy_stocks_50 = set(buy_top50['證券代號'].tolist())
-        latest_sell_stocks_50 = set(sell_top50['證券代號'].tolist())
+            if stock_code in stock_statistics:
+                stats = stock_statistics[stock_code]
+                if value > stats['upper_threshold'] and stock_code not in new_buy_stocks:
+                    observable_buy_stocks.add(stock_code)
+                elif value < stats['lower_threshold'] and stock_code not in new_sell_stocks:
+                    observable_sell_stocks.add(stock_code)
 
-        # 計算新進榜
-        previous_buy_stocks = set()
-        previous_sell_stocks = set()
-        for date in previous_dates[:4]:
-            if date in daily_buy_stocks:
-                previous_buy_stocks.update(daily_buy_stocks[date])
-            if date in daily_sell_stocks:
-                previous_sell_stocks.update(daily_sell_stocks[date])
+    # 買超前 50
+    latest_buy_stocks_50 = []
+    if not df.empty:
+        buy_df = df[df['三大法人買賣超股數'] > 0].copy()
+        buy_df = buy_df.sort_values('三大法人買賣超股數', ascending=False).head(50)
+        latest_buy_stocks_50 = buy_df['證券代號'].tolist()
 
-        latest_buy_stocks = daily_buy_stocks.get(latest_date, set())
-        latest_sell_stocks = daily_sell_stocks.get(latest_date, set())
-
-        new_buy_stocks = latest_buy_stocks - previous_buy_stocks
-        new_sell_stocks = latest_sell_stocks - previous_sell_stocks
-
-        # 買超值得觀察
-        for stock_code in latest_buy_stocks_50:
-            reasons = []
-            z_score = 0
-            mean_val = 0
-            std_val = 0
-
-            if stock_code in stock_statistics and stock_statistics[stock_code]['異常']:
-                z_score = stock_statistics[stock_code]['Z分數']
-                mean_val = stock_statistics[stock_code]['平均值']
-                std_val = stock_statistics[stock_code]['標準差']
-                reasons.append(f'異常波動({z_score:.1f}σ)')
-
-            positive_days = 0
-            for date in previous_dates[:4]:
-                if date in daily_all_stocks and stock_code in daily_all_stocks[date]:
-                    if daily_all_stocks[date][stock_code] > 0:
-                        positive_days += 1
-            if positive_days >= 3:
-                reasons.append('連續買超')
-
-            if reasons:
-                observable_buy_stocks[stock_code] = ('+'.join(reasons), z_score, mean_val, std_val)
-
-        # 賣超值得觀察
-        for stock_code in latest_sell_stocks_50:
-            reasons = []
-            z_score = 0
-            mean_val = 0
-            std_val = 0
-
-            if stock_code in stock_statistics and stock_statistics[stock_code]['異常']:
-                z_score = stock_statistics[stock_code]['Z分數']
-                mean_val = stock_statistics[stock_code]['平均值']
-                std_val = stock_statistics[stock_code]['標準差']
-                reasons.append(f'異常波動({z_score:.1f}σ)')
-
-            negative_days = 0
-            for date in previous_dates[:4]:
-                if date in daily_all_stocks and stock_code in daily_all_stocks[date]:
-                    if daily_all_stocks[date][stock_code] < 0:
-                        negative_days += 1
-            if negative_days >= 3:
-                reasons.append('連續賣超')
-
-            if reasons:
-                observable_sell_stocks[stock_code] = ('+'.join(reasons), z_score, mean_val, std_val)
-
-        print(f"\n{'='*80}")
-        print(f"【{latest_date} 分析結果】")
-        print(f"{'='*80}")
-        print(f"使用標準差閾值: {sigma_threshold} 個標準差")
-        print(f"買超前20新進榜: {len(new_buy_stocks)} 檔")
-        if new_buy_stocks:
-            print(f"  證券代號: {', '.join(sorted(new_buy_stocks))}")
-        print(f"賣超前20新進榜: {len(new_sell_stocks)} 檔")
-        if new_sell_stocks:
-            print(f"  證券代號: {', '.join(sorted(new_sell_stocks))}")
-        print(f"\n買超前50值得觀察: {len(observable_buy_stocks)} 檔")
-        if observable_buy_stocks:
-            for code, (reason, z, mean_val, std_val) in sorted(observable_buy_stocks.items()):
-                print(f"  {code}: {reason}")
-        print(f"賣超前50值得觀察: {len(observable_sell_stocks)} 檔")
-        if observable_sell_stocks:
-            for code, (reason, z, mean_val, std_val) in sorted(observable_sell_stocks.items()):
-                print(f"  {code}: {reason}")
+    # 賣超前 50
+    latest_sell_stocks_50 = []
+    if not df.empty:
+        sell_df = df[df['三大法人買賣超股數'] < 0].copy()
+        sell_df = sell_df.sort_values('三大法人買賣超股數').head(50)
+        latest_sell_stocks_50 = sell_df['證券代號'].tolist()
 
     return (new_buy_stocks, new_sell_stocks, observable_buy_stocks, observable_sell_stocks,
             latest_date, latest_buy_stocks_50, latest_sell_stocks_50)
 
-# ========================================
-# 模組 8: 歷史數據收集
-# ========================================
+def collect_stock_history(stock_list, shares_folder, daily_folder, output_folder, allowed_stock_codes):
+    """收集股票歷史資料"""
+    os.makedirs(output_folder, exist_ok=True)
 
-def collect_stock_history(latest_buy_stocks_50, folder_path, stock_daily_folder,
-                          history_folder, allowed_stock_codes):
-    """收集買超前50檔股票的歷史數據"""
-    print(f"\n{'='*80}")
-    print("開始收集買超前50檔股票的歷史數據...")
-    print(f"{'='*80}")
+    for stock_code in stock_list:
+        if stock_code not in allowed_stock_codes:
+            continue
 
-    if len(latest_buy_stocks_50) == 0:
-        print("沒有買超前50的股票需要收集歷史數據")
-        return
+        output_file = os.path.join(output_folder, f"{stock_code}.csv")
 
-    stock_history_data = {}
-    for stock_code in latest_buy_stocks_50:
-        stock_history_data[stock_code] = {}
+        if os.path.exists(output_file):
+            continue
 
-    # 從 StockShares 讀取
-    print("\n從 StockShares 收集數據(2025-01-01 之後)...")
-    all_shares_files = glob.glob(os.path.join(folder_path, '*.csv'))
+        history_data = []
+        shares_files = glob.glob(os.path.join(shares_folder, '*.csv'))
 
-    shares_files_2025 = []
-    for file_path in all_shares_files:
-        file_date = os.path.basename(file_path).replace('.csv', '')
-        if file_date >= '2025-01-01':
-            shares_files_2025.append(file_path)
+        for filepath in shares_files:
+            date_str = os.path.basename(filepath).replace('.csv', '')
 
-    shares_files_2025 = sorted(shares_files_2025, key=lambda x: os.path.basename(x).replace('.csv', ''), reverse=True)
-    print(f"找到 {len(shares_files_2025)} 個 StockShares 檔案(2025-01-01 之後)")
-
-    shares_processed = 0
-    for file_path in shares_files_2025:
-        try:
-            df = pd.read_csv(file_path, encoding='utf-8')
-
-            if '證券代號' in df.columns:
-                df['證券代號'] = df['證券代號'].apply(normalize_stock_code)
-
-            if allowed_stock_codes is not None:
-                df = df[df['證券代號'].isin(allowed_stock_codes)]
-
-            file_date = os.path.basename(file_path).replace('.csv', '')
-
-            for stock_code in latest_buy_stocks_50:
-                stock_data = df[df['證券代號'] == stock_code]
-                if len(stock_data) > 0:
-                    row = stock_data.iloc[0]
-
-                    if file_date not in stock_history_data[stock_code]:
-                        stock_history_data[stock_code][file_date] = {
-                            '日期': file_date,
-                            '股票代碼': stock_code,
-                            '股票名稱': row.get('證券名稱', '').strip()
-                        }
-
-                    stock_history_data[stock_code][file_date]['外陸資買賣超張數'] = shares_to_lots(row.get('外陸資買賣超股數(不含外資自營商)', 0))
-                    stock_history_data[stock_code][file_date]['投信買賣超張數'] = shares_to_lots(row.get('投信買賣超股數', 0))
-                    stock_history_data[stock_code][file_date]['自營商買賣超張數'] = shares_to_lots(row.get('自營商買賣超股數', 0))
-
-            shares_processed += 1
-
-        except Exception as e:
-            print(f"讀取StockShares檔案 {file_path} 時發生錯誤: {e}")
-
-    print(f"成功處理 {shares_processed} 個 StockShares 檔案")
-
-    # 從 StockDaily 讀取
-    if os.path.exists(stock_daily_folder):
-        print("\n從 StockDaily 收集數據(2025-01-01 之後)...")
-
-        all_daily_files = glob.glob(os.path.join(stock_daily_folder, '*.csv'))
-
-        daily_files_2025 = []
-        for file_path in all_daily_files:
-            file_date = os.path.basename(file_path).replace('.csv', '')
-            if file_date >= '2025-01-01':
-                daily_files_2025.append(file_path)
-
-        daily_files_2025 = sorted(daily_files_2025, key=lambda x: os.path.basename(x).replace('.csv', ''), reverse=True)
-        print(f"找到 {len(daily_files_2025)} 個 StockDaily 檔案(2025-01-01 之後)")
-
-        stock_data_count = {code: 0 for code in latest_buy_stocks_50}
-        daily_processed = 0
-
-        for daily_file in daily_files_2025:
             try:
-                # 先嘗試 cp950 編碼，失敗則用 utf-8
+                df = pd.read_csv(filepath, encoding='utf-8-sig')
+
+                if '證券代號' not in df.columns:
+                    continue
+
+                stock_df = df[df['證券代號'] == stock_code]
+
+                if stock_df.empty:
+                    continue
+
+                for _, row in stock_df.iterrows():
+                    history_data.append({
+                        '日期': date_str,
+                        '證券代號': stock_code,
+                        '證券名稱': row.get('證券名稱', ''),
+                        '三大法人買賣超股數': row.get('三大法人買賣超股數', 0)
+                    })
+
+            except Exception:
+                continue
+
+        # 加入每日價格
+        daily_files = glob.glob(os.path.join(daily_folder, '*.csv'))
+
+        for filepath in daily_files:
+            date_str = os.path.basename(filepath).replace('.csv', '')
+
+            try:
+                df = pd.read_csv(filepath, encoding='cp950', dtype=str)
+
+                if '證券代號' not in df.columns or '收盤價' not in df.columns:
+                    continue
+
+                stock_df = df[df['證券代號'] == stock_code]
+
+                if stock_df.empty:
+                    continue
+
+                close_price = stock_df['收盤價'].iloc[0]
+                close_price = close_price.replace(',', '').replace('+', '').replace('-', '')
+
                 try:
-                    df_daily = pd.read_csv(daily_file, encoding='cp950', low_memory=False)
+                    close_price = float(close_price)
                 except:
-                    df_daily = pd.read_csv(daily_file, encoding='utf-8', low_memory=False)
+                    close_price = None
 
-                file_date = os.path.basename(daily_file).replace('.csv', '')
+                # 更新歷史資料
+                for item in history_data:
+                    if item['日期'] == date_str:
+                        item['收盤價'] = close_price
+                        break
 
-                if '證券代號' in df_daily.columns:
-                    df_daily['證券代號'] = df_daily['證券代號'].apply(normalize_stock_code)
+            except Exception:
+                continue
 
-                if allowed_stock_codes is not None:
-                    df_daily = df_daily[df_daily['證券代號'].isin(allowed_stock_codes)]
-
-                for stock_code in latest_buy_stocks_50:
-                    stock_data = df_daily[df_daily['證券代號'] == stock_code]
-
-                    if len(stock_data) > 0:
-                        row = stock_data.iloc[0]
-
-                        if file_date not in stock_history_data[stock_code]:
-                            stock_history_data[stock_code][file_date] = {
-                                '日期': file_date,
-                                '股票代碼': stock_code,
-                                '股票名稱': row.get('證券名稱', '').strip()
-                            }
-
-                        stock_history_data[stock_code][file_date]['成交張數'] = shares_to_lots(row.get('成交股數', 0))
-                        stock_history_data[stock_code][file_date]['成交筆數'] = row.get('成交筆數', '')
-                        stock_history_data[stock_code][file_date]['成交金額'] = row.get('成交金額', '')
-                        stock_history_data[stock_code][file_date]['開盤價'] = row.get('開盤價', '')
-                        stock_history_data[stock_code][file_date]['最高價'] = row.get('最高價', '')
-                        stock_history_data[stock_code][file_date]['最低價'] = row.get('最低價', '')
-                        stock_history_data[stock_code][file_date]['收盤價'] = row.get('收盤價', '')
-                        stock_history_data[stock_code][file_date]['本益比'] = row.get('本益比', '')
-
-                        stock_data_count[stock_code] += 1
-
-                daily_processed += 1
-
-            except Exception as e:
-                print(f"讀取StockDaily檔案 {daily_file} 時發生錯誤: {e}")
-
-        print(f"成功處理 {daily_processed} 個 StockDaily 檔案")
-
-        print(f"\n資料統計(前5檔股票):")
-        for i, code in enumerate(list(latest_buy_stocks_50)[:5]):
-            shares_count = len([d for d in stock_history_data[code].keys()])
-            daily_count = stock_data_count[code]
-            print(f"  {code}: 總共 {shares_count} 天資料,其中 {daily_count} 天有價格資料")
-    else:
-        print(f"\n警告: StockDaily 資料夾不存在: {stock_daily_folder}")
-
-    # 儲存歷史數據
-    print("\n儲存歷史數據到 StockHistory...")
-
-    if not os.path.exists(history_folder):
-        os.makedirs(history_folder, exist_ok=True)
-        print(f"已建立資料夾: {history_folder}")
-
-    saved_count = 0
-    for stock_code, date_dict in stock_history_data.items():
-        if len(date_dict) > 0:
-            history_list = list(date_dict.values())
-            history_df = pd.DataFrame(history_list)
-
-            column_order = [
-                '日期', '股票代碼', '股票名稱',
-                '成交張數', '成交筆數', '成交金額',
-                '開盤價', '最高價', '最低價', '收盤價',
-                '本益比', '外陸資買賣超張數', '投信買賣超張數', '自營商買賣超張數'
-            ]
-
-            existing_columns = [col for col in column_order if col in history_df.columns]
-            history_df = history_df[existing_columns]
-            history_df = history_df.sort_values('日期', ascending=False)
-
-            output_file = os.path.join(history_folder, f"{stock_code}.csv")
+        if history_data:
+            history_df = pd.DataFrame(history_data)
+            history_df = history_df.sort_values('日期')
             history_df.to_csv(output_file, index=False, encoding='utf-8-sig')
-            saved_count += 1
 
-            if saved_count <= 5:
-                print(f"  已儲存: {stock_code}.csv ({len(history_list)} 筆記錄)")
+def aggregate_analysis(buy_top20_tracker, sell_top20_tracker, stock_sector_map,
+                      aggregate_threshold=10000, show_top_n=None):
+    """彙整分析"""
+    # 買超
+    buy_analysis = []
 
-    print(f"\n完成! 共儲存 {saved_count} 個股票的歷史數據到: {history_folder}")
-    print(f"每個檔案包含最近100天的合併數據(StockDaily + StockShares)")
-    print(f"注意: 所有股數欄位已轉換為張數(除以1000取整數)")
+    for stock_code, dates in buy_top20_tracker.items():
+        appearance_count = len(dates)
+        sector = stock_sector_map.get(stock_code, '未知')
 
-# ========================================
-# 模組 9: 彙整分析
-# ========================================
+        buy_analysis.append({
+            '證券代號': stock_code,
+            '產業別': sector,
+            '出現次數': appearance_count
+        })
 
-def aggregate_analysis(buy_top20_tracker, sell_top20_tracker, stock_sector_map, aggregate_threshold=10000, show_top_n=None):
-    """
-    彙整分析買超前20和賣超前20
+    buy_stocks = pd.DataFrame(buy_analysis)
 
-    Args:
-        aggregate_threshold: 彙整分析的買賣超張數閾值 (當 show_top_n 為 None 時使用)
-        show_top_n: 直接顯示前 N 名 (如果設定此參數，則忽略 aggregate_threshold)
+    if not buy_stocks.empty:
+        buy_stocks = buy_stocks.sort_values('出現次數', ascending=False)
 
-    Returns:
-        tuple: (buy_stocks, sell_stocks, both_stocks_set, both_stocks_df)
-    """
-    if not buy_top20_tracker or not sell_top20_tracker:
-        return None, None, set(), None
+        if show_top_n:
+            buy_stocks = buy_stocks.head(show_top_n)
 
-    all_tracker = buy_top20_tracker + sell_top20_tracker
-    all_df = pd.DataFrame(all_tracker)
+    # 賣超
+    sell_analysis = []
 
-    summary = all_df.groupby(['證券代號', '證券名稱']).agg({
-        '買賣超張數': 'sum',
-        '日期': 'count'
-    }).reset_index()
-    summary.columns = ['證券代號', '證券名稱', '買賣超總和', '出現次數']
-    summary['買賣超總和'] = summary['買賣超總和'].astype(int)
+    for stock_code, dates in sell_top20_tracker.items():
+        appearance_count = len(dates)
+        sector = stock_sector_map.get(stock_code, '未知')
 
-    buy_summary = summary[summary['買賣超總和'] > 0].copy()
-    buy_summary.columns = ['證券代號', '證券名稱', '買超總和', '買超出現次數']
+        sell_analysis.append({
+            '證券代號': stock_code,
+            '產業別': sector,
+            '出現次數': appearance_count
+        })
 
-    sell_summary = summary[summary['買賣超總和'] < 0].copy()
-    sell_summary.columns = ['證券代號', '證券名稱', '賣超總和', '賣超出現次數']
+    sell_stocks = pd.DataFrame(sell_analysis)
 
-    # 找出同時出現在買賣超的證券
-    buy_dates_by_stock = {}
-    sell_dates_by_stock = {}
+    if not sell_stocks.empty:
+        sell_stocks = sell_stocks.sort_values('出現次數', ascending=False)
 
-    for item in buy_top20_tracker:
-        stock_code = item['證券代號']
-        if stock_code not in buy_dates_by_stock:
-            buy_dates_by_stock[stock_code] = []
-        buy_dates_by_stock[stock_code].append(item['日期'])
+        if show_top_n:
+            sell_stocks = sell_stocks.head(show_top_n)
 
-    for item in sell_top20_tracker:
-        stock_code = item['證券代號']
-        if stock_code not in sell_dates_by_stock:
-            sell_dates_by_stock[stock_code] = []
-        sell_dates_by_stock[stock_code].append(item['日期'])
+    # 同時買賣超
+    both_stocks_set = set()
+    both_stocks_df = pd.DataFrame()
 
-    all_buy_stocks = set(buy_dates_by_stock.keys())
-    all_sell_stocks = set(sell_dates_by_stock.keys())
-    both_stocks_set = all_buy_stocks & all_sell_stocks
+    if not buy_stocks.empty and not sell_stocks.empty:
+        buy_set = set(buy_stocks['證券代號'])
+        sell_set = set(sell_stocks['證券代號'])
+        both_stocks_set = buy_set & sell_set
 
-    print(f"\n{'='*80}")
-    print(f"發現 {len(both_stocks_set)} 檔證券同時出現在買超前20和賣超前20")
-    print("(在5天內,有些天進買超榜、有些天進賣超榜)")
-    print(f"{'='*80}")
+        if both_stocks_set:
+            both_data = []
 
-    # 買超分析
-    print(f"\n{'='*80}")
-    if show_top_n is not None:
-        print(f"【買超分析】最近5天買賣超淨值排名前{show_top_n}名")
-    elif aggregate_threshold > 0:
-        print(f"【買超分析】最近5天買賣超淨值為正且>={aggregate_threshold}張的證券")
-    else:
-        print(f"【買超分析】最近5天買賣超淨值為正的所有證券")
-    print("(買賣超淨值 = 5天內所有買賣超張數的總和)")
-    print(f"{'='*80}\n")
+            for stock_code in both_stocks_set:
+                buy_count = buy_stocks[buy_stocks['證券代號'] == stock_code]['出現次數'].values[0]
+                sell_count = sell_stocks[sell_stocks['證券代號'] == stock_code]['出現次數'].values[0]
+                sector = stock_sector_map.get(stock_code, '未知')
 
-    # 根據參數決定篩選方式
-    if show_top_n is not None:
-        buy_stocks = buy_summary.sort_values('買超總和', ascending=False).head(show_top_n).copy()
-    else:
-        buy_stocks = buy_summary[buy_summary['買超總和'] >= aggregate_threshold].sort_values('買超總和', ascending=False).copy()
+                both_data.append({
+                    '證券代號': stock_code,
+                    '產業別': sector,
+                    '買超次數': buy_count,
+                    '賣超次數': sell_count
+                })
 
-    buy_stocks['證券領域'] = buy_stocks['證券代號'].apply(lambda x: get_stock_sector(x, stock_sector_map))
-    buy_stocks['注意事項'] = buy_stocks['證券代號'].apply(
-        lambda x: '⚠️同時出現在賣超' if x in both_stocks_set else ''
-    )
-
-    display_buy_stocks = buy_stocks.copy()
-    display_buy_stocks['買超總和'] = display_buy_stocks['買超總和'].apply(lambda x: f"{x:,}")
-
-    if len(buy_stocks) > 0:
-        print(display_buy_stocks.to_string(index=False))
-        print(f"\n共找到 {len(buy_stocks)} 檔符合條件的證券")
-    else:
-        print("沒有找到符合條件的證券")
-
-    # 賣超分析
-    print(f"\n{'='*80}")
-    if show_top_n is not None:
-        print(f"【賣超分析】最近5天買賣超淨值排名前{show_top_n}名(由大到小)")
-    elif aggregate_threshold > 0:
-        print(f"【賣超分析】最近5天買賣超淨值為負且<=-{aggregate_threshold}張的證券")
-    else:
-        print(f"【賣超分析】最近5天買賣超淨值為負的所有證券")
-    print("(買賣超淨值 = 5天內所有買賣超張數的總和)")
-    print(f"{'='*80}\n")
-
-    # 根據參數決定篩選方式
-    if show_top_n is not None:
-        sell_stocks = sell_summary.sort_values('賣超總和', ascending=True).head(show_top_n).copy()
-    else:
-        sell_stocks = sell_summary[sell_summary['賣超總和'] <= -aggregate_threshold].sort_values('賣超總和', ascending=True).copy()
-
-    sell_stocks['證券領域'] = sell_stocks['證券代號'].apply(lambda x: get_stock_sector(x, stock_sector_map))
-    sell_stocks['注意事項'] = sell_stocks['證券代號'].apply(
-        lambda x: '⚠️同時出現在買超' if x in both_stocks_set else ''
-    )
-
-    display_sell_stocks = sell_stocks.copy()
-    display_sell_stocks['賣超總和'] = display_sell_stocks['賣超總和'].apply(lambda x: f"{x:,}")
-
-    if len(sell_stocks) > 0:
-        print(display_sell_stocks.to_string(index=False))
-        print(f"\n共找到 {len(sell_stocks)} 檔符合條件的證券")
-    else:
-        print("沒有找到符合條件的證券")
-
-    # 同時出現在買賣超的證券詳細分析
-    both_stocks_df = None
-    if len(both_stocks_set) > 0:
-        print(f"\n{'='*80}")
-        print("【特別注意】同時出現在買超前20和賣超前20的證券")
-        print("(在5天內,有些天進買超榜、有些天進賣超榜)")
-        print(f"{'='*80}\n")
-
-        both_stocks_detail = []
-        for stock_code in both_stocks_set:
-            stock_all_data = all_df[all_df['證券代號'] == stock_code]
-            stock_name = stock_all_data.iloc[0]['證券名稱']
-            total_sum = int(stock_all_data['買賣超張數'].sum())
-
-            buy_dates = sorted(buy_dates_by_stock.get(stock_code, []))
-            sell_dates = sorted(sell_dates_by_stock.get(stock_code, []))
-
-            buy_dates_short = [format_date_short(d) for d in buy_dates]
-            sell_dates_short = [format_date_short(d) for d in sell_dates]
-
-            buy_dates_str = ', '.join(buy_dates_short)
-            sell_dates_str = ', '.join(sell_dates_short)
-
-            buy_sum = int(all_df[(all_df['證券代號'] == stock_code) & (all_df['買賣超張數'] > 0)]['買賣超張數'].sum())
-            sell_sum = int(all_df[(all_df['證券代號'] == stock_code) & (all_df['買賣超張數'] < 0)]['買賣超張數'].sum())
-
-            both_stocks_detail.append({
-                '證券代號': stock_code,
-                '證券名稱': stock_name,
-                '證券領域': get_stock_sector(stock_code, stock_sector_map),
-                '買超次數': len(buy_dates),
-                '買超日期': buy_dates_str,
-                '買超總和': buy_sum,
-                '賣超次數': len(sell_dates),
-                '賣超日期': sell_dates_str,
-                '賣超總和': sell_sum,
-                '淨買賣超': total_sum
-            })
-
-        both_stocks_df = pd.DataFrame(both_stocks_detail)
-        both_stocks_df = both_stocks_df.sort_values('淨買賣超', ascending=False)
-
-        display_both = both_stocks_df.copy()
-        for col in ['買超總和', '賣超總和', '淨買賣超']:
-            display_both[col] = display_both[col].apply(lambda x: f"{x:,}")
-
-        print(display_both.to_string(index=False))
-        print(f"\n共 {len(both_stocks_df)} 檔證券")
+            both_stocks_df = pd.DataFrame(both_data)
+            both_stocks_df = both_stocks_df.sort_values('買超次數', ascending=False)
 
     return buy_stocks, sell_stocks, both_stocks_set, both_stocks_df
-
-# ========================================
-# 模組 10: Excel 輸出
-# ========================================
 
 def export_to_excel(output_path, buy_stocks, sell_stocks, both_stocks_set, both_stocks_df,
                    daily_buy_sell_data, etf_daily_data, latest_date, new_buy_stocks,
                    new_sell_stocks, observable_buy_stocks, observable_sell_stocks,
                    stock_sector_map, etf_stock_codes):
-    """建立並美化 Excel 檔案"""
-
-    if not buy_stocks is not None and not sell_stocks is not None:
-        print("沒有數據可以輸出到Excel")
-        return
-
+    """匯出到 Excel"""
     with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
-        # 工作表1: 彙整分析
-        startrow = 0
+        # 工作表 1: 彙整買超
+        if not buy_stocks.empty:
+            buy_stocks.to_excel(writer, sheet_name='彙整買超', index=False)
 
-        summary_df = pd.DataFrame([['【彙整買超分析】最近5天買賣超淨值>=10000張 (淨值=5天買賣超總和)']],
-                                 columns=[''])
-        summary_df.to_excel(writer, sheet_name='彙整分析', index=False, header=False, startrow=startrow)
-        startrow += 2
+        # 工作表 2: 彙整賣超
+        if not sell_stocks.empty:
+            sell_stocks.to_excel(writer, sheet_name='彙整賣超', index=False)
 
-        buy_stocks_output = buy_stocks[['證券代號', '證券領域', '證券名稱', '買超總和', '注意事項']].copy()
-        buy_stocks_output.to_excel(writer, sheet_name='彙整分析', index=False, startrow=startrow)
-        startrow += len(buy_stocks_output) + 3
+        # 工作表 3: 同時買賣超
+        if not both_stocks_df.empty:
+            both_stocks_df.to_excel(writer, sheet_name='同時買賣超', index=False)
 
-        summary_df2 = pd.DataFrame([['【彙整賣超分析】最近5天買賣超淨值<=-10000張 (淨值=5天買賣超總和)']],
-                                  columns=[''])
-        summary_df2.to_excel(writer, sheet_name='彙整分析', index=False, header=False, startrow=startrow)
-        startrow += 2
+        # 工作表 4: 每日買超前 50
+        sorted_dates = sorted(daily_buy_sell_data.keys(), reverse=True)
+        all_daily_buy = []
 
-        sell_stocks_output = sell_stocks[['證券代號', '證券領域', '證券名稱', '賣超總和', '注意事項']].copy()
-        sell_stocks_output.to_excel(writer, sheet_name='彙整分析', index=False, startrow=startrow)
-        startrow += len(sell_stocks_output) + 3
+        for date in sorted_dates:
+            if 'buy' in daily_buy_sell_data[date]:
+                df = daily_buy_sell_data[date]['buy'].copy()
+                df.insert(0, '日期', date)
+                all_daily_buy.append(df)
 
-        if both_stocks_df is not None and len(both_stocks_set) > 0:
-            summary_df3 = pd.DataFrame([['【特別注意】同時出現在買超前20和賣超前20的證券(含日期明細)']],
-                                      columns=[''])
-            summary_df3.to_excel(writer, sheet_name='彙整分析', index=False, header=False, startrow=startrow)
-            startrow += 2
-            both_stocks_df.to_excel(writer, sheet_name='彙整分析', index=False, startrow=startrow)
+        if all_daily_buy:
+            combined_buy = pd.concat(all_daily_buy, ignore_index=True)
+            combined_buy.to_excel(writer, sheet_name='每日買超前50', index=False)
 
-        # 工作表2-6: 每日買賣超
-        if daily_buy_sell_data:
-            daily_df = pd.concat(daily_buy_sell_data, ignore_index=True)
+        # 工作表 5: 每日賣超前 50
+        all_daily_sell = []
 
-            for date in sorted(daily_df['日期'].unique(), reverse=True):
-                date_data = daily_df[daily_df['日期'] == date]
-                sheet_name = date.replace('-', '')[:8]
-                startrow = 0
-                is_latest = (date == latest_date)
+        for date in sorted_dates:
+            if 'sell' in daily_buy_sell_data[date]:
+                df = daily_buy_sell_data[date]['sell'].copy()
+                df.insert(0, '日期', date)
+                all_daily_sell.append(df)
 
-                # 買超部分
-                buy_data = date_data[date_data['類別'] == '買超'].copy()
-                if len(buy_data) > 0:
-                    top_count = len(buy_data)
-                    title_df = pd.DataFrame([[f'【{date} 買超 TOP {top_count}】']], columns=[''])
-                    title_df.to_excel(writer, sheet_name=sheet_name, index=False, header=False, startrow=startrow)
-                    startrow += 2
+        if all_daily_sell:
+            combined_sell = pd.concat(all_daily_sell, ignore_index=True)
+            combined_sell.to_excel(writer, sheet_name='每日賣超前50', index=False)
 
-                    buy_data['證券領域'] = buy_data['證券代號'].apply(lambda x: get_stock_sector(x, stock_sector_map))
+        # 工作表 6: ETF 買超前 50
+        sorted_etf_dates = sorted(etf_daily_data.keys(), reverse=True)
+        all_etf_daily = []
 
-                    if is_latest:
-                        buy_data['新進榜'] = buy_data['證券代號'].apply(
-                            lambda x: '🔥NEW' if normalize_stock_code(x) in new_buy_stocks else ''
-                        )
-                        buy_data['值得觀察'] = buy_data['證券代號'].apply(
-                            lambda x: f'👀{observable_buy_stocks[normalize_stock_code(x)][0]}' if normalize_stock_code(x) in observable_buy_stocks else ''
-                        )
-                        buy_data['統計數據(60天)'] = buy_data['證券代號'].apply(
-                            lambda x: f'均:{observable_buy_stocks[normalize_stock_code(x)][2]:.0f} 標差:{observable_buy_stocks[normalize_stock_code(x)][3]:.0f}'
-                            if normalize_stock_code(x) in observable_buy_stocks and observable_buy_stocks[normalize_stock_code(x)][2] != 0 else ''
-                        )
-                        buy_data_output = buy_data[['排名', '證券代號', '證券領域', '證券名稱', '收盤價', '漲跌價差', '買賣超張數', '新進榜', '值得觀察', '統計數據(60天)']].copy()
-                    else:
-                        buy_data_output = buy_data[['排名', '證券代號', '證券領域', '證券名稱', '收盤價', '漲跌價差', '買賣超張數']].copy()
+        for date in sorted_etf_dates:
+            if 'buy' in etf_daily_data[date]:
+                df = etf_daily_data[date]['buy'].copy()
+                df.insert(0, '日期', date)
+                all_etf_daily.append(df)
 
-                    buy_data_output.to_excel(writer, sheet_name=sheet_name, index=False, startrow=startrow)
-                    startrow += len(buy_data_output) + 3
+        if all_etf_daily:
+            combined_etf = pd.concat(all_etf_daily, ignore_index=True)
+            combined_etf.to_excel(writer, sheet_name='ETF買超前50', index=False)
 
-                # 賣超部分
-                sell_data = date_data[date_data['類別'] == '賣超'].copy()
-                if len(sell_data) > 0:
-                    top_count = len(sell_data)
-                    title_df2 = pd.DataFrame([[f'【{date} 賣超 TOP {top_count}】']], columns=[''])
-                    title_df2.to_excel(writer, sheet_name=sheet_name, index=False, header=False, startrow=startrow)
-                    startrow += 2
+        # 工作表 7: 新進買超榜
+        if new_buy_stocks:
+            new_buy_data = []
 
-                    sell_data['證券領域'] = sell_data['證券代號'].apply(lambda x: get_stock_sector(x, stock_sector_map))
+            latest_buy_df = daily_buy_sell_data.get(latest_date, {}).get('buy')
 
-                    if is_latest:
-                        sell_data['新進榜'] = sell_data['證券代號'].apply(
-                            lambda x: '📉NEW' if normalize_stock_code(x) in new_sell_stocks else ''
-                        )
-                        sell_data['值得觀察'] = sell_data['證券代號'].apply(
-                            lambda x: f'👀{observable_sell_stocks[normalize_stock_code(x)][0]}' if normalize_stock_code(x) in observable_sell_stocks else ''
-                        )
-                        sell_data['統計數據(60天)'] = sell_data['證券代號'].apply(
-                            lambda x: f'均:{observable_sell_stocks[normalize_stock_code(x)][2]:.0f} 標差:{observable_sell_stocks[normalize_stock_code(x)][3]:.0f}'
-                            if normalize_stock_code(x) in observable_sell_stocks and observable_sell_stocks[normalize_stock_code(x)][2] != 0 else ''
-                        )
-                        sell_data_output = sell_data[['排名', '證券代號', '證券領域', '證券名稱', '收盤價', '漲跌價差', '買賣超張數', '新進榜', '值得觀察', '統計數據(60天)']].copy()
-                    else:
-                        sell_data_output = sell_data[['排名', '證券代號', '證券領域', '證券名稱', '收盤價', '漲跌價差', '買賣超張數']].copy()
+            if latest_buy_df is not None:
+                for stock_code in new_buy_stocks:
+                    stock_df = latest_buy_df[latest_buy_df['證券代號'] == stock_code]
 
-                    sell_data_output.to_excel(writer, sheet_name=sheet_name, index=False, startrow=startrow)
-                    startrow += len(sell_data_output) + 3
+                    if not stock_df.empty:
+                        new_buy_data.append(stock_df.iloc[0].to_dict())
 
-                # ETF數據
-                if len(etf_stock_codes) > 0 and etf_daily_data:
-                    etf_df = pd.concat(etf_daily_data, ignore_index=True)
-                    etf_date_data = etf_df[etf_df['日期'] == date]
+            if new_buy_data:
+                new_buy_df = pd.DataFrame(new_buy_data)
+                new_buy_df = new_buy_df.sort_values('三大法人買賣超股數', ascending=False)
+                new_buy_df.to_excel(writer, sheet_name='新進買超榜', index=False)
 
-                    if len(etf_date_data) > 0:
-                        etf_buy = etf_date_data[etf_date_data['類別'] == 'ETF買超']
-                        if len(etf_buy) > 0:
-                            title_df3 = pd.DataFrame([[f'【{date} ETF買超 TOP 10】']], columns=[''])
-                            title_df3.to_excel(writer, sheet_name=sheet_name, index=False, header=False, startrow=startrow)
-                            startrow += 2
+        # 工作表 8: 新進賣超榜
+        if new_sell_stocks:
+            new_sell_data = []
 
-                            etf_buy_output = etf_buy[['排名', '證券代號', '證券名稱', '收盤價', '漲跌價差', '買賣超張數']].copy()
-                            etf_buy_output.to_excel(writer, sheet_name=sheet_name, index=False, startrow=startrow)
-                            startrow += len(etf_buy_output) + 3
+            latest_sell_df = daily_buy_sell_data.get(latest_date, {}).get('sell')
 
-                        etf_sell = etf_date_data[etf_date_data['類別'] == 'ETF賣超']
-                        if len(etf_sell) > 0:
-                            title_df4 = pd.DataFrame([[f'【{date} ETF賣超 TOP 10】']], columns=[''])
-                            title_df4.to_excel(writer, sheet_name=sheet_name, index=False, header=False, startrow=startrow)
-                            startrow += 2
+            if latest_sell_df is not None:
+                for stock_code in new_sell_stocks:
+                    stock_df = latest_sell_df[latest_sell_df['證券代號'] == stock_code]
 
-                            etf_sell_output = etf_sell[['排名', '證券代號', '證券名稱', '收盤價', '漲跌價差', '買賣超張數']].copy()
-                            etf_sell_output.to_excel(writer, sheet_name=sheet_name, index=False, startrow=startrow)
+                    if not stock_df.empty:
+                        new_sell_data.append(stock_df.iloc[0].to_dict())
 
-def beautify_excel(output_path):
-    """美化 Excel 格式"""
-    wb = load_workbook(output_path)
+            if new_sell_data:
+                new_sell_df = pd.DataFrame(new_sell_data)
+                new_sell_df = new_sell_df.sort_values('三大法人買賣超股數')
+                new_sell_df.to_excel(writer, sheet_name='新進賣超榜', index=False)
 
-    border = Border(
-        left=Side(style='thin', color='000000'),
-        right=Side(style='thin', color='000000'),
-        top=Side(style='thin', color='000000'),
-        bottom=Side(style='thin', color='000000')
+        # 工作表 9: 觀察買超股
+        if observable_buy_stocks:
+            observable_buy_data = []
+
+            latest_file_df = daily_buy_sell_data.get(latest_date, {}).get('buy')
+
+            if latest_file_df is not None:
+                for stock_code in observable_buy_stocks:
+                    stock_df = latest_file_df[latest_file_df['證券代號'] == stock_code]
+
+                    if not stock_df.empty:
+                        observable_buy_data.append(stock_df.iloc[0].to_dict())
+
+            if observable_buy_data:
+                observable_buy_df = pd.DataFrame(observable_buy_data)
+                observable_buy_df = observable_buy_df.sort_values('三大法人買賣超股數', ascending=False)
+                observable_buy_df.to_excel(writer, sheet_name='觀察買超股', index=False)
+
+        # 工作表 10: 觀察賣超股
+        if observable_sell_stocks:
+            observable_sell_data = []
+
+            latest_file_df = daily_buy_sell_data.get(latest_date, {}).get('sell')
+
+            if latest_file_df is not None:
+                for stock_code in observable_sell_stocks:
+                    stock_df = latest_file_df[latest_file_df['證券代號'] == stock_code]
+
+                    if not stock_df.empty:
+                        observable_sell_data.append(stock_df.iloc[0].to_dict())
+
+            if observable_sell_data:
+                observable_sell_df = pd.DataFrame(observable_sell_data)
+                observable_sell_df = observable_sell_df.sort_values('三大法人買賣超股數')
+                observable_sell_df.to_excel(writer, sheet_name='觀察賣超股', index=False)
+
+def beautify_excel(file_path):
+    """美化 Excel"""
+    wb = load_workbook(file_path)
+
+    header_font = Font(bold=True, size=11, color='FFFFFF')
+    header_fill = PatternFill(start_color='4472C4', end_color='4472C4', fill_type='solid')
+    header_alignment = Alignment(horizontal='center', vertical='center')
+
+    thin_border = Border(
+        left=Side(style='thin'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
     )
 
-    header_fill_buy = PatternFill(start_color="90EE90", end_color="90EE90", fill_type="solid")
-    header_fill_sell = PatternFill(start_color="FFB6C1", end_color="FFB6C1", fill_type="solid")
-    header_fill_warning = PatternFill(start_color="FFD700", end_color="FFD700", fill_type="solid")
-    header_fill_observable = PatternFill(start_color="FFA500", end_color="FFA500", fill_type="solid")
-    header_fill_etf = PatternFill(start_color="87CEEB", end_color="87CEEB", fill_type="solid")
-    title_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
-    title_fill_warning = PatternFill(start_color="FF8C00", end_color="FF8C00", fill_type="solid")
-    title_fill_etf = PatternFill(start_color="4169E1", end_color="4169E1", fill_type="solid")
-    new_fill = PatternFill(start_color="FF69B4", end_color="FF69B4", fill_type="solid")
+    for sheet in wb.sheetnames:
+        ws = wb[sheet]
 
-    red_font = Font(bold=True, color="FF0000", size=11)
-    green_font = Font(bold=True, color="00FF00", size=11)
+        for cell in ws[1]:
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = header_alignment
+            cell.border = thin_border
 
-    title_font = Font(bold=True, size=14, color="FFFFFF")
-    center_align = Alignment(horizontal="center", vertical="center")
-
-    for sheet_name in wb.sheetnames:
-        ws = wb[sheet_name]
-
-        ws.column_dimensions['A'].width = 10
-        ws.column_dimensions['B'].width = 12
-        ws.column_dimensions['C'].width = 18
-        ws.column_dimensions['D'].width = 20
-        ws.column_dimensions['E'].width = 13
-        ws.column_dimensions['F'].width = 13
-        ws.column_dimensions['G'].width = 13
-        ws.column_dimensions['H'].width = 12
-        ws.column_dimensions['I'].width = 25
-        ws.column_dimensions['J'].width = 20
-
-        for row in ws.iter_rows(min_row=1, max_row=ws.max_row, min_col=1, max_col=ws.max_column):
+        for row in ws.iter_rows(min_row=2):
             for cell in row:
-                cell.border = border
-                cell.alignment = Alignment(horizontal="center", vertical="center")
+                cell.border = thin_border
+                cell.alignment = Alignment(horizontal='left', vertical='center')
 
-        price_diff_col_idx = None
-        for row in ws.iter_rows(min_row=1, max_row=1):
-            for cell in row:
-                if cell.value == '漲跌價差':
-                    price_diff_col_idx = cell.column
-                    break
+        for column in ws.columns:
+            max_length = 0
+            column_letter = column[0].column_letter
 
-        for row in ws.iter_rows():
-            for cell in row:
-                if cell.value and isinstance(cell.value, str) and '【' in str(cell.value):
-                    if 'ETF' in str(cell.value):
-                        cell.fill = title_fill_etf
-                    elif '特別注意' in str(cell.value):
-                        cell.fill = title_fill_warning
-                    else:
-                        cell.fill = title_fill
-                    cell.font = title_font
-                    cell.alignment = center_align
-                    cell.border = border
-                    max_col = ws.max_column
-                    ws.merge_cells(start_row=cell.row, start_column=1,
-                                  end_row=cell.row, end_column=max_col)
-                    for col in range(1, max_col + 1):
-                        ws.cell(row=cell.row, column=col).border = border
+            for cell in column:
+                if cell.value:
+                    max_length = max(max_length, len(str(cell.value)))
 
-                elif cell.value in ['證券名稱', '證券代號', '證券領域', '買超總和(張)', '賣超總和(張)',
-                                   '排名', '買賣超張數', '注意事項', '淨買賣超(張)', '買超日期', '賣超日期',
-                                   '買超次數', '賣超次數', '買超總和', '賣超總和', '淨買賣超',
-                                   '新進榜', '值得觀察', '統計數據(60天)', '收盤價', '漲跌價差']:
-                    is_buy_section = False
-                    is_warning_section = False
-                    is_etf_section = False
-                    for check_row in range(cell.row, 0, -1):
-                        title_cell = ws.cell(row=check_row, column=1).value
-                        if title_cell and isinstance(title_cell, str) and '【' in title_cell:
-                            if 'ETF' in title_cell:
-                                is_etf_section = True
-                            elif '特別注意' in title_cell:
-                                is_warning_section = True
-                            elif '買超' in title_cell and '賣超' not in title_cell:
-                                is_buy_section = True
-                            break
+            adjusted_width = min(max_length + 2, 50)
+            ws.column_dimensions[column_letter].width = adjusted_width
 
-                    if cell.value == '新進榜':
-                        cell.fill = new_fill
-                    elif cell.value == '值得觀察':
-                        cell.fill = header_fill_observable
-                    elif cell.value == '統計數據(60天)':
-                        cell.fill = PatternFill(start_color="87CEEB", end_color="87CEEB", fill_type="solid")
-                    elif is_etf_section:
-                        cell.fill = header_fill_etf
-                    elif is_warning_section:
-                        cell.fill = header_fill_warning
-                    elif is_buy_section:
-                        cell.fill = header_fill_buy
-                    else:
-                        cell.fill = header_fill_sell
-                    cell.font = Font(bold=True, size=11)
-                    cell.alignment = center_align
-                    cell.border = border
+    wb.save(file_path)
 
-                elif cell.value is not None and cell.value != '':
-                    if price_diff_col_idx and cell.column == price_diff_col_idx and cell.row > 1:
-                        cell_str = str(cell.value).strip()
-
-                        if cell_str and cell_str not in ['', '--', 'X', 'x']:
-                            if cell_str.startswith('+'):
-                                cell.font = red_font
-                            elif cell_str.startswith('-'):
-                                cell.font = green_font
-                    elif cell.value == '🔥NEW':
-                        cell.font = Font(bold=True, color="FF0000", size=11)
-                    elif cell.value == '📉NEW':
-                        cell.font = Font(bold=True, color="00A86B", size=11)
-                    elif isinstance(cell.value, str) and '👀' in str(cell.value):
-                        cell.font = Font(bold=True, color="FF8C00", size=10)
-                    cell.border = border
-
-    wb.save(output_path)
-
-# ========================================
-# 模組 11: 主程式流程
-# ========================================
-
-def main():
-    """主程式流程"""
-    # 1. 掛載 Drive
-    mount_drive()
-
-    # 2. 設定配置 (修改這裡可以切換上市/上櫃)
-    config = setup_config(market_type='OTC')  # 'TSE' 或 'OTC'
-
-    # 3. 讀取股票清單
-    allowed_stock_codes, stock_sector_map, etf_stock_codes = load_stock_list(config['market_list_path'])
-
-    # 4. 讀取價格資料
-    stock_daily_prices = load_stock_daily_prices(config['stock_daily_folder'], allowed_stock_codes)
-
-    # 5. 取得最新檔案
-    latest_61_files = get_latest_files(config['folder_path'], num_files=61)
-
-    # 6. 處理三大法人數據
-    (all_data, daily_buy_sell_data, etf_daily_data, buy_top20_tracker,
-     sell_top20_tracker, daily_buy_stocks, daily_sell_stocks,
-     daily_all_stocks, all_historical_data, statistics) = process_shares_files(
-        latest_61_files, allowed_stock_codes, stock_daily_prices,
-        stock_sector_map, etf_stock_codes
-    )
-
-    # 7. 計算標準差
-    stock_statistics = calculate_stock_statistics(all_historical_data, config['sigma_threshold'])
-
-    # 8. 分析新進榜與值得觀察
-    (new_buy_stocks, new_sell_stocks, observable_buy_stocks, observable_sell_stocks,
-     latest_date, latest_buy_stocks_50, latest_sell_stocks_50) = analyze_new_entries_and_observables(
-        latest_61_files[0], daily_buy_stocks, daily_sell_stocks,
-        daily_all_stocks, stock_statistics, allowed_stock_codes,
-        config['sigma_threshold']
-    )
-
-    # 9. 收集歷史數據
-    collect_stock_history(latest_buy_stocks_50, config['folder_path'],
-                          config['stock_daily_folder'], config['history_folder'],
-                          allowed_stock_codes)
-
-    # 10. 彙整分析 (傳入新參數)
-    buy_stocks, sell_stocks, both_stocks_set, both_stocks_df = aggregate_analysis(
-        buy_top20_tracker, sell_top20_tracker, stock_sector_map,
-        aggregate_threshold=config.get('aggregate_threshold', 10000),
-        show_top_n=config.get('show_top_n', None)
-    )
-
-    # 11. 輸出 Excel
-    if buy_stocks is not None and sell_stocks is not None:
-        export_to_excel(config['output_path'], buy_stocks, sell_stocks, both_stocks_set,
-                       both_stocks_df, daily_buy_sell_data, etf_daily_data, latest_date,
-                       new_buy_stocks, new_sell_stocks, observable_buy_stocks,
-                       observable_sell_stocks, stock_sector_map, etf_stock_codes)
-
-        # 12. 美化 Excel
-        beautify_excel(config['output_path'])
-
-        # 13. 顯示結果摘要
-        print(f"\n美化的分析結果已儲存至:{config['output_path']}")
-        print(f"檔案包含:")
-        print(f"  - 彙整分析工作表:")
-        print(f"    * 買超: {len(buy_stocks)} 檔 (最近5天買賣超淨值>=10000張)")
-        print(f"    * 賣超: {len(sell_stocks)} 檔 (最近5天買賣超淨值<=-10000張)")
-        print(f"    * 同時出現在買賣超(含日期): {len(both_stocks_set)} 檔")
-        if daily_buy_sell_data:
-            daily_df = pd.concat(daily_buy_sell_data, ignore_index=True)
-            print(f"  - 每日工作表: {len(daily_df['日期'].unique())} 天")
-            print(f"  - 最新日期({latest_date}):")
-            print(f"    * 買超新進榜(前20): {len(new_buy_stocks)} 檔")
-            print(f"    * 賣超新進榜(前20): {len(new_sell_stocks)} 檔")
-            print(f"    * 買超值得觀察(前50): {len(observable_buy_stocks)} 檔")
-            print(f"    * 賣超值得觀察(前50): {len(observable_sell_stocks)} 檔")
-            print(f"    * 使用標準差閾值: {config['sigma_threshold']}σ (從今天往前60天計算)")
-            if len(etf_stock_codes) > 0:
-                print(f"    * ETF買賣超前10名: 已加入")
-            print(f"\n  ⚠️ 注意: 所有數值已轉換為張數單位(1張=1000股)")
-            print(f"  ⚠️ 買賣超淨值說明: 5天內所有買賣超張數的加總(包含正負值)")
-            print(f"      例: 第1天+500, 第2天-200, 第3天+800 → 淨值=+1100張")
-            print(f"  ✨ 新增: 收盤價和漲跌價差欄位(上漲紅色文字/下跌綠色文字)")
-            print(f"  ✨ 股票代碼標準化: 確保'0056'等開頭為0的代碼正確處理")
-            print(f"  ✨ 彙整統計改為: 最近5天買賣超淨值(不是單純買超或賣超)")
-            print(f"  ✨ 標準差計算: 從今天往前60個交易日(不含今天)")
-    else:
-        print("沒有成功讀取任何資料")
-
-# ========================================
-# 執行主程式
-# ========================================
-
-if __name__ == "__main__":
-    main()
 
 # ============================================================================
-# 第三步:圖表生成
-# ============================================================================
-
-# -*- coding: utf-8 -*-
-"""第三步生成上市上櫃股票交互圖表.ipynb
-
-Automatically generated by Colab.
-
-Original file is located at
-    https://colab.research.google.com/drive/1gPCLIFxPkQBrjU_PJNbKD3y6D3LV87Yg
-"""
-
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-股票圖表生成工具 - 雙格式輸出版 (同時生成 HTML 和 PNG)
-支援上市/上櫃股票的技術分析圖表生成
-
-作者: Frank
-版本: 2.4 (雙格式輸出: HTML + PNG)
-"""
-
-import os
-import glob
-import pandas as pd
-import numpy as np
-from google.colab import drive
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
-from datetime import datetime
-
-# ============================================================================
-# 模組 1: 配置管理 (Config)
+# 第三步:圖表生成程式
 # ============================================================================
 
 class Config:
     """配置管理類別"""
 
-    # ========== 全域設定 ==========
-    OVERWRITE_EXISTING = True  # True: 覆蓋已存在的檔案, False: 跳過已存在的檔案
-    MARKET_TYPE = 'TSE'  # 'TSE': 上市, 'OTC': 上櫃, 'ALL': 全部
-    RUN_ALL = True  # True: 批次處理所有股票, False: 手動輸入單一股票
-    # ==============================
+    OVERWRITE_EXISTING = True
+    MARKET_TYPE = 'TSE'
+    RUN_ALL = True
 
-    FONT_PATH = None  # 中文字體路徑
+    FONT_PATH = None
 
     @staticmethod
     def setup_config(market_type='TSE'):
-        """
-        設定所有路徑變數
-
-        Args:
-            market_type: 'TSE' (上市) 或 'OTC' (上櫃)
-
-        Returns:
-            dict: 包含所有路徑配置的字典
-        """
-        base_path = '/content/drive/MyDrive'
+        """設定所有路徑變數"""
+        base_path = BASE_DIR
 
         if market_type == 'TSE':
             config = {
@@ -2053,7 +1095,6 @@ class Config:
                 'stocklist_folder': os.path.join(base_path, 'StockList'),
             }
 
-        # 建立輸出資料夾
         os.makedirs(config['html_output_folder'], exist_ok=True)
         os.makedirs(config['png_output_folder'], exist_ok=True)
 
@@ -2068,23 +1109,13 @@ class Config:
         return config
 
 
-# ============================================================================
-# 模組 2: 工具函數 (Utils)
-# ============================================================================
-
 class Utils:
     """工具函數類別"""
 
     @staticmethod
-    def mount_drive():
-        """掛載 Google Drive"""
-        drive.mount('/content/drive')
-        return '/content/drive/MyDrive'
-
-    @staticmethod
-    def setup_chinese_font(drive_root):
+    def setup_chinese_font(base_dir):
         """設定中文字體"""
-        font_path = os.path.join(drive_root, 'StockList', 'Font.ttf')
+        font_path = os.path.join(base_dir, 'StockList', 'Font.ttf')
 
         if os.path.exists(font_path):
             Config.FONT_PATH = font_path
@@ -2099,653 +1130,266 @@ class Utils:
     @staticmethod
     def read_csv_auto_encoding(file_path):
         """自動偵測編碼讀取 CSV"""
-        encodings = ['utf-8-sig', 'utf-8', 'big5', 'cp950']
+        encodings = ['utf-8-sig', 'utf-8', 'cp950', 'big5']
+
         for encoding in encodings:
             try:
-                return pd.read_csv(file_path, encoding=encoding)
+                df = pd.read_csv(file_path, encoding=encoding)
+                return df
             except:
                 continue
+
         raise ValueError(f"無法讀取檔案: {file_path}")
 
-    @staticmethod
-    def get_stock_name(drive_root, stock_code):
-        """從 StockList 取得股票名稱"""
-        try:
-            stocklist_path = os.path.join(drive_root, 'StockList', 'StockList_simplified.csv')
-            if not os.path.exists(stocklist_path):
-                return ''
 
-            df = Utils.read_csv_auto_encoding(stocklist_path)
-
-            for code_col in df.columns:
-                if '代' in code_col or 'code' in code_col.lower():
-                    for name_col in df.columns:
-                        if '名' in name_col or 'name' in name_col.lower():
-                            matched = df[df[code_col].astype(str) == str(stock_code)]
-                            if len(matched) > 0:
-                                return str(matched.iloc[0][name_col])
-            return ''
-        except:
-            return ''
+class ChartGenerator:
+    """圖表生成類別"""
 
     @staticmethod
-    def get_all_stock_codes_from_history(history_folder):
-        """從 History 資料夾取得所有股票代碼"""
-        try:
-            if not os.path.exists(history_folder):
-                print(f"❌ 找不到資料夾: {history_folder}")
-                return []
-
-            csv_files = glob.glob(os.path.join(history_folder, "*.csv"))
-
-            if not csv_files:
-                print(f"❌ 資料夾中沒有 CSV 檔案: {history_folder}")
-                return []
-
-            stock_codes = []
-            for csv_file in csv_files:
-                filename = os.path.basename(csv_file)
-                stock_code = os.path.splitext(filename)[0]
-                stock_codes.append(stock_code)
-
-            stock_codes.sort()
-
-            print(f"✓ 從 {os.path.basename(history_folder)} 找到 {len(stock_codes)} 支股票")
-            return stock_codes
-
-        except Exception as e:
-            print(f"❌ 讀取資料夾失敗: {str(e)}")
-            return []
-
-    @staticmethod
-    def prepare_chart_data(df):
-        """準備圖表數據"""
-        df_chart = df.copy()
-
-        # 確保日期是 datetime 格式
-        df_chart['日期'] = pd.to_datetime(df_chart['日期'], errors='coerce')
-
-        # 移除日期為 NaT 的資料
-        df_chart = df_chart[df_chart['日期'].notna()]
-
-        df_chart = df_chart.sort_values('日期')
-        df_chart = df_chart.tail(90).copy()
-
-        # 確保數值欄位是數字類型
-        numeric_cols = ['開盤價', '最高價', '最低價', '收盤價', '成交張數',
-                        '外陸資買賣超張數', '投信買賣超張數', '自營商買賣超張數']
-        for col in numeric_cols:
-            if col in df_chart.columns:
-                if df_chart[col].dtype == 'object':
-                    df_chart[col] = df_chart[col].astype(str).str.replace(',', '').str.replace('--', '0')
-                df_chart[col] = pd.to_numeric(df_chart[col], errors='coerce')
-
-        return df_chart
-
-
-# ============================================================================
-# 模組 2.5: HTML 轉 PNG 工具 (HtmlToPng)
-# ============================================================================
-
-class HtmlToPng:
-    """HTML 轉 PNG 工具類別"""
-
-    _driver_initialized = False
-    _driver = None
-
-    @staticmethod
-    def setup_driver():
-        """設定 Chrome WebDriver (只執行一次)"""
-        if HtmlToPng._driver_initialized:
-            return HtmlToPng._driver
-
-        try:
-            print("\n" + "="*70)
-            print("初始化 HTML → PNG 轉換環境")
-            print("="*70)
-            print("⏳ 安裝 ChromeDriver...")
-
-            # 安裝 Chrome
-            os.system('apt-get update > /dev/null 2>&1')
-            os.system('apt-get install -y chromium-chromedriver > /dev/null 2>&1')
-            print("✓ ChromeDriver 安裝完成")
-
-            # 安裝中文字體套件
-            print("⏳ 安裝中文字體套件 (首次執行需要約30秒)...")
-            os.system('apt-get install -y fonts-noto-cjk fonts-wqy-zenhei fonts-wqy-microhei > /dev/null 2>&1')
-            print("✓ 中文字體安裝完成")
-
-            # 刷新字體快取
-            print("⏳ 刷新字體快取...")
-            os.system('fc-cache -fv > /dev/null 2>&1')
-            print("✓ 字體快取已刷新")
-
-            # 安裝 Selenium
-            print("⏳ 安裝 Selenium...")
-            os.system('pip install -q selenium')
-            print("✓ Selenium 安裝完成")
-
-            from selenium import webdriver
-            from selenium.webdriver.chrome.options import Options
-
-            print("⏳ 啟動 Chrome WebDriver...")
-            chrome_options = Options()
-            chrome_options.add_argument('--headless')
-            chrome_options.add_argument('--no-sandbox')
-            chrome_options.add_argument('--disable-dev-shm-usage')
-            chrome_options.add_argument('--disable-gpu')
-            chrome_options.add_argument('--window-size=1920,1080')
-            chrome_options.add_argument('--lang=zh-TW')
-            chrome_options.add_argument('--force-device-scale-factor=1')
-            chrome_options.add_argument('--disable-web-security')
-
-            HtmlToPng._driver = webdriver.Chrome(options=chrome_options)
-            HtmlToPng._driver_initialized = True
-
-            print("✓ Chrome WebDriver 已就緒")
-            print("="*70 + "\n")
-
-            return HtmlToPng._driver
-
-        except Exception as e:
-            print(f"❌ WebDriver 設定失敗: {str(e)}")
+    def create_chart(stock_code, stock_name, df, sector=""):
+        """建立互動式圖表"""
+        if df.empty or len(df) < 2:
+            print(f"  ⚠️  資料不足,無法生成圖表")
             return None
 
+        fig = make_subplots(
+            rows=2, cols=1,
+            row_heights=[0.7, 0.3],
+            vertical_spacing=0.08,
+            subplot_titles=(
+                f'{stock_code} {stock_name} - 三大法人買賣超 & 股價走勢',
+                '三大法人買賣超量'
+            ),
+            specs=[[{"secondary_y": True}], [{"secondary_y": False}]]
+        )
+
+        # 圖 1: 股價線圖
+        fig.add_trace(
+            go.Scatter(
+                x=df['日期'],
+                y=df['收盤價'],
+                name='收盤價',
+                line=dict(color='#2E86DE', width=2),
+                mode='lines+markers',
+                marker=dict(size=4),
+                hovertemplate='<b>日期</b>: %{x}<br><b>收盤價</b>: %{y:.2f}<extra></extra>'
+            ),
+            row=1, col=1, secondary_y=False
+        )
+
+        # 圖 1: 買賣超柱狀圖
+        colors = ['#10AC84' if x > 0 else '#EE5A6F' for x in df['三大法人買賣超股數']]
+
+        fig.add_trace(
+            go.Bar(
+                x=df['日期'],
+                y=df['三大法人買賣超股數'],
+                name='買賣超',
+                marker_color=colors,
+                opacity=0.6,
+                hovertemplate='<b>日期</b>: %{x}<br><b>買賣超</b>: %{y:,}<extra></extra>'
+            ),
+            row=1, col=1, secondary_y=True
+        )
+
+        # 圖 2: 買賣超柱狀圖
+        fig.add_trace(
+            go.Bar(
+                x=df['日期'],
+                y=df['三大法人買賣超股數'],
+                name='買賣超',
+                marker_color=colors,
+                showlegend=False,
+                hovertemplate='<b>日期</b>: %{x}<br><b>買賣超</b>: %{y:,}<extra></extra>'
+            ),
+            row=2, col=1
+        )
+
+        # 更新 Y 軸
+        fig.update_yaxes(title_text="股價 (元)", row=1, col=1, secondary_y=False)
+        fig.update_yaxes(title_text="買賣超 (張)", row=1, col=1, secondary_y=True)
+        fig.update_yaxes(title_text="買賣超 (張)", row=2, col=1)
+
+        # 更新 X 軸
+        fig.update_xaxes(title_text="日期", row=2, col=1)
+
+        # 整體佈局
+        fig.update_layout(
+            height=900,
+            hovermode='x unified',
+            showlegend=True,
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="right",
+                x=1
+            ),
+            margin=dict(l=80, r=80, t=100, b=80)
+        )
+
+        return fig
+
+
+class HtmlToPng:
+    """HTML 轉 PNG 類別"""
+
+    _driver = None
+
+    @classmethod
+    def get_driver(cls):
+        """取得或建立 WebDriver"""
+        if cls._driver is None:
+            try:
+                from selenium import webdriver
+                from selenium.webdriver.chrome.options import Options
+
+                chrome_options = Options()
+                chrome_options.add_argument('--headless')
+                chrome_options.add_argument('--no-sandbox')
+                chrome_options.add_argument('--disable-dev-shm-usage')
+                chrome_options.add_argument('--disable-gpu')
+                chrome_options.add_argument('--window-size=1920,1080')
+
+                cls._driver = webdriver.Chrome(options=chrome_options)
+                print("✓ WebDriver 初始化成功")
+
+            except Exception as e:
+                print(f"⚠️  WebDriver 初始化失敗: {e}")
+                cls._driver = None
+
+        return cls._driver
+
+    @classmethod
+    def cleanup(cls):
+        """清理 WebDriver"""
+        if cls._driver:
+            try:
+                cls._driver.quit()
+                print("✓ WebDriver 已關閉")
+            except:
+                pass
+            cls._driver = None
+
     @staticmethod
-    def convert_html_to_png(html_path, png_path, width=1920, height=2100):
-        """
-        將 HTML 檔案轉換為 PNG 圖片
-
-        Args:
-            html_path: HTML 檔案路徑
-            png_path: 輸出 PNG 檔案路徑
-            width: 圖片寬度 (預設 1920)
-            height: 圖片高度 (預設 2100)
-
-        Returns:
-            bool: 轉換是否成功
-        """
-        driver = HtmlToPng.setup_driver()
+    def convert(html_path, png_path):
+        """將 HTML 轉換為 PNG"""
+        driver = HtmlToPng.get_driver()
 
         if driver is None:
-            print("❌ WebDriver 未就緒,無法轉換")
             return False
 
         try:
-            # 載入 HTML 檔案
-            file_url = f'file://{os.path.abspath(html_path)}'
-            driver.get(file_url)
-
-            # 等待頁面載入
-            import time
+            driver.get(f'file://{html_path}')
             time.sleep(2)
 
-            # 設定視窗大小
-            driver.set_window_size(width, height)
-            time.sleep(1)
-
-            # 截圖
             driver.save_screenshot(png_path)
-
             return True
 
         except Exception as e:
-            print(f"❌ HTML 轉 PNG 失敗: {str(e)}")
+            print(f"  ⚠️  轉換失敗: {e}")
             return False
 
-    @staticmethod
-    def cleanup():
-        """清理 WebDriver 資源"""
-        if HtmlToPng._driver is not None:
-            try:
-                HtmlToPng._driver.quit()
-                print("\n✓ WebDriver 已關閉")
-            except:
-                pass
-            HtmlToPng._driver = None
-            HtmlToPng._driver_initialized = False
-
-
-# ============================================================================
-# 模組 3: Plotly 圖表生成 (ChartPlotly)
-# ============================================================================
-
-class ChartPlotly:
-    """Plotly 圖表生成類別"""
-
-    @staticmethod
-    def generate_chart(df, stock_code, stock_name, html_output_path, png_output_path):
-        """使用 Plotly 生成互動式技術分析圖表 (HTML + PNG)"""
-
-        df_chart = Utils.prepare_chart_data(df)
-
-        print(f"  圖表數據範圍: {df_chart['日期'].min().strftime('%Y-%m-%d')} ~ {df_chart['日期'].max().strftime('%Y-%m-%d')} (共 {len(df_chart)} 筆)")
-
-        # 計算移動平均線
-        df_chart['MA5'] = df_chart['收盤價'].rolling(window=5).mean()
-        df_chart['MA20'] = df_chart['收盤價'].rolling(window=20).mean()
-        df_chart['MA60'] = df_chart['收盤價'].rolling(window=60).mean()
-
-        latest_date_str = df_chart['日期'].max().strftime('%Y-%m-%d')
-
-        # 計算統計數據
-        stats = ChartPlotly._calculate_statistics(df_chart)
-
-        # 創建子圖
-        fig = make_subplots(
-            rows=4, cols=1,
-            shared_xaxes=True,
-            vertical_spacing=0.05,
-            subplot_titles=(
-                '',  # 第一層標題留空,稍後在 update_layout 中設定
-                '成交張數 & 成交筆數',
-                '三大法人當日買賣超 (張)',
-                '三大法人累積買賣超 (張)'
-            ),
-            row_heights=[0.4, 0.2, 0.2, 0.2],
-            specs=[[{"secondary_y": False}],
-                   [{"secondary_y": True}],
-                   [{"secondary_y": False}],
-                   [{"secondary_y": False}]]
-        )
-
-        # 第一層: K線圖
-        ChartPlotly._add_candlestick(fig, df_chart)
-
-        # 第一層: 移動平均線
-        ChartPlotly._add_moving_averages(fig, df_chart)
-
-        # 第二層: 成交量
-        ChartPlotly._add_volume_traces(fig, df_chart)
-
-        # 第三層: 三大法人當日買賣超
-        has_institutional = ChartPlotly._add_institutional_daily(fig, df_chart)
-
-        # 第四層: 三大法人累積買賣超
-        if has_institutional:
-            ChartPlotly._add_institutional_cumulative(fig, df_chart)
-
-        # 更新佈局
-        ChartPlotly._update_layout(fig, stock_code, stock_name, latest_date_str, df_chart, stats)
-
-        # 儲存 HTML
-        fig.write_html(html_output_path)
-        print(f"  ✓ HTML圖表已儲存: {html_output_path}")
-
-        # 轉換為 PNG
-        print(f"  ⏳ 轉換 HTML → PNG...")
-        success = HtmlToPng.convert_html_to_png(html_output_path, png_output_path)
-
-        if success:
-            print(f"  ✓ PNG圖表已儲存: {png_output_path}")
-        else:
-            print(f"  ❌ PNG轉換失敗")
-
-        return success
-
-    @staticmethod
-    def _calculate_statistics(df_chart):
-        """計算統計數據"""
-        latest = df_chart.iloc[-1]
-
-        stats = {
-            'MA5': latest['MA5'] if pd.notna(latest['MA5']) else 0,
-            'MA20': latest['MA20'] if pd.notna(latest['MA20']) else 0,
-            'MA60': latest['MA60'] if pd.notna(latest['MA60']) else 0,
-            '成交量': latest['成交張數'] if '成交張數' in latest and pd.notna(latest['成交張數']) else 0,
-        }
-
-        # 計算法人累積
-        if '外陸資買賣超張數' in df_chart.columns:
-            foreign_cumsum = df_chart['外陸資買賣超張數'].fillna(0).cumsum()
-            stats['外資累積'] = foreign_cumsum.iloc[-1] if len(foreign_cumsum) > 0 else 0
-        else:
-            stats['外資累積'] = 0
-
-        if '投信買賣超張數' in df_chart.columns:
-            trust_cumsum = df_chart['投信買賣超張數'].fillna(0).cumsum()
-            stats['投信累積'] = trust_cumsum.iloc[-1] if len(trust_cumsum) > 0 else 0
-        else:
-            stats['投信累積'] = 0
-
-        if '自營商買賣超張數' in df_chart.columns:
-            dealer_cumsum = df_chart['自營商買賣超張數'].fillna(0).cumsum()
-            stats['自營累積'] = dealer_cumsum.iloc[-1] if len(dealer_cumsum) > 0 else 0
-        else:
-            stats['自營累積'] = 0
-
-        return stats
-
-    @staticmethod
-    def _add_candlestick(fig, df_chart):
-        """新增 K 線圖"""
-        fig.add_trace(
-            go.Candlestick(
-                x=df_chart['日期'],
-                open=df_chart['開盤價'],
-                high=df_chart['最高價'],
-                low=df_chart['最低價'],
-                close=df_chart['收盤價'],
-                name='K線',
-                increasing_line_color='red',
-                decreasing_line_color='green',
-                xhoverformat="%m-%d",
-                yhoverformat=".2f"
-            ),
-            row=1, col=1
-        )
-
-    @staticmethod
-    def _add_moving_averages(fig, df_chart):
-        """新增移動平均線"""
-        for ma_name, ma_col, color in [('MA5', 'MA5', 'blue'),
-                                         ('MA20', 'MA20', 'orange'),
-                                         ('MA60', 'MA60', 'purple')]:
-            fig.add_trace(
-                go.Scatter(
-                    x=df_chart['日期'],
-                    y=df_chart[ma_col],
-                    name=ma_name,
-                    line=dict(color=color, width=1.5),
-                    mode='lines',
-                    hovertemplate=f'{ma_name}: %{{y:.2f}}<extra></extra>'
-                ),
-                row=1, col=1
-            )
-
-    @staticmethod
-    def _add_volume_traces(fig, df_chart):
-        """新增成交量圖表"""
-        if '成交張數' in df_chart.columns:
-            volume_lots = pd.to_numeric(df_chart['成交張數'], errors='coerce')
-            fig.add_trace(
-                go.Scatter(
-                    x=df_chart['日期'],
-                    y=volume_lots,
-                    name='成交張數',
-                    line=dict(color='steelblue', width=2.5),
-                    mode='lines',
-                    hovertemplate='成交張數: %{y:,.0f}張<extra></extra>',
-                    yaxis='y2'
-                ),
-                row=2, col=1,
-                secondary_y=False
-            )
-
-        if '成交筆數' in df_chart.columns:
-            if df_chart['成交筆數'].dtype == 'object':
-                df_chart['成交筆數'] = df_chart['成交筆數'].astype(str).str.replace(',', '').str.replace('--', '0')
-            trades_count = pd.to_numeric(df_chart['成交筆數'], errors='coerce')
-            if trades_count.notna().sum() > 0:
-                fig.add_trace(
-                    go.Scatter(
-                        x=df_chart['日期'],
-                        y=trades_count,
-                        name='成交筆數',
-                        line=dict(color='darkorange', width=2.5, dash='dot'),
-                        mode='lines',
-                        hovertemplate='成交筆數: %{y:,.0f}筆<extra></extra>',
-                        yaxis='y3'
-                    ),
-                    row=2, col=1,
-                    secondary_y=True
-                )
-
-    @staticmethod
-    def _add_institutional_daily(fig, df_chart):
-        """新增三大法人當日買賣超"""
-        has_institutional_data = False
-        if '外陸資買賣超張數' in df_chart.columns:
-            foreign = pd.to_numeric(df_chart['外陸資買賣超張數'], errors='coerce')
-            trust = pd.to_numeric(df_chart.get('投信買賣超張數', 0), errors='coerce')
-            dealer = pd.to_numeric(df_chart.get('自營商買賣超張數', 0), errors='coerce')
-
-            if foreign.notna().sum() > 0 or trust.notna().sum() > 0 or dealer.notna().sum() > 0:
-                has_institutional_data = True
-
-                # 統一顏色配置與圖例名稱
-                for name, data, color in [
-                    ('外資', foreign, 'rgba(255, 99, 71, 0.7)'),      # 紅色
-                    ('投信', trust, 'rgba(46, 204, 113, 0.7)'),       # 綠色
-                    ('自營商', dealer, 'rgba(52, 152, 219, 0.7)')     # 藍色
-                ]:
-                    fig.add_trace(
-                        go.Bar(
-                            x=df_chart['日期'],
-                            y=data,
-                            name=name,  # 圖例顯示: 外資/投信/自營商
-                            marker_color=color,
-                            hovertemplate=f'{name}: %{{y:,.0f}}張<extra></extra>',
-                            legendgroup=name,  # 將上下圖表的同類型分組
-                            showlegend=True
-                        ),
-                        row=3, col=1
-                    )
-
-        return has_institutional_data
-
-    @staticmethod
-    def _add_institutional_cumulative(fig, df_chart):
-        """新增三大法人累積買賣超"""
-        if '外陸資買賣超張數' in df_chart.columns:
-            foreign_cumsum = pd.to_numeric(df_chart['外陸資買賣超張數'], errors='coerce').fillna(0).cumsum()
-            trust_cumsum = pd.to_numeric(df_chart.get('投信買賣超張數', 0), errors='coerce').fillna(0).cumsum()
-            dealer_cumsum = pd.to_numeric(df_chart.get('自營商買賣超張數', 0), errors='coerce').fillna(0).cumsum()
-
-            # 統一顏色配置與圖例名稱
-            for name, data, color, dash_style in [
-                ('外資', foreign_cumsum, 'rgb(255, 99, 71)', 'solid'),      # 紅色實線
-                ('投信', trust_cumsum, 'rgb(46, 204, 113)', 'solid'),       # 綠色實線
-                ('自營商', dealer_cumsum, 'rgb(52, 152, 219)', 'solid')     # 藍色實線
-            ]:
-                fig.add_trace(
-                    go.Scatter(
-                        x=df_chart['日期'],
-                        y=data,
-                        name=f'{name}累積',  # 圖例顯示: 外資累積/投信累積/自營商累積
-                        line=dict(color=color, width=2.5, dash=dash_style),
-                        mode='lines',
-                        hovertemplate=f'{name}累積: %{{y:,.0f}}張<extra></extra>',
-                        legendgroup=name,  # 與上層的外資/投信/自營商同組
-                        showlegend=True
-                    ),
-                    row=4, col=1
-                )
-    def _update_layout(fig, stock_code, stock_name, latest_date_str, df_chart, stats):
-        """更新圖表佈局"""
-        # 建立統計資訊文字 (多行顯示)
-        stats_line1 = (
-            f"最新資料日期: {latest_date_str} | "
-            f"外資累積: {stats['外資累積']:,.0f}張 | "
-            f"投信累積: {stats['投信累積']:,.0f}張 | "
-            f"自營累積: {stats['自營累積']:,.0f}張"
-        )
-        stats_line2 = (
-            f"股價K線圖 | "
-            f"MA5: {stats['MA5']:.2f} | "
-            f"MA20: {stats['MA20']:.2f} | "
-            f"MA60: {stats['MA60']:.2f} | "
-            f"成交量: {stats['成交量']:,.0f}張"
-        )
-
-        fig.update_layout(
-            title=dict(
-                text=f'{stock_code} {stock_name} 技術分析圖表 (最近90筆)<br><sub>{stats_line1}</sub><br><sub>{stats_line2}</sub>',
-                x=0.5,
-                xanchor='center',
-                font=dict(size=16, family='Microsoft JhengHei, Arial, sans-serif')
-            ),
-            xaxis_rangeslider_visible=False,
-            height=1950,
-            showlegend=True,
-            hovermode='x unified',
-            template='plotly_white',
-            barmode='relative',
-            legend=dict(
-                orientation="v",
-                yanchor="top",
-                y=0.98,
-                xanchor="left",
-                x=0.01,
-                bgcolor="rgba(255, 255, 255, 0.8)",
-                bordercolor="lightgray",
-                borderwidth=1,
-                font=dict(family='Microsoft JhengHei, Arial, sans-serif')
-            ),
-            font=dict(family='Microsoft JhengHei, Arial, sans-serif')  # 全域字體設定
-        )
-
-        # 手動設定第一層子圖標題 (包含統計資訊)
-        fig.layout.annotations[0].update(
-            text=stats_line2,
-            font=dict(size=12, family='Microsoft JhengHei, Arial, sans-serif')
-        )
-
-        # 更新其他子圖標題的字體
-        for i in range(1, len(fig.layout.annotations)):
-            fig.layout.annotations[i].update(
-                font=dict(family='Microsoft JhengHei, Arial, sans-serif')
-            )
-
-        # 計算股價範圍
-        price_cols = ['開盤價', '最高價', '最低價', '收盤價', 'MA5', 'MA20', 'MA60']
-        price_min = df_chart[price_cols].min().min()
-        price_max = df_chart[price_cols].max().max()
-        price_margin = (price_max - price_min) * 0.05
-        price_range = [price_min - price_margin, price_max + price_margin]
-
-        # 更新Y軸
-        fig.update_yaxes(title_text="股價 (元)", row=1, col=1, range=price_range)
-        fig.update_yaxes(title_text="成交張數", row=2, col=1, secondary_y=False, tickformat=",")
-        fig.update_yaxes(title_text="成交筆數", row=2, col=1, secondary_y=True, tickformat=",", side='right')
-        fig.update_yaxes(title_text="當日買賣超 (張)", row=3, col=1, tickformat=",")
-        fig.update_yaxes(title_text="累積買賣超 (張)", row=4, col=1, tickformat=",")
-
-        # 更新X軸
-        date_range = [df_chart['日期'].min(), df_chart['日期'].max()]
-        start_date = df_chart['日期'].min()
-        end_date = df_chart['日期'].max()
-
-        tickvals = []
-        current = start_date.replace(day=1)
-        while current <= end_date:
-            for day in [1, 6, 11, 16, 21, 26]:
-                try:
-                    tick_date = current.replace(day=day)
-                    if start_date <= tick_date <= end_date:
-                        tickvals.append(tick_date)
-                except:
-                    pass
-            if current.month == 12:
-                current = current.replace(year=current.year + 1, month=1)
-            else:
-                current = current.replace(month=current.month + 1)
-
-        for i in range(1, 5):
-            fig.update_xaxes(
-                tickformat="%m-%d",
-                tickangle=-45,
-                tickmode='array',
-                tickvals=tickvals,
-                showticklabels=True,
-                range=date_range,
-                hoverformat="%m-%d",
-                row=i, col=1
-            )
-
-
-# ============================================================================
-# 模組 4: 股票處理器 (Processor)
-# ============================================================================
 
 class Processor:
-    """股票處理類別"""
+    """處理器類別"""
 
     @staticmethod
-    def process_stock(stock_code, drive_root, config):
+    def process_stock(stock_code, base_dir, config):
         """處理單一股票"""
+        print(f"\n處理股票: {stock_code}")
 
-        print(f"\n{'='*70}")
-        print(f"處理股票: {stock_code}")
-        print('='*70)
+        csv_path = os.path.join(config['history_folder'], f"{stock_code}.csv")
 
-        html_output_file = os.path.join(config['html_output_folder'], f"{stock_code}.html")
-        png_output_file = os.path.join(config['png_output_folder'], f"{stock_code}.png")
+        if not os.path.exists(csv_path):
+            print(f"  ⚠️  找不到歷史資料: {csv_path}")
+            return None
 
-        # 檢查是否需要跳過 (兩個檔案都存在才跳過)
+        html_output = os.path.join(config['html_output_folder'], f"{stock_code}.html")
+        png_output = os.path.join(config['png_output_folder'], f"{stock_code}.png")
+
         if not Config.OVERWRITE_EXISTING:
-            if os.path.exists(html_output_file) and os.path.exists(png_output_file):
-                print(f"⏭️  檔案已存在，跳過: {stock_code}")
+            if os.path.exists(html_output) and os.path.exists(png_output):
+                print(f"  ⊙ 檔案已存在,跳過")
                 return None
 
-        csv_file = os.path.join(config['history_folder'], f"{stock_code}.csv")
-
-        if not os.path.exists(csv_file):
-            print(f"❌ 找不到檔案: {csv_file}")
-            return False
-
-        print(f"⏳ 讀取 {os.path.basename(config['history_folder'])}/{stock_code}.csv...")
-
         try:
-            result = Utils.read_csv_auto_encoding(csv_file)
-            print(f"✓ 成功讀取 {len(result)} 筆資料")
-        except Exception as e:
-            print(f"❌ 讀取失敗: {str(e)}")
-            return False
+            df = Utils.read_csv_auto_encoding(csv_path)
 
-        stock_name = result['股票名稱'].iloc[0] if '股票名稱' in result.columns and len(result) > 0 else ''
-        if not stock_name:
-            stock_name = Utils.get_stock_name(drive_root, stock_code)
+            if df.empty:
+                print(f"  ⚠️  CSV 檔案為空")
+                return False
 
-        print(f"✅ 資料載入完成")
-        print(f"  股票: {stock_code} {stock_name}")
-        print(f"  筆數: {len(result)}")
-        if '日期' in result.columns:
-            print(f"  日期範圍: {result['日期'].min()} ~ {result['日期'].max()}")
+            if '日期' not in df.columns:
+                print(f"  ⚠️  缺少'日期'欄位")
+                return False
 
-        print(f"⏳ 生成技術分析圖表 (HTML + PNG)...")
+            df['日期'] = pd.to_datetime(df['日期'], errors='coerce')
+            df = df.dropna(subset=['日期'])
 
-        try:
-            success = ChartPlotly.generate_chart(
-                result,
-                stock_code,
-                stock_name,
-                html_output_file,
-                png_output_file
-            )
+            if df.empty:
+                print(f"  ⚠️  日期轉換後無有效資料")
+                return False
+
+            df = df.sort_values('日期')
+
+            if '三大法人買賣超股數' in df.columns:
+                df['三大法人買賣超股數'] = pd.to_numeric(
+                    df['三大法人買賣超股數'].astype(str).str.replace(',', ''),
+                    errors='coerce'
+                )
+
+            if '收盤價' in df.columns:
+                df['收盤價'] = pd.to_numeric(df['收盤價'], errors='coerce')
+
+            stock_name = ""
+            if '證券名稱' in df.columns and not df.empty:
+                stock_name = df['證券名稱'].iloc[0]
+
+            sector = ""
+
+            fig = ChartGenerator.create_chart(stock_code, stock_name, df, sector)
+
+            if fig is None:
+                return False
+
+            fig.write_html(html_output)
+            print(f"  ✓ HTML 已儲存: {os.path.basename(html_output)}")
+
+            success = HtmlToPng.convert(html_output, png_output)
 
             if success:
-                print(f"✅ 圖表檔案:")
-                print(f"  - HTML: {os.path.basename(config['html_output_folder'])}/{stock_code}.html")
-                print(f"  - PNG: {os.path.basename(config['png_output_folder'])}/{stock_code}.png")
+                print(f"  ✓ PNG 已儲存: {os.path.basename(png_output)}")
                 return True
             else:
-                print(f"⚠️  HTML已儲存，但PNG轉換失敗")
-                return False
+                print(f"  ⚠️  PNG 轉換失敗")
+                return True
+
         except Exception as e:
-            print(f"❌ 圖表生成失敗: {str(e)}")
-            import traceback
-            traceback.print_exc()
+            print(f"  ❌ 處理失敗: {e}")
             return False
 
     @staticmethod
-    def batch_process_all_stocks(drive_root, config):
+    def batch_process_all_stocks(base_dir, config):
         """批次處理所有股票"""
+        print(f"\n{'='*80}")
+        print(f"批次處理模式 - {config['market_name']}")
+        print(f"{'='*80}\n")
 
-        print("\n" + "="*70)
-        print(f"批次處理模式 - {config['market_name']} (HTML + PNG 雙格式)")
-        print(f"覆蓋模式: {'覆蓋已存在檔案' if Config.OVERWRITE_EXISTING else '跳過已存在檔案'}")
-        print("="*70)
+        history_folder = config['history_folder']
 
-        # 提前初始化 WebDriver
-        print("\n⏳ 初始化 HTML → PNG 轉換環境...")
-        driver = HtmlToPng.setup_driver()
-        if driver is None:
-            print("❌ 無法初始化轉換環境,程式終止")
+        if not os.path.exists(history_folder):
+            print(f"❌ 歷史資料夾不存在: {history_folder}")
             return
 
-        print("\n⏳ 掃描歷史資料夾...")
-        stock_codes = Utils.get_all_stock_codes_from_history(config['history_folder'])
+        csv_files = glob.glob(os.path.join(history_folder, '*.csv'))
+
+        if not csv_files:
+            print(f"❌ 找不到歷史資料檔案")
+            return
+
+        stock_codes = [os.path.basename(f).replace('.csv', '') for f in csv_files]
+        stock_codes = sorted(stock_codes)
 
         if not stock_codes:
             print("❌ 無法取得股票清單")
@@ -2764,7 +1408,7 @@ class Processor:
             print(f"進度: [{idx}/{len(stock_codes)}] ({idx/len(stock_codes)*100:.1f}%)")
             print(f"{'='*70}")
 
-            result = Processor.process_stock(stock_code, drive_root, config)
+            result = Processor.process_stock(stock_code, base_dir, config)
 
             if result is True:
                 success_count += 1
@@ -2786,80 +1430,12 @@ class Processor:
         print(f"處理時間: {elapsed_time:.1f} 秒 ({elapsed_time/60:.1f} 分鐘)")
         print("="*70)
 
-        # 清理 WebDriver
         HtmlToPng.cleanup()
 
 
 # ============================================================================
-# 主程式 (Main)
+# 主程式執行函數
 # ============================================================================
-
-def main():
-    """
-    主程式入口
-
-    使用方式:
-    1. 修改 Config 類別中的全域設定:
-       - MARKET_TYPE: 'TSE'=上市, 'OTC'=上櫃, 'ALL'=全部
-       - RUN_ALL: True=批次處理, False=單一股票
-       - OVERWRITE_EXISTING: True=覆蓋檔案, False=跳過已存在檔案
-
-    2. 在 Colab 執行: !python stock_chart_generator_dual_output.py
-
-    輸出格式: 同時生成 HTML 和 PNG 兩種格式
-    - HTML: 互動式圖表 (可在瀏覽器中縮放、懸停查看數據)
-    - PNG: 靜態高品質圖片 (適合分享、列印)
-    """
-
-    print("⏳ 掛載 Google Drive...")
-    drive_root = Utils.mount_drive()
-    print(f"✓ Drive 根目錄: {drive_root}")
-
-    print("\n⏳ 檢查字體檔案...")
-    Utils.setup_chinese_font(drive_root)
-
-    # 設定路徑配置
-    if Config.MARKET_TYPE == 'ALL':
-        # 處理上市和上櫃
-        for market in ['TSE', 'OTC']:
-            print(f"\n{'#'*80}")
-            print(f"# 開始處理 {market} ({'上市' if market == 'TSE' else '上櫃'})")
-            print(f"{'#'*80}")
-
-            config = Config.setup_config(market_type=market)
-
-            if Config.RUN_ALL:
-                Processor.batch_process_all_stocks(drive_root, config)
-            else:
-                stock_code = input(f"\n請輸入{config['market_name']}股票代碼: ").strip()
-                if stock_code:
-                    Processor.process_stock(stock_code, drive_root, config)
-    else:
-        # 處理單一市場
-        config = Config.setup_config(market_type=Config.MARKET_TYPE)
-
-        if Config.RUN_ALL:
-            Processor.batch_process_all_stocks(drive_root, config)
-        else:
-            print("\n" + "="*70)
-            print(f"單一股票處理模式 - {config['market_name']}")
-            print("="*70)
-
-            stock_code = input(f"\n請輸入{config['market_name']}股票代碼: ").strip()
-
-            if not stock_code:
-                print("❌ 股票代碼不能為空")
-                return
-
-            Processor.process_stock(stock_code, drive_root, config)
-
-
-# ============================================================================
-# 程式入口
-# ============================================================================
-
-if __name__ == "__main__":
-    main()
 
 def run_step1_crawler():
     """執行第一步:爬蟲程式"""
