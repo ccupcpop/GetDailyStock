@@ -2742,8 +2742,7 @@ class Processor:
         print("\n⏳ 初始化 HTML → PNG 轉換環境...")
         driver = HtmlToPng.setup_driver()
         if driver is None:
-            print("❌ 無法初始化轉換環境,程式終止")
-            return
+            print("⚠️  無法初始化轉換環境，將僅生成 HTML 檔案 (不含 PNG)")
 
         print("\n⏳ 掃描歷史資料夾...")
         stock_codes = Utils.get_all_stock_codes_from_history(config['history_folder'])
@@ -2789,7 +2788,7 @@ class Processor:
 
         # 清理 WebDriver
         HtmlToPng.cleanup()
-        
+
 def run_step3_chart_generation(base_dir, market_type):
     """執行第三步：圖表生成"""
     print(f"\n{'🔥'*40}")
