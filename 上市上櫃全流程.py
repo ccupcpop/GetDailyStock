@@ -2799,7 +2799,7 @@ def run_step3_chart_generation(base_dir, market_type):
     config = Config.setup_config(base_path=base_dir, market_type=market_type)
     
     # 設定字體 (GitHub Actions 環境)
-    Utils.setup_chinese_font_for_github(base_dir)
+    Utils.setup_chinese_font(base_dir)
     
     # 批次處理所有股票
     Processor.batch_process_all_stocks(base_dir, config)
