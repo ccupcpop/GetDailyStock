@@ -46,11 +46,42 @@ jobs:
           mkdir -p StockOTCHTML
           mkdir -p StockOTCPNG
       
+      - name: Check existing files (執行前)
+        run: |
+          echo "====== 執行前的檔案狀態 ======"
+          echo "StockDaily 檔案數量: $(find StockDaily -name "*.csv" 2>/dev/null | wc -l)"
+          echo "StockShares 檔案數量: $(find StockShares -name "*.csv" 2>/dev/null | wc -l)"
+          echo "StockOTCDaily 檔案數量: $(find StockOTCDaily -name "*.csv" 2>/dev/null | wc -l)"
+          echo "StockOTCShares 檔案數量: $(find StockOTCShares -name "*.csv" 2>/dev/null | wc -l)"
+          echo "StockHistory 檔案數量: $(find StockHistory -name "*.csv" 2>/dev/null | wc -l)"
+          echo "StockOTCHistory 檔案數量: $(find StockOTCHistory -name "*.csv" 2>/dev/null | wc -l)"
+          echo "================================"
+      
       - name: Run stock analysis
         env:
           TZ: 'Asia/Taipei'
         run: |
           python 上市上櫃全流程.py
+      
+      - name: Check new files (執行後)
+        run: |
+          echo "====== 執行後的檔案狀態 ======"
+          echo "StockDaily 檔案數量: $(find StockDaily -name "*.csv" 2>/dev/null | wc -l)"
+          echo "StockShares 檔案數量: $(find StockShares -name "*.csv" 2>/dev/null | wc -l)"
+          echo "StockOTCDaily 檔案數量: $(find StockOTCDaily -name "*.csv" 2>/dev/null | wc -l)"
+          echo "StockOTCShares 檔案數量: $(find StockOTCShares -name "*.csv" 2>/dev/null | wc -l)"
+          echo "StockHistory 檔案數量: $(find StockHistory -name "*.csv" 2>/dev/null | wc -l)"
+          echo "StockOTCHistory 檔案數量: $(find StockOTCHistory -name "*.csv" 2>/dev/null | wc -l)"
+          echo ""
+          echo "====== 最新的 5 個檔案 ======"
+          find StockDaily StockShares StockOTCDaily StockOTCShares StockHistory StockOTCHistory -name "*.csv" -type f -printf '%T+ %p\n' 2>/dev/null | sort -r | head -5
+          echo "================================"
+      
+      - name: Check git status
+        run: |
+          echo "====== Git 狀態 ======"
+          git status
+          echo "================================"
       
       - name: Commit and push stock data
         run: |
@@ -58,23 +89,34 @@ jobs:
           git config --local user.name "github-actions[bot]"
           
           # 加入所有 CSV 資料檔案（原始資料 + 歷史資料）- 永久保存
-          git add StockDaily/*.csv \
-                  StockShares/*.csv \
-                  StockOTCDaily/*.csv \
-                  StockOTCShares/*.csv \
-                  StockHistory/*.csv \
-                  StockOTCHistory/*.csv
+          git add -A StockDaily/*.csv \
+                     StockShares/*.csv \
+                     StockOTCDaily/*.csv \
+                     StockOTCShares/*.csv \
+                     StockHistory/*.csv \
+                     StockOTCHistory/*.csv 2>/dev/null || true
           
           # 檢查是否有變更
           if git diff --staged --quiet; then
-            echo "沒有資料變更，跳過 commit"
+            echo "❌ 沒有資料變更，跳過 commit"
+            echo ""
+            echo "可能原因："
+            echo "1. Python 程式沒有產生新檔案"
+            echo "2. 產生的檔案不是 .csv 格式"
+            echo "3. 檔案已經存在且內容相同"
           else
             # 顯示變更的檔案
-            echo "📝 變更的檔案："
-            git diff --staged --name-only
+            echo "✅ 發現資料變更！"
+            echo ""
+            echo "📝 新增/修改的檔案："
+            git diff --staged --name-status
+            echo ""
+            echo "📊 變更統計："
+            git diff --staged --stat
             
             git commit -m "📊 更新股票資料 $(TZ=Asia/Taipei date +'%Y-%m-%d %H:%M')"
             git push
+            echo ""
             echo "✅ 成功推送資料到 repository"
           fi
       
