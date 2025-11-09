@@ -1,24 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-台灣股市資料完整處理流程 - 整合版 (GitHub Actions 相容)
-整合爬蟲、分析、圖表生成的完整自動化流程
-
-作者: Frank
-版本: 2.0 (GitHub Actions 相容版)
-日期: 2025-01-09
-
-功能:
-1. 爬取上市/上櫃每日交易與三大法人資料
-2. 清理舊的 History 資料夾
-3. 生成分析報告 (Excel) - 分別處理 TSE 和 OTC
-4. 清理舊的圖表資料夾
-5. 生成技術分析圖表 (HTML + PNG) - 分別處理 TSE 和 OTC
-
-相容性:
-- Google Colab (使用 Google Drive)
-- GitHub Actions (使用當前工作目錄)
-- 本地環境 (使用當前工作目錄)
+台灣股市資料完整處理流程 - GitHub Actions 版
 """
 
 import os
@@ -36,32 +19,16 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-# ============================================================================
-# 共用工具函數
-# ============================================================================
+# 基礎目錄
+BASE_DIR = os.getcwd()
 
-def mount_google_drive():
-    """掛載 Google Drive 或使用本地目錄 (GitHub Actions 相容)"""
-    try:
-        from google.colab import drive
-        drive.mount('/content/drive', force_remount=False)
-        base_dir = '/content/drive/MyDrive'
-        print("✓ 已掛載 Google Drive\n")
-        return base_dir
-    except Exception as e:
-        # 在 GitHub Actions 或本地環境中使用當前工作目錄
-        base_dir = os.getcwd()
-        print(f"✗ 無法掛載 Google Drive,使用本地目錄: {base_dir}\n")
-        return base_dir
-
-def delete_folders(base_dir, folder_names):
+def delete_folders(folder_names):
     """刪除指定的資料夾"""
     print(f"\n{'='*80}")
     print("清理資料夾...")
     print(f"{'='*80}")
-    
     for folder_name in folder_names:
-        folder_path = os.path.join(base_dir, folder_name)
+        folder_path = os.path.join(BASE_DIR, folder_name)
         if os.path.exists(folder_path):
             try:
                 shutil.rmtree(folder_path)
@@ -70,12 +37,11 @@ def delete_folders(base_dir, folder_names):
                 print(f"✗ 刪除失敗 {folder_name}: {e}")
         else:
             print(f"⊘ 資料夾不存在: {folder_name}")
-    
     print(f"{'='*80}\n")
 
 
 # ============================================================================
-# 第一步:爬蟲程式 - 所有函數
+# 第一步:爬蟲程式
 # ============================================================================
 
 def filter_csv_content(csv_bytes):
@@ -604,7 +570,7 @@ def crawl_otc_institutional(start_date, end_date, save_dir):
 
 
 # ============================================================================
-# 第二步:分析程式 - 所有函數
+# 第二步:分析程式
 # ============================================================================
 
 # -*- coding: utf-8 -*-
@@ -629,7 +595,9 @@ import numpy as np
 # 模組 1: 配置與初始化
 # ========================================
 
-
+def mount_drive_old():
+    """掛載 Google Drive"""
+    drive.mount('/content/drive')
 
 def setup_config(market_type='TSE'):
     """
@@ -641,12 +609,7 @@ def setup_config(market_type='TSE'):
     Returns:
         dict: 包含所有路徑配置的字典
     """
-    # 自動偵測環境
-    try:
-        from google.colab import drive
-        base_path = '/content/drive/MyDrive'
-    except Exception:
-        base_path = os.getcwd()
+    base_path = BASE_DIR
 
     if market_type == 'TSE':
         config = {
@@ -2012,7 +1975,7 @@ if __name__ == "__main__":
     main()
 
 # ============================================================================
-# 第三步:圖表生成 - 所有函數和類別
+# 第三步:圖表生成
 # ============================================================================
 
 # -*- coding: utf-8 -*-
@@ -2898,11 +2861,7 @@ def main():
 if __name__ == "__main__":
     main()
 
-# ============================================================================
-# 主程式流程控制
-# ============================================================================
-
-def run_step1_crawler(base_dir):
+def run_step1_crawler():
     """執行第一步:爬蟲程式"""
     print("\n" + "🔥"*40)
     print("第一步:執行爬蟲程式")
@@ -2910,18 +2869,16 @@ def run_step1_crawler(base_dir):
     
     start_date = datetime(2025, 1, 1)
     end_date = datetime.now()
-
     print(f"日期範圍: {start_date.strftime('%Y-%m-%d')} ~ {end_date.strftime('%Y-%m-%d')}")
-    print(f"儲存位置: {base_dir}/")
+    print(f"儲存位置: {BASE_DIR}/")
     print()
 
     start_time = time.time()
-
     dirs = {
-        'StockDaily': os.path.join(base_dir, 'StockDaily'),
-        'StockShares': os.path.join(base_dir, 'StockShares'),
-        'StockOTCDaily': os.path.join(base_dir, 'StockOTCDaily'),
-        'StockOTCShares': os.path.join(base_dir, 'StockOTCShares')
+        'StockDaily': os.path.join(BASE_DIR, 'StockDaily'),
+        'StockShares': os.path.join(BASE_DIR, 'StockShares'),
+        'StockOTCDaily': os.path.join(BASE_DIR, 'StockOTCDaily'),
+        'StockOTCShares': os.path.join(BASE_DIR, 'StockOTCShares')
     }
 
     results = {}
@@ -2931,7 +2888,6 @@ def run_step1_crawler(base_dir):
     results['otc_inst'] = crawl_otc_institutional(start_date, end_date, dirs['StockOTCShares'])
 
     elapsed_time = time.time() - start_time
-
     print("="*60)
     print("📊 第一步執行結果摘要")
     print("="*60)
@@ -2996,43 +2952,27 @@ def run_step3_charts(market_type='TSE'):
     print(f"第三步圖表:{market_type} ({'上市' if market_type == 'TSE' else '上櫃'})")
     print(f"{'🔥'*40}\n")
     
-    try:
-        from google.colab import drive
-        base_dir = '/content/drive/MyDrive'
-    except Exception:
-        base_dir = os.getcwd()
-    
     config = Config.setup_config(market_type=market_type)
-    Utils.setup_chinese_font(base_dir)
-    Processor.batch_process_all_stocks(base_dir, config)
+    Utils.setup_chinese_font(BASE_DIR)
+    Processor.batch_process_all_stocks(BASE_DIR, config)
     print(f"\n✓ {market_type} 圖表完成")
 
 def main():
-    """主程式 - 完整自動化流程"""
+    """主程式"""
     print("\n" + "="*80)
-    print("台灣股市資料完整處理流程")
+    print("台灣股市資料完整處理流程 - GitHub Actions 版")
     print("="*80)
-    print("流程說明:")
-    print("  1. 執行爬蟲程式 (上市/上櫃每日交易與三大法人)")
-    print("  2. 刪除舊的 History 資料夾")
-    print("  3. 執行分析程式 - TSE (上市)")
-    print("  4. 執行分析程式 - OTC (上櫃)")
-    print("  5. 刪除舊的圖表資料夾")
-    print("  6. 執行圖表生成 - TSE (上市)")
-    print("  7. 執行圖表生成 - OTC (上櫃)")
-    print("  8. 完成")
+    print("執行環境:", BASE_DIR)
     print("="*80 + "\n")
     
-    base_dir = mount_google_drive()
-    
     # 步驟 1:爬蟲
-    run_step1_crawler(base_dir)
+    run_step1_crawler()
     
     # 步驟 2:清理 History
     print("\n" + "🔥"*40)
     print("步驟 2:清理 History 資料夾")
     print("🔥"*40)
-    delete_folders(base_dir, ['StockHistory', 'StockOTCHistory'])
+    delete_folders(['StockHistory', 'StockOTCHistory'])
     
     # 步驟 3-4:分析
     run_step2_analysis('TSE')
@@ -3042,7 +2982,7 @@ def main():
     print("\n" + "🔥"*40)
     print("步驟 5:清理圖表資料夾")
     print("🔥"*40)
-    delete_folders(base_dir, ['StockHTML', 'StockPNG', 'StockOTCHTML', 'StockOTCPNG'])
+    delete_folders(['StockHTML', 'StockPNG', 'StockOTCHTML', 'StockOTCPNG'])
     
     # 步驟 6-7:圖表
     run_step3_charts('TSE')
@@ -3052,15 +2992,6 @@ def main():
     print("\n" + "🎉"*40)
     print("所有流程已完成!")
     print("🎉"*40 + "\n")
-    
-    print("處理結果:")
-    print("  ✓ 上市/上櫃每日交易資料已更新")
-    print("  ✓ 三大法人買賣超資料已更新")
-    print("  ✓ TSE 分析報告 (Excel) 已生成")
-    print("  ✓ OTC 分析報告 (Excel) 已生成")
-    print("  ✓ TSE 技術分析圖表 (HTML + PNG) 已生成")
-    print("  ✓ OTC 技術分析圖表 (HTML + PNG) 已生成")
-    print("\n" + "="*80)
 
 if __name__ == "__main__":
     main()
