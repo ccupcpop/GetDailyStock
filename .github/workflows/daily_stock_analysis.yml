@@ -12,9 +12,13 @@ jobs:
   stock-analysis:
     runs-on: ubuntu-latest
     
+    # 給予 workflow 寫入權限以便 push
+    permissions:
+      contents: write
+    
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -34,14 +38,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
       
-      - name: Create data directories
+      - name: Ensure data directories exist
         run: |
-          mkdir -p StockDaily
-          mkdir -p StockShares
-          mkdir -p StockOTCDaily
-          mkdir -p StockOTCShares
-          mkdir -p StockHistory
-          mkdir -p StockOTCHistory
+          # 這些資料夾已經在 repo 中，這裡只確保臨時目錄存在
           mkdir -p StockHTML
           mkdir -p StockPNG
           mkdir -p StockOTCHTML
@@ -53,14 +52,38 @@ jobs:
         run: |
           python 上市上櫃全流程.py
       
-      - name: Upload analysis results
+      - name: Commit and push stock data
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          
+          # 加入所有 CSV 資料檔案（原始資料 + 歷史資料）- 永久保存
+          git add StockDaily/*.csv \
+                  StockShares/*.csv \
+                  StockOTCDaily/*.csv \
+                  StockOTCShares/*.csv \
+                  StockHistory/*.csv \
+                  StockOTCHistory/*.csv
+          
+          # 檢查是否有變更
+          if git diff --staged --quiet; then
+            echo "沒有資料變更，跳過 commit"
+          else
+            # 顯示變更的檔案
+            echo "📝 變更的檔案："
+            git diff --staged --name-only
+            
+            git commit -m "📊 更新股票資料 $(TZ=Asia/Taipei date +'%Y-%m-%d %H:%M')"
+            git push
+            echo "✅ 成功推送資料到 repository"
+          fi
+      
+      - name: Upload analysis results (報表與圖表)
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: stock-analysis-results-${{ github.run_number }}
           path: |
-            StockHistory/*.csv
-            StockOTCHistory/*.csv
             StockHTML/*.html
             StockPNG/*.png
             StockOTCHTML/*.html
@@ -68,13 +91,13 @@ jobs:
             *.xlsx
           retention-days: 30
       
-      - name: Upload latest data (overwrite)
+      - name: Upload latest reports (最新報表)
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: latest-stock-data
+          name: latest-stock-reports
           path: |
-            StockHistory/*.csv
-            StockOTCHistory/*.csv
             *.xlsx
+            StockHTML/*.html
+            StockOTCHTML/*.html
           retention-days: 7
