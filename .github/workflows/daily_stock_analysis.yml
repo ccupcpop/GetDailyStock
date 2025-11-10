@@ -178,7 +178,7 @@ jobs:
               
               try:
                   # 讀取上市彙整分析
-                  df_all_tse = pd.read_excel('analysis_result.xlsx', sheet_name='彙整分析', header=None)
+                  df_all_tse = pd.read_excel('StockInfo/analysis_result.xlsx', sheet_name='彙整分析', header=None)
                   
                   # 找到買超標題行
                   buy_header_row = None
@@ -231,7 +231,7 @@ jobs:
                       """ + df_sell_tse.to_html(index=False, border=0, justify='left', classes='sell-table')
                   
                   # 讀取上櫃彙整分析
-                  df_all_otc = pd.read_excel('otc_analysis_result.xlsx', sheet_name='彙整分析', header=None)
+                  df_all_otc = pd.read_excel('StockInfo/otc_analysis_result.xlsx', sheet_name='彙整分析', header=None)
                   
                   # 找到買超標題行
                   buy_header_row_otc = None
@@ -434,8 +434,8 @@ jobs:
               
               # 附加 Excel 檔案
               files_to_attach = [
-                  'analysis_result.xlsx',
-                  'otc_analysis_result.xlsx'
+                  'StockInfo/analysis_result.xlsx',
+                  'StockInfo/otc_analysis_result.xlsx'
               ]
               
               for filename in files_to_attach:
@@ -446,7 +446,7 @@ jobs:
                           encoders.encode_base64(part)
                           part.add_header(
                               'Content-Disposition',
-                              f'attachment; filename= {filename}'
+                              f'attachment; filename= {os.path.basename(filename)}'
                           )
                           msg.attach(part)
                           print(f'✅ 附加檔案: {filename}')
