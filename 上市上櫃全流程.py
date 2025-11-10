@@ -2893,9 +2893,10 @@ def main():
                        help='跳過圖表生成步驟')
     parser.add_argument('--market', type=str, choices=['TSE', 'OTC', 'BOTH'], 
                        default='BOTH', help='處理市場類型')
-    
     parser.add_argument('--debug-skip-data-processing', action='store_true',
                        help='除錯模式：跳過爬蟲和 History 生成,直接測試報表和上傳')
+    
+    args = parser.parse_args()
     
     print("\n" + "="*80)
     print("台灣股市資料完整處理流程 - GitHub Actions 版本")
@@ -2930,9 +2931,9 @@ def main():
         if not args.skip_crawler:
             start_date = datetime.strptime(args.start_date, '%Y-%m-%d')
             run_step1_crawler(base_dir, start_date=start_date)
-    
-    # ========== 步驟 2-4：分析 ==========
-    if not args.skip_analysis:
+        
+        # ========== 步驟 2-4：分析 ==========
+        if not args.skip_analysis:
             # 刪除 History 資料夾
             print("\n" + "🔥"*40)
             print("步驟 2：清理 History 資料夾")
