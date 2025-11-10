@@ -99,9 +99,13 @@ jobs:
             ---
             
             ⚠️ 此 release 會在 30 天後自動刪除
-          files: stock-analysis-${{ env.DATE }}.zip
+          files: |
+            stock-analysis-${{ env.DATE }}.zip
+            analysis_result.xlsx
+            otc_analysis_result.xlsx
           draft: false
           prerelease: false
+          generate_release_notes: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
@@ -112,6 +116,41 @@ jobs:
           RELEASE_URL="https://github.com/${REPO}/releases/tag/${TAG}"
           echo "RELEASE_URL=${RELEASE_URL}" >> $GITHUB_ENV
           echo "📎 Release URL: ${RELEASE_URL}"
+      
+      - name: Remove source code archives from release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: analysis-${{ env.DATE }}
+        run: |
+          # 等待 release 完全創建
+          sleep 5
+          
+          # 使用 GitHub API 刪除 source code 壓縮檔
+          REPO="${{ github.repository }}"
+          
+          # 獲取 release ID
+          RELEASE_ID=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+            "https://api.github.com/repos/${REPO}/releases/tags/${TAG}" | \
+            jq -r '.id')
+          
+          if [ "$RELEASE_ID" != "null" ] && [ -n "$RELEASE_ID" ]; then
+            # 獲取所有 assets
+            ASSETS=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+              "https://api.github.com/repos/${REPO}/releases/${RELEASE_ID}/assets")
+            
+            # 刪除 source code 壓縮檔
+            echo "$ASSETS" | jq -r '.[] | select(.name | test("^(Source code|源代碼).*\\.(zip|tar\\.gz)$")) | .id' | while read asset_id; do
+              if [ -n "$asset_id" ]; then
+                echo "🗑️  刪除 source code asset: $asset_id"
+                curl -X DELETE -H "Authorization: token $GITHUB_TOKEN" \
+                  "https://api.github.com/repos/${REPO}/releases/assets/${asset_id}"
+              fi
+            done
+            
+            echo "✅ 已移除 source code 壓縮檔"
+          else
+            echo "⚠️  找不到 release ID"
+          fi
       
       - name: Send Email with Attachments
         env:
