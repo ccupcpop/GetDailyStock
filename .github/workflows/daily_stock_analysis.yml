@@ -1,4 +1,4 @@
-name: 每日台股分析 (郵件通知)
+name: 每日台股分析-Gmail通知
 
 on:
   schedule:
