@@ -1,12 +1,18 @@
-name: 測試百度網盤上傳
+name: 每日台股分析 (使用 GitHub Releases)
 
 on:
-  # 只允許手動觸發
+  schedule:
+    # 週一到週五 UTC 09:00 執行 = 台灣時間下午 17:00 (UTC+8)
+    - cron: '0 9 * * 1-5'
+  
   workflow_dispatch:
 
 jobs:
-  test-baidu-upload:
+  stock-analysis:
     runs-on: ubuntu-latest
+    
+    permissions:
+      contents: write
     
     steps:
       - name: Checkout repository
@@ -17,41 +23,111 @@ jobs:
         with:
           python-version: '3.10'
       
-      - name: Install dependencies
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y fonts-noto-cjk chromium-browser chromium-chromedriver
+      
+      - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install requests
+          pip install -r requirements.txt
       
-      - name: Check files to upload
+      - name: Ensure data directories exist
         run: |
-          echo "====== 檢查要上傳的檔案 ======"
-          echo ""
-          echo "Excel 報表:"
-          ls -lh *.xlsx 2>/dev/null || echo "  (無)"
-          echo ""
-          echo "HTML 圖表:"
-          find StockHTML StockOTCHTML -name "*.html" 2>/dev/null | head -5 || echo "  (無)"
-          echo ""
-          echo "PNG 圖表:"
-          find StockPNG StockOTCPNG -name "*.png" 2>/dev/null | head -5 || echo "  (無)"
-          echo ""
-          echo "================================"
+          mkdir -p StockHTML StockPNG StockOTCHTML StockOTCPNG
       
-      - name: Test Baidu Netdisk Upload
+      - name: Run stock analysis
         env:
-          BAIDU_APP_KEY: ${{ secrets.BAIDU_APP_KEY }}
-          BAIDU_SECRET_KEY: ${{ secrets.BAIDU_SECRET_KEY }}
-          BAIDU_REFRESH_TOKEN: ${{ secrets.BAIDU_REFRESH_TOKEN }}
+          TZ: 'Asia/Taipei'
         run: |
-          echo "開始測試百度網盤上傳..."
-          echo ""
-          python baidu_uploader.py
+          python 上市上櫃全流程.py
       
-      - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@v4
+      - name: Package analysis results
+        run: |
+          # 創建日期標記
+          DATE=$(TZ=Asia/Taipei date +'%Y%m%d')
+          DATETIME=$(TZ=Asia/Taipei date +'%Y-%m-%d %H:%M')
+          
+          # 打包所有分析結果
+          mkdir -p release_package
+          
+          # 複製 Excel 報表
+          cp -f *.xlsx release_package/ 2>/dev/null || true
+          
+          # 複製 HTML 和 PNG 圖表
+          cp -f StockHTML/*.html release_package/ 2>/dev/null || true
+          cp -f StockPNG/*.png release_package/ 2>/dev/null || true
+          cp -f StockOTCHTML/*.html release_package/ 2>/dev/null || true
+          cp -f StockOTCPNG/*.png release_package/ 2>/dev/null || true
+          
+          # 創建壓縮檔
+          cd release_package
+          zip -r ../stock-analysis-${DATE}.zip . -x "*.git*"
+          cd ..
+          
+          echo "DATE=${DATE}" >> $GITHUB_ENV
+          echo "DATETIME=${DATETIME}" >> $GITHUB_ENV
+          
+          # 顯示打包內容
+          echo "打包內容:"
+          unzip -l stock-analysis-${DATE}.zip | head -20
+      
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
         with:
-          name: baidu-upload-test-log
-          path: |
-            *.log
-          retention-days: 7
+          tag_name: analysis-${{ env.DATE }}
+          name: 股票分析報告 ${{ env.DATETIME }}
+          body: |
+            ## 📊 台股分析報告
+            
+            **分析時間:** ${{ env.DATETIME }}
+            
+            ### 📦 下載內容
+            - ✅ 上市分析報表 (analysis_result.xlsx)
+            - ✅ 上櫃分析報表 (otc_analysis_result.xlsx)
+            - ✅ 所有 HTML 互動圖表
+            - ✅ 所有 PNG 靜態圖表
+            
+            ### 📈 分析指標
+            - 成交量異常分析
+            - 法人買賣超統計
+            - 漲跌幅排行
+            - 技術指標分析
+            
+            ---
+            
+            ⚠️ 此 release 會在 30 天後自動刪除
+          files: stock-analysis-${{ env.DATE }}.zip
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Commit stock data to repo
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          
+          git add -A StockDaily/*.csv \
+                     StockShares/*.csv \
+                     StockOTCDaily/*.csv \
+                     StockOTCShares/*.csv \
+                     StockHistory/*.csv \
+                     StockOTCHistory/*.csv 2>/dev/null || true
+          
+          if git diff --staged --quiet; then
+            echo "❌ 沒有資料變更"
+          else
+            git commit -m "📊 更新股票資料 $(TZ=Asia/Taipei date +'%Y-%m-%d %H:%M')"
+            git push
+            echo "✅ 成功推送資料到 repository"
+          fi
+      
+      - name: Clean old releases (keep last 30 days)
+        uses: dev-drprasad/delete-older-releases@v0.3.2
+        with:
+          keep_latest: 30
+          delete_tags: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
