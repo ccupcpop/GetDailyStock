@@ -40,7 +40,7 @@ jobs:
       - name: Run stock analysis
         env:
           TZ: 'Asia/Taipei'
-          DEBUG_MODE: 'true'  # 改成 'true' 啟用除錯模式 (跳過爬蟲和 History)
+          DEBUG_MODE: 'false'  # 改成 'true' 啟用除錯模式 (跳過爬蟲和 History)
         run: |
           if [ "$DEBUG_MODE" = "true" ]; then
             echo "⚡ 除錯模式：跳過爬蟲和 History 生成"
@@ -90,7 +90,7 @@ jobs:
             **分析時間:** ${{ env.DATETIME }}
             
             ### 📦 下載內容
-            - ✅ 上市分析報表 (analysis_result.xlsx)
+            - ✅ 上市分析報表 (tse_analysis_result.xlsx)
             - ✅ 上櫃分析報表 (otc_analysis_result.xlsx)
             - ✅ 所有 HTML 互動圖表
             - ✅ 所有 PNG 靜態圖表
