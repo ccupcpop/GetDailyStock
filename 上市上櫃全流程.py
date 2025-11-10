@@ -79,9 +79,7 @@ def create_required_directories(base_dir):
         'StockHistory',
         'StockOTCHistory',
         'StockHTML',
-        'StockPNG',
-        'StockOTCHTML',
-        'StockOTCPNG'
+        'StockOTCHTML'
     ]
     
     print(f"\n{'='*80}")
@@ -2018,9 +2016,11 @@ class Config:
     OVERWRITE_EXISTING = True  # True: 覆蓋已存在的檔案, False: 跳過已存在的檔案
     MARKET_TYPE = 'TSE'  # 'TSE': 上市, 'OTC': 上櫃, 'ALL': 全部
     RUN_ALL = True  # True: 批次處理所有股票, False: 手動輸入單一股票
+    MERGE_MODE = True  # True: 合併成單一HTML, False: 每支股票獨立HTML
     # ==============================
 
     FONT_PATH = None  # 中文字體路徑
+    BASE_PATH = '.'  # 基礎路徑
 
     @staticmethod
     def setup_config(market_type='TSE', base_path='.'):
@@ -2029,21 +2029,30 @@ class Config:
 
         Args:
             market_type: 'TSE' (上市) 或 'OTC' (上櫃)
-            base_path: 專案根目錄路徑 (預設為當前目錄)
+            base_path: 基礎路徑 (預設為當前目錄)
 
         Returns:
             dict: 包含所有路徑配置的字典
         """
-        # 將 base_path 轉換為絕對路徑
-        base_path = os.path.abspath(base_path)
+        Config.BASE_PATH = base_path
+
+        # 根據 MERGE_MODE 決定輸出資料夾
+        if Config.MERGE_MODE:
+            # 合併模式: 輸出到 StockInfo
+            html_output_folder = os.path.join(base_path, 'StockInfo')
+        else:
+            # 獨立模式: 輸出到各自的 HTML 資料夾
+            if market_type == 'TSE':
+                html_output_folder = os.path.join(base_path, 'StockHTML')
+            else:
+                html_output_folder = os.path.join(base_path, 'StockOTCHTML')
 
         if market_type == 'TSE':
             config = {
                 'market_type': market_type,
                 'market_name': '上市',
                 'history_folder': os.path.join(base_path, 'StockHistory'),
-                'html_output_folder': os.path.join(base_path, 'StockHTML'),
-                'png_output_folder': os.path.join(base_path, 'StockPNG'),
+                'html_output_folder': html_output_folder,
                 'stocklist_folder': os.path.join(base_path, 'StockList'),
             }
         else:  # OTC
@@ -2051,21 +2060,20 @@ class Config:
                 'market_type': market_type,
                 'market_name': '上櫃',
                 'history_folder': os.path.join(base_path, 'StockOTCHistory'),
-                'html_output_folder': os.path.join(base_path, 'StockOTCHTML'),
-                'png_output_folder': os.path.join(base_path, 'StockOTCPNG'),
+                'html_output_folder': html_output_folder,
                 'stocklist_folder': os.path.join(base_path, 'StockList'),
             }
 
         # 建立輸出資料夾
         os.makedirs(config['html_output_folder'], exist_ok=True)
-        os.makedirs(config['png_output_folder'], exist_ok=True)
 
         print(f"{'='*80}")
         print(f"市場類型: {market_type} ({config['market_name']})")
-        print(f"圖表格式: HTML + PNG (雙格式輸出)")
+        print(f"圖表格式: HTML")
+        print(f"輸出模式: {'合併單一HTML' if Config.MERGE_MODE else '獨立HTML檔案'}")
+        print(f"基礎路徑: {base_path}")
         print(f"歷史數據資料夾: {config['history_folder']}")
         print(f"HTML輸出資料夾: {config['html_output_folder']}")
-        print(f"PNG輸出資料夾: {config['png_output_folder']}")
         print(f"{'='*80}\n")
 
         return config
@@ -2076,7 +2084,7 @@ class Utils:
     """工具函數類別"""
 
     @staticmethod
-    def setup_chinese_font(base_path='.'):
+    def setup_chinese_font(base_path):
         """設定中文字體"""
         font_path = os.path.join(base_path, 'StockList', 'Font.ttf')
 
@@ -2176,150 +2184,19 @@ class Utils:
 
         return df_chart
     
-# 【第三步-HtmlToPng類別】
-# 從第三步程式複製整個 HtmlToPng 類別
-class HtmlToPng:
-    """HTML 轉 PNG 工具類別"""
-
-    _driver_initialized = False
-    _driver = None
-
-    @staticmethod
-    def setup_driver():
-        """設定 Chrome WebDriver (只執行一次)"""
-        if HtmlToPng._driver_initialized:
-            return HtmlToPng._driver
-
-        try:
-            print("\n" + "="*70)
-            print("初始化 HTML → PNG 轉換環境")
-            print("="*70)
-            
-            # 檢查作業系統
-            import platform
-            system = platform.system()
-            
-            if system == "Linux":
-                print("⏳ 安裝 ChromeDriver (Linux)...")
-                os.system('apt-get update > /dev/null 2>&1')
-                os.system('apt-get install -y chromium-chromedriver > /dev/null 2>&1')
-                print("✓ ChromeDriver 安裝完成")
-
-                # 安裝中文字體套件
-                print("⏳ 安裝中文字體套件...")
-                os.system('apt-get install -y fonts-noto-cjk fonts-wqy-zenhei fonts-wqy-microhei > /dev/null 2>&1')
-                print("✓ 中文字體安裝完成")
-
-                # 刷新字體快取
-                print("⏳ 刷新字體快取...")
-                os.system('fc-cache -fv > /dev/null 2>&1')
-                print("✓ 字體快取已刷新")
-            else:
-                print(f"⚠ 偵測到 {system} 系統，請確保已安裝 Chrome/Chromium")
-
-            # 安裝 Selenium
-            print("⏳ 安裝 Selenium...")
-            os.system('pip install -q selenium')
-            print("✓ Selenium 安裝完成")
-
-            from selenium import webdriver
-            from selenium.webdriver.chrome.options import Options
-            from selenium.webdriver.chrome.service import Service
-
-            print("⏳ 啟動 Chrome WebDriver...")
-            chrome_options = Options()
-            chrome_options.add_argument('--headless')
-            chrome_options.add_argument('--no-sandbox')
-            chrome_options.add_argument('--disable-dev-shm-usage')
-            chrome_options.add_argument('--disable-gpu')
-            chrome_options.add_argument('--window-size=1920,1080')
-            chrome_options.add_argument('--lang=zh-TW')
-            chrome_options.add_argument('--force-device-scale-factor=1')
-            chrome_options.add_argument('--disable-web-security')
-
-            # 嘗試使用系統的 Chrome/Chromium
-            try:
-                HtmlToPng._driver = webdriver.Chrome(options=chrome_options)
-            except Exception as e:
-                print(f"⚠ 使用預設 Chrome 失敗: {e}")
-                print("⏳ 嘗試使用 chromium-browser...")
-                chrome_options.binary_location = "/usr/bin/chromium-browser"
-                HtmlToPng._driver = webdriver.Chrome(options=chrome_options)
-
-            HtmlToPng._driver_initialized = True
-
-            print("✓ Chrome WebDriver 已就緒")
-            print("="*70 + "\n")
-
-            return HtmlToPng._driver
-
-        except Exception as e:
-            print(f"❌ WebDriver 設定失敗: {str(e)}")
-            print("提示: 請確保系統已安裝 Chrome 或 Chromium 瀏覽器")
-            return None
-
-    @staticmethod
-    def convert_html_to_png(html_path, png_path, width=1920, height=2100):
-        """
-        將 HTML 檔案轉換為 PNG 圖片
-
-        Args:
-            html_path: HTML 檔案路徑
-            png_path: 輸出 PNG 檔案路徑
-            width: 圖片寬度 (預設 1920)
-            height: 圖片高度 (預設 2100)
-
-        Returns:
-            bool: 轉換是否成功
-        """
-        driver = HtmlToPng.setup_driver()
-
-        if driver is None:
-            print("❌ WebDriver 未就緒,無法轉換")
-            return False
-
-        try:
-            # 載入 HTML 檔案
-            file_url = f'file://{os.path.abspath(html_path)}'
-            driver.get(file_url)
-
-            # 等待頁面載入
-            import time
-            time.sleep(2)
-
-            # 設定視窗大小
-            driver.set_window_size(width, height)
-            time.sleep(1)
-
-            # 截圖
-            driver.save_screenshot(png_path)
-
-            return True
-
-        except Exception as e:
-            print(f"❌ HTML 轉 PNG 失敗: {str(e)}")
-            return False
-
-    @staticmethod
-    def cleanup():
-        """清理 WebDriver 資源"""
-        if HtmlToPng._driver is not None:
-            try:
-                HtmlToPng._driver.quit()
-                print("\n✓ WebDriver 已關閉")
-            except:
-                pass
-            HtmlToPng._driver = None
-            HtmlToPng._driver_initialized = False
-
 # 【第三步-ChartPlotly類別】
 # 從第三步程式複製整個 ChartPlotly 類別
 class ChartPlotly:
     """Plotly 圖表生成類別"""
 
     @staticmethod
-    def generate_chart(df, stock_code, stock_name, html_output_path, png_output_path):
-        """使用 Plotly 生成互動式技術分析圖表 (HTML + PNG)"""
+    def generate_chart(df, stock_code, stock_name, html_output_path=None):
+        """
+        使用 Plotly 生成互動式技術分析圖表 (HTML)
+        
+        Args:
+            html_output_path: 如果為 None, 則只返回 HTML 字串不儲存檔案
+        """
 
         df_chart = Utils.prepare_chart_data(df)
 
@@ -2372,20 +2249,136 @@ class ChartPlotly:
         # 更新佈局
         ChartPlotly._update_layout(fig, stock_code, stock_name, latest_date_str, df_chart, stats)
 
-        # 儲存 HTML
-        fig.write_html(html_output_path)
-        print(f"  ✓ HTML圖表已儲存: {html_output_path}")
+        # 生成 HTML 字串
+        html_string = fig.to_html(include_plotlyjs='cdn', div_id=f'chart_{stock_code}')
 
-        # 轉換為 PNG
-        print(f"  ⏳ 轉換 HTML → PNG...")
-        success = HtmlToPng.convert_html_to_png(html_output_path, png_output_path)
+        # 如果指定了輸出路徑,則儲存完整的 HTML 檔案
+        if html_output_path:
+            full_html = ChartPlotly._wrap_html(html_string, f"{stock_code} {stock_name}")
+            with open(html_output_path, 'w', encoding='utf-8') as f:
+                f.write(full_html)
+            print(f"  ✓ HTML圖表已儲存: {html_output_path}")
 
-        if success:
-            print(f"  ✓ PNG圖表已儲存: {png_output_path}")
-        else:
-            print(f"  ❌ PNG轉換失敗")
+        return html_string
 
-        return success
+    @staticmethod
+    def _wrap_html(chart_html, title="股票圖表"):
+        """包裝完整的 HTML 結構"""
+        viewport_meta = '<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no">'
+
+        touch_action_css = '''
+    <style>
+        html {
+            -webkit-text-size-adjust: 100%;
+            -ms-text-size-adjust: 100%;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            overflow-y: auto;
+            overflow-x: hidden;
+            -webkit-overflow-scrolling: touch;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+
+        .plotly {
+            touch-action: pan-y;
+            -ms-touch-action: pan-y;
+        }
+
+        * {
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .stock-separator {
+            height: 30px;
+            background: linear-gradient(to bottom, #f0f0f0, #ffffff);
+            margin: 20px 0;
+            border-top: 2px solid #ddd;
+            border-bottom: 2px solid #ddd;
+        }
+    </style>'''
+
+        disable_gestures_script = '''
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 禁止雙指縮放
+            document.addEventListener('touchstart', function(e) {
+                if (e.touches.length > 1) {
+                    e.preventDefault();
+                }
+            }, { passive: false });
+
+            // 禁止手勢縮放
+            document.addEventListener('gesturestart', function(e) {
+                e.preventDefault();
+            });
+
+            document.addEventListener('gesturechange', function(e) {
+                e.preventDefault();
+            });
+
+            document.addEventListener('gestureend', function(e) {
+                e.preventDefault();
+            });
+
+            // 禁止雙擊縮放
+            let lastTouchEnd = 0;
+            document.addEventListener('touchend', function(e) {
+                const now = Date.now();
+                if (now - lastTouchEnd <= 300) {
+                    e.preventDefault();
+                }
+                lastTouchEnd = now;
+            }, false);
+
+            // 禁止滾輪縮放(Ctrl+滾輪)
+            document.addEventListener('wheel', function(e) {
+                if (e.ctrlKey) {
+                    e.preventDefault();
+                }
+            }, { passive: false });
+
+            // 禁止橫向滾動
+            document.addEventListener('touchmove', function(e) {
+                if (!e.target.closest('.plotly')) {
+                    const touch = e.touches[0];
+                    const deltaX = Math.abs(touch.clientX - (touch.startX || touch.clientX));
+                    const deltaY = Math.abs(touch.clientY - (touch.startY || touch.clientY));
+
+                    if (deltaX > deltaY) {
+                        e.preventDefault();
+                    }
+                }
+            }, { passive: false });
+
+            document.addEventListener('touchstart', function(e) {
+                const touch = e.touches[0];
+                touch.startX = touch.clientX;
+                touch.startY = touch.clientY;
+            }, { passive: true });
+        });
+    </script>'''
+
+        full_html = f'''<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    {viewport_meta}
+    <title>{title}</title>
+    {touch_action_css}
+</head>
+<body>
+{chart_html}
+{disable_gestures_script}
+</body>
+</html>'''
+
+        return full_html
 
     @staticmethod
     def _calculate_statistics(df_chart):
@@ -2598,7 +2591,8 @@ class ChartPlotly:
                 borderwidth=1,
                 font=dict(family='Microsoft JhengHei, Arial, sans-serif')
             ),
-            font=dict(family='Microsoft JhengHei, Arial, sans-serif')  # 全域字體設定
+            font=dict(family='Microsoft JhengHei, Arial, sans-serif'),  # 全域字體設定
+            dragmode='pan'  # 允許拖曳,但由 fixedrange 限制軸範圍
         )
 
         # 手動設定第一層子圖標題 (包含統計資訊)
@@ -2620,14 +2614,14 @@ class ChartPlotly:
         price_margin = (price_max - price_min) * 0.05
         price_range = [price_min - price_margin, price_max + price_margin]
 
-        # 更新Y軸
-        fig.update_yaxes(title_text="股價 (元)", row=1, col=1, range=price_range)
-        fig.update_yaxes(title_text="成交張數", row=2, col=1, secondary_y=False, tickformat=",")
-        fig.update_yaxes(title_text="成交筆數", row=2, col=1, secondary_y=True, tickformat=",", side='right')
-        fig.update_yaxes(title_text="當日買賣超 (張)", row=3, col=1, tickformat=",")
-        fig.update_yaxes(title_text="累積買賣超 (張)", row=4, col=1, tickformat=",")
+        # 更新Y軸 - 禁用縮放
+        fig.update_yaxes(title_text="股價 (元)", row=1, col=1, range=price_range, fixedrange=True)
+        fig.update_yaxes(title_text="成交張數", row=2, col=1, secondary_y=False, tickformat=",", fixedrange=True)
+        fig.update_yaxes(title_text="成交筆數", row=2, col=1, secondary_y=True, tickformat=",", side='right', fixedrange=True)
+        fig.update_yaxes(title_text="當日買賣超 (張)", row=3, col=1, tickformat=",", fixedrange=True)
+        fig.update_yaxes(title_text="累積買賣超 (張)", row=4, col=1, tickformat=",", fixedrange=True)
 
-        # 更新X軸
+        # 更新X軸 - 禁用縮放
         date_range = [df_chart['日期'].min(), df_chart['日期'].max()]
         start_date = df_chart['日期'].min()
         end_date = df_chart['日期'].max()
@@ -2656,6 +2650,7 @@ class ChartPlotly:
                 showticklabels=True,
                 range=date_range,
                 hoverformat="%m-%d",
+                fixedrange=True,  # 禁用 X 軸縮放
                 row=i, col=1
             )
 
@@ -2665,27 +2660,23 @@ class Processor:
     """股票處理類別"""
 
     @staticmethod
-    def process_stock(stock_code, base_path, config):
-        """處理單一股票"""
+    def process_stock(stock_code, base_path, config, return_html=False):
+        """
+        處理單一股票
+
+        Args:
+            return_html: True 則返回 HTML 字串, False 則儲存為檔案
+        """
 
         print(f"\n{'='*70}")
         print(f"處理股票: {stock_code}")
         print('='*70)
 
-        html_output_file = os.path.join(config['html_output_folder'], f"{stock_code}.html")
-        png_output_file = os.path.join(config['png_output_folder'], f"{stock_code}.png")
-
-        # 檢查是否需要跳過 (兩個檔案都存在才跳過)
-        if not Config.OVERWRITE_EXISTING:
-            if os.path.exists(html_output_file) and os.path.exists(png_output_file):
-                print(f"⏭️  檔案已存在，跳過: {stock_code}")
-                return None
-
         csv_file = os.path.join(config['history_folder'], f"{stock_code}.csv")
 
         if not os.path.exists(csv_file):
             print(f"❌ 找不到檔案: {csv_file}")
-            return False
+            return False if not return_html else None
 
         print(f"⏳ 讀取 {os.path.basename(config['history_folder'])}/{stock_code}.csv...")
 
@@ -2694,7 +2685,7 @@ class Processor:
             print(f"✓ 成功讀取 {len(result)} 筆資料")
         except Exception as e:
             print(f"❌ 讀取失敗: {str(e)}")
-            return False
+            return False if not return_html else None
 
         stock_name = result['股票名稱'].iloc[0] if '股票名稱' in result.columns and len(result) > 0 else ''
         if not stock_name:
@@ -2706,45 +2697,51 @@ class Processor:
         if '日期' in result.columns:
             print(f"  日期範圍: {result['日期'].min()} ~ {result['日期'].max()}")
 
-        print(f"⏳ 生成技術分析圖表 (HTML + PNG)...")
+        print(f"⏳ 生成技術分析圖表...")
 
         try:
-            success = ChartPlotly.generate_chart(
-                result,
-                stock_code,
-                stock_name,
-                html_output_file,
-                png_output_file
-            )
-
-            if success:
-                print(f"✅ 圖表檔案:")
-                print(f"  - HTML: {os.path.basename(config['html_output_folder'])}/{stock_code}.html")
-                print(f"  - PNG: {os.path.basename(config['png_output_folder'])}/{stock_code}.png")
-                return True
+            if return_html:
+                # 只返回 HTML 字串,不儲存檔案
+                html_string = ChartPlotly.generate_chart(
+                    result,
+                    stock_code,
+                    stock_name,
+                    html_output_path=None
+                )
+                print(f"✅ 圖表已生成")
+                return html_string
             else:
-                print(f"⚠️  HTML已儲存，但PNG轉換失敗")
-                return False
+                # 儲存為獨立檔案
+                html_output_file = os.path.join(config['html_output_folder'], f"{stock_code}.html")
+
+                if not Config.OVERWRITE_EXISTING and os.path.exists(html_output_file):
+                    print(f"⏭️  檔案已存在，跳過: {stock_code}")
+                    return None
+
+                ChartPlotly.generate_chart(
+                    result,
+                    stock_code,
+                    stock_name,
+                    html_output_path=html_output_file
+                )
+                print(f"✅ 圖表檔案: {os.path.basename(config['html_output_folder'])}/{stock_code}.html")
+                return True
+
         except Exception as e:
             print(f"❌ 圖表生成失敗: {str(e)}")
             import traceback
             traceback.print_exc()
-            return False
+            return False if not return_html else None
 
     @staticmethod
     def batch_process_all_stocks(base_path, config):
         """批次處理所有股票"""
 
         print("\n" + "="*70)
-        print(f"批次處理模式 - {config['market_name']} (HTML + PNG 雙格式)")
+        print(f"批次處理模式 - {config['market_name']}")
+        print(f"輸出模式: {'合併單一HTML' if Config.MERGE_MODE else '獨立HTML檔案'}")
         print(f"覆蓋模式: {'覆蓋已存在檔案' if Config.OVERWRITE_EXISTING else '跳過已存在檔案'}")
         print("="*70)
-
-        # 提前初始化 WebDriver
-        print("\n⏳ 初始化 HTML → PNG 轉換環境...")
-        driver = HtmlToPng.setup_driver()
-        if driver is None:
-            print("⚠️  無法初始化轉換環境，將僅生成 HTML 檔案 (不含 PNG)")
 
         print("\n⏳ 掃描歷史資料夾...")
         stock_codes = Utils.get_all_stock_codes_from_history(config['history_folder'])
@@ -2755,18 +2752,87 @@ class Processor:
 
         print(f"✓ 找到 {len(stock_codes)} 支股票")
 
+        start_time = datetime.now()
+
+        if Config.MERGE_MODE:
+            # 合併模式: 所有股票合併成一個 HTML
+            Processor._batch_merge_mode(base_path, config, stock_codes)
+        else:
+            # 獨立模式: 每支股票一個 HTML
+            Processor._batch_individual_mode(base_path, config, stock_codes)
+
+        end_time = datetime.now()
+        elapsed_time = (end_time - start_time).total_seconds()
+
+        print("\n" + "="*70)
+        print("批次處理完成")
+        print("="*70)
+        print(f"處理時間: {elapsed_time:.1f} 秒 ({elapsed_time/60:.1f} 分鐘)")
+        print("="*70)
+
+    @staticmethod
+    def _batch_merge_mode(base_path, config, stock_codes):
+        """合併模式: 所有股票合併成一個 HTML"""
+
+        print("\n⏳ 開始合併所有股票圖表...")
+
+        merged_html_parts = []
+        success_count = 0
+        fail_count = 0
+
+        for idx, stock_code in enumerate(stock_codes, 1):
+            print(f"\n[{idx}/{len(stock_codes)}] ({idx/len(stock_codes)*100:.1f}%) {stock_code}")
+
+            html_string = Processor.process_stock(stock_code, base_path, config, return_html=True)
+
+            if html_string:
+                merged_html_parts.append(html_string)
+                # 在每個圖表之間加入分隔線
+                if idx < len(stock_codes):
+                    merged_html_parts.append('<div class="stock-separator"></div>')
+                success_count += 1
+            else:
+                fail_count += 1
+
+        # 組合所有圖表
+        if merged_html_parts:
+            all_charts_html = '\n'.join(merged_html_parts)
+
+            # 包裝成完整的 HTML
+            full_html = ChartPlotly._wrap_html(
+                all_charts_html,
+                f"{config['market_name']}股票技術分析圖表合集"
+            )
+
+            # 儲存合併後的 HTML
+            current_date = datetime.now().strftime('%Y%m%d')
+            merged_filename = f"ALL_{config['market_type']}_{current_date}.html"
+            merged_output_path = os.path.join(config['html_output_folder'], merged_filename)
+
+            with open(merged_output_path, 'w', encoding='utf-8') as f:
+                f.write(full_html)
+
+            print(f"\n✅ 合併完成!")
+            print(f"  檔案: {merged_filename}")
+            print(f"  路徑: {merged_output_path}")
+            print(f"  成功: {success_count} 支")
+            print(f"  失敗: {fail_count} 支")
+            print(f"  檔案大小: {os.path.getsize(merged_output_path) / 1024 / 1024:.2f} MB")
+
+    @staticmethod
+    def _batch_individual_mode(base_path, config, stock_codes):
+        """獨立模式: 每支股票一個 HTML"""
+
         success_count = 0
         fail_count = 0
         skip_count = 0
-
-        start_time = datetime.now()
 
         for idx, stock_code in enumerate(stock_codes, 1):
             print(f"\n{'='*70}")
             print(f"進度: [{idx}/{len(stock_codes)}] ({idx/len(stock_codes)*100:.1f}%)")
             print(f"{'='*70}")
 
-            result = Processor.process_stock(stock_code, base_path, config)
+            result = Processor.process_stock(stock_code, base_path, config, return_html=False)
 
             if result is True:
                 success_count += 1
@@ -2775,21 +2841,10 @@ class Processor:
             elif result is None:
                 skip_count += 1
 
-        end_time = datetime.now()
-        elapsed_time = (end_time - start_time).total_seconds()
-
-        print("\n" + "="*70)
-        print("批次處理完成")
-        print("="*70)
-        print(f"總股票數: {len(stock_codes)}")
+        print(f"\n總股票數: {len(stock_codes)}")
         print(f"成功處理: {success_count}")
         print(f"跳過處理: {skip_count}")
         print(f"處理失敗: {fail_count}")
-        print(f"處理時間: {elapsed_time:.1f} 秒 ({elapsed_time/60:.1f} 分鐘)")
-        print("="*70)
-
-        # 清理 WebDriver
-        HtmlToPng.cleanup()
 
 def run_step3_chart_generation(base_dir, market_type):
     """執行第三步：圖表生成"""
@@ -2837,9 +2892,7 @@ def copy_data_to_repo(base_dir, repo_data_dir='data'):
         'StockOTCHistory', # 上櫃歷史資料
         'StockInfo',       # 分析報告
         'StockHTML',       # 上市圖表 HTML
-        'StockPNG',        # 上市圖表 PNG
-        'StockOTCHTML',    # 上櫃圖表 HTML
-        'StockOTCPNG'      # 上櫃圖表 PNG
+        'StockOTCHTML'    # 上櫃圖表 HTML
     ]
     
     copied_count = 0
@@ -2953,7 +3006,7 @@ def main():
         print("\n" + "🔥"*40)
         print("步驟 5：清理圖表資料夾")
         print("🔥"*40)
-        delete_folders(base_dir, ['StockHTML', 'StockPNG', 'StockOTCHTML', 'StockOTCPNG'])
+        delete_folders(base_dir, ['StockHTML', 'StockOTCHTML'])
         
         # 執行圖表生成
         if args.market in ['TSE', 'BOTH']:
@@ -2982,9 +3035,9 @@ def main():
             print("  ✓ OTC 分析報告 (Excel) 已生成")
     if not args.skip_charts:
         if args.market in ['TSE', 'BOTH']:
-            print("  ✓ TSE 技術分析圖表 (HTML + PNG) 已生成")
+            print("  ✓ TSE 技術分析圖表 (HTML) 已生成")
         if args.market in ['OTC', 'BOTH']:
-            print("  ✓ OTC 技術分析圖表 (HTML + PNG) 已生成")
+            print("  ✓ OTC 技術分析圖表 (HTML) 已生成")
     print("\n" + "="*80)
 
 if __name__ == "__main__":
