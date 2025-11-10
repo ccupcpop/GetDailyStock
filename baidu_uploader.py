@@ -91,7 +91,23 @@ class BaiduNetdiskUploader:
         if not self.access_token:
             print("❌ 請先獲取 Access Token")
             return False
-            
+        
+        # 確保父目錄 /apps 存在
+        parent_dir = '/apps'
+        params = {
+            'method': 'create',
+            'access_token': self.access_token,
+            'path': parent_dir,
+            'isdir': 1,
+            'rtype': 1
+        }
+        
+        try:
+            requests.post(self.api_url, params=params, timeout=10)
+        except:
+            pass  # 父目錄可能已存在,忽略錯誤
+        
+        # 創建目標資料夾
         params = {
             'method': 'create',
             'access_token': self.access_token,
@@ -194,7 +210,7 @@ class BaiduNetdiskUploader:
             print(f"  ❌ 上傳 {local_path} 時發生錯誤: {str(e)}")
             return False
     
-    def upload_stock_analysis(self, base_folder="/apps/股票分析數據"):
+    def upload_stock_analysis(self, base_folder="/apps/StockAnalysis"):
         """上傳所有股票分析檔案"""
         print("\n" + "="*60)
         print("📊 開始上傳股票分析結果到百度網盤")
