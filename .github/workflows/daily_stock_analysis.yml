@@ -1,4 +1,4 @@
-name: 每日台股分析 (使用 GitHub Releases)
+name: 每日台股分析 (郵件通知)
 
 on:
   schedule:
@@ -74,6 +74,7 @@ jobs:
           unzip -l stock-analysis-${DATE}.zip | head -20
       
       - name: Create GitHub Release
+        id: create_release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: analysis-${{ env.DATE }}
@@ -103,6 +104,129 @@ jobs:
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Get Release URL
+        run: |
+          REPO="${{ github.repository }}"
+          TAG="analysis-${{ env.DATE }}"
+          RELEASE_URL="https://github.com/${REPO}/releases/tag/${TAG}"
+          echo "RELEASE_URL=${RELEASE_URL}" >> $GITHUB_ENV
+          echo "📎 Release URL: ${RELEASE_URL}"
+      
+      - name: Send Email with Attachments
+        env:
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_PASSWORD: ${{ secrets.GMAIL_PASSWORD }}
+          RECIPIENT_EMAIL: ${{ secrets.RECIPIENT_EMAIL }}
+        run: |
+          # 安裝 Python 郵件套件
+          pip install secure-smtplib
+          
+          # 創建發送郵件的 Python 腳本
+          cat > send_email.py << 'EOF'
+          import smtplib
+          import os
+          from email.mime.multipart import MIMEMultipart
+          from email.mime.text import MIMEText
+          from email.mime.base import MIMEBase
+          from email import encoders
+          from datetime import datetime
+          
+          def send_email():
+              # 從環境變數讀取設定
+              sender_email = os.environ.get('GMAIL_USER')
+              sender_password = os.environ.get('GMAIL_PASSWORD')
+              recipient_email = os.environ.get('RECIPIENT_EMAIL')
+              release_url = os.environ.get('RELEASE_URL')
+              date_str = os.environ.get('DATE')
+              datetime_str = os.environ.get('DATETIME')
+              
+              # 創建郵件
+              msg = MIMEMultipart()
+              msg['From'] = sender_email
+              msg['To'] = recipient_email
+              msg['Subject'] = f'📊 台股分析報告 {datetime_str}'
+              
+              # 郵件內容
+              body = f"""
+          <html>
+            <body style="font-family: Arial, sans-serif;">
+              <h2>📊 台股每日分析報告</h2>
+              
+              <p><strong>分析時間:</strong> {datetime_str}</p>
+              
+              <h3>📎 附件檔案</h3>
+              <ul>
+                <li>✅ analysis_result.xlsx - 上市股票分析報表</li>
+                <li>✅ otc_analysis_result.xlsx - 上櫃股票分析報表</li>
+              </ul>
+              
+              <h3>📦 完整報告下載</h3>
+              <p>
+                <a href="{release_url}" style="display: inline-block; padding: 10px 20px; background-color: #0066cc; color: white; text-decoration: none; border-radius: 5px;">
+                  🔗 下載完整分析包 (含所有圖表)
+                </a>
+              </p>
+              
+              <p style="margin-top: 20px; color: #666; font-size: 12px;">
+                此報告由 GitHub Actions 自動產生<br>
+                完整分析包包含: Excel 報表、HTML 互動圖表、PNG 靜態圖表
+              </p>
+              
+              <hr style="margin-top: 30px; border: none; border-top: 1px solid #ddd;">
+              
+              <h3>📈 分析內容</h3>
+              <ul>
+                <li>成交量異常分析 (標準差統計)</li>
+                <li>法人買賣超統計</li>
+                <li>漲跌幅排行榜</li>
+                <li>技術指標分析</li>
+              </ul>
+            </body>
+          </html>
+          """
+              
+              msg.attach(MIMEText(body, 'html', 'utf-8'))
+              
+              # 附加 Excel 檔案
+              files_to_attach = [
+                  'analysis_result.xlsx',
+                  'otc_analysis_result.xlsx'
+              ]
+              
+              for filename in files_to_attach:
+                  if os.path.exists(filename):
+                      with open(filename, 'rb') as f:
+                          part = MIMEBase('application', 'octet-stream')
+                          part.set_payload(f.read())
+                          encoders.encode_base64(part)
+                          part.add_header(
+                              'Content-Disposition',
+                              f'attachment; filename= {filename}'
+                          )
+                          msg.attach(part)
+                          print(f'✅ 附加檔案: {filename}')
+                  else:
+                      print(f'⚠️  檔案不存在: {filename}')
+              
+              # 發送郵件
+              try:
+                  server = smtplib.SMTP('smtp.gmail.com', 587)
+                  server.starttls()
+                  server.login(sender_email, sender_password)
+                  server.send_message(msg)
+                  server.quit()
+                  print(f'✅ 郵件已成功發送到: {recipient_email}')
+              except Exception as e:
+                  print(f'❌ 郵件發送失敗: {str(e)}')
+                  raise
+          
+          if __name__ == '__main__':
+              send_email()
+          EOF
+          
+          # 執行發送郵件
+          python send_email.py
       
       - name: Commit stock data to repo
         run: |
