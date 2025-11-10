@@ -1,20 +1,12 @@
-name: 每日台股分析
+name: 測試百度網盤上傳
 
 on:
-  schedule:
-    # 每天 UTC 09:00 執行 = 台灣時間下午 17:00 (UTC+8)
-    - cron: '0 9 * * 1-5'
-  
-  # 允許手動觸發測試
+  # 只允許手動觸發
   workflow_dispatch:
 
 jobs:
-  stock-analysis:
+  test-baidu-upload:
     runs-on: ubuntu-latest
-    
-    # 給予 workflow 寫入權限以便 push
-    permissions:
-      contents: write
     
     steps:
       - name: Checkout repository
@@ -25,118 +17,41 @@ jobs:
         with:
           python-version: '3.10'
       
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            fonts-noto-cjk \
-            chromium-browser \
-            chromium-chromedriver
-      
-      - name: Install Python dependencies
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install requests
       
-      - name: Ensure data directories exist
+      - name: Check files to upload
         run: |
-          # 這些資料夾已經在 repo 中,這裡只確保臨時目錄存在
-          mkdir -p StockHTML
-          mkdir -p StockPNG
-          mkdir -p StockOTCHTML
-          mkdir -p StockOTCPNG
-      
-      - name: Check existing files (執行前)
-        run: |
-          echo "====== 執行前的檔案狀態 ======"
-          echo "StockDaily 檔案數量: $(find StockDaily -name "*.csv" 2>/dev/null | wc -l)"
-          echo "StockShares 檔案數量: $(find StockShares -name "*.csv" 2>/dev/null | wc -l)"
-          echo "StockOTCDaily 檔案數量: $(find StockOTCDaily -name "*.csv" 2>/dev/null | wc -l)"
-          echo "StockOTCShares 檔案數量: $(find StockOTCShares -name "*.csv" 2>/dev/null | wc -l)"
-          echo "StockHistory 檔案數量: $(find StockHistory -name "*.csv" 2>/dev/null | wc -l)"
-          echo "StockOTCHistory 檔案數量: $(find StockOTCHistory -name "*.csv" 2>/dev/null | wc -l)"
-          echo "================================"
-      
-      - name: Run stock analysis
-        env:
-          TZ: 'Asia/Taipei'
-        run: |
-          python 上市上櫃全流程.py
-      
-      - name: Check new files (執行後)
-        run: |
-          echo "====== 執行後的檔案狀態 ======"
-          echo "StockDaily 檔案數量: $(find StockDaily -name "*.csv" 2>/dev/null | wc -l)"
-          echo "StockShares 檔案數量: $(find StockShares -name "*.csv" 2>/dev/null | wc -l)"
-          echo "StockOTCDaily 檔案數量: $(find StockOTCDaily -name "*.csv" 2>/dev/null | wc -l)"
-          echo "StockOTCShares 檔案數量: $(find StockOTCShares -name "*.csv" 2>/dev/null | wc -l)"
-          echo "StockHistory 檔案數量: $(find StockHistory -name "*.csv" 2>/dev/null | wc -l)"
-          echo "StockOTCHistory 檔案數量: $(find StockOTCHistory -name "*.csv" 2>/dev/null | wc -l)"
+          echo "====== 檢查要上傳的檔案 ======"
           echo ""
-          echo "====== 最新的 5 個檔案 ======"
-          find StockDaily StockShares StockOTCDaily StockOTCShares StockHistory StockOTCHistory -name "*.csv" -type f -printf '%T+ %p\n' 2>/dev/null | sort -r | head -5
+          echo "Excel 報表:"
+          ls -lh *.xlsx 2>/dev/null || echo "  (無)"
+          echo ""
+          echo "HTML 圖表:"
+          find StockHTML StockOTCHTML -name "*.html" 2>/dev/null | head -5 || echo "  (無)"
+          echo ""
+          echo "PNG 圖表:"
+          find StockPNG StockOTCPNG -name "*.png" 2>/dev/null | head -5 || echo "  (無)"
+          echo ""
           echo "================================"
       
-      - name: Check git status
-        run: |
-          echo "====== Git 狀態 ======"
-          git status
-          echo "================================"
-      
-      - name: Commit and push stock data
-        run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          
-          # 加入所有 CSV 資料檔案(原始資料 + 歷史資料)- 永久保存
-          git add -A StockDaily/*.csv \
-                     StockShares/*.csv \
-                     StockOTCDaily/*.csv \
-                     StockOTCShares/*.csv \
-                     StockHistory/*.csv \
-                     StockOTCHistory/*.csv 2>/dev/null || true
-          
-          # 檢查是否有變更
-          if git diff --staged --quiet; then
-            echo "❌ 沒有資料變更,跳過 commit"
-            echo ""
-            echo "可能原因:"
-            echo "1. Python 程式沒有產生新檔案"
-            echo "2. 產生的檔案不是 .csv 格式"
-            echo "3. 檔案已經存在且內容相同"
-          else
-            # 顯示變更的檔案
-            echo "✅ 發現資料變更!"
-            echo ""
-            echo "📝 新增/修改的檔案:"
-            git diff --staged --name-status
-            echo ""
-            echo "📊 變更統計:"
-            git diff --staged --stat
-            
-            git commit -m "📊 更新股票資料 $(TZ=Asia/Taipei date +'%Y-%m-%d %H:%M')"
-            git push
-            echo ""
-            echo "✅ 成功推送資料到 repository"
-          fi
-      
-      - name: Upload to Baidu Netdisk
+      - name: Test Baidu Netdisk Upload
         env:
           BAIDU_APP_KEY: ${{ secrets.BAIDU_APP_KEY }}
           BAIDU_SECRET_KEY: ${{ secrets.BAIDU_SECRET_KEY }}
           BAIDU_REFRESH_TOKEN: ${{ secrets.BAIDU_REFRESH_TOKEN }}
         run: |
+          echo "開始測試百度網盤上傳..."
+          echo ""
           python baidu_uploader.py
       
-      - name: Upload analysis results (備份到 GitHub Artifacts)
+      - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: stock-analysis-results-${{ github.run_number }}
+          name: baidu-upload-test-log
           path: |
-            StockHTML/*.html
-            StockPNG/*.png
-            StockOTCHTML/*.html
-            StockOTCPNG/*.png
-            *.xlsx
-          retention-days: 30
+            *.log
+          retention-days: 7
