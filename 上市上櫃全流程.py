@@ -71,14 +71,14 @@ def create_required_directories(base_dir):
     """建立所需的資料夾結構"""
     required_dirs = [
         'StockList',       # 股票清單和字體
-        'StockDaily',
-        'StockShares',
+        'StockTSEDaily',
+        'StockTSEShares',
         'StockOTCDaily',
         'StockOTCShares',
         'StockInfo',       # 分析報告
-        'StockHistory',
+        'StockTSEHistory',
         'StockOTCHistory',
-        'StockHTML',
+        'StockTSEHTML',
         'StockOTCHTML'
     ]
     
@@ -637,15 +637,15 @@ def run_step1_crawler(base_dir, start_date=None, end_date=None):
     start_time = time.time()
 
     dirs = {
-        'StockDaily': os.path.join(base_dir, 'StockDaily'),
-        'StockShares': os.path.join(base_dir, 'StockShares'),
+        'StockTSEDaily': os.path.join(base_dir, 'StockTSEDaily'),
+        'StockTSEShares': os.path.join(base_dir, 'StockTSEShares'),
         'StockOTCDaily': os.path.join(base_dir, 'StockOTCDaily'),
         'StockOTCShares': os.path.join(base_dir, 'StockOTCShares')
     }
 
     results = {}
-    results['twse_daily'] = crawl_twse_daily(start_date, end_date, dirs['StockDaily'])
-    results['twse_inst'] = crawl_twse_institutional(start_date, end_date, dirs['StockShares'])
+    results['twse_daily'] = crawl_twse_daily(start_date, end_date, dirs['StockTSEDaily'])
+    results['twse_inst'] = crawl_twse_institutional(start_date, end_date, dirs['StockTSEShares'])
     results['otc_daily'] = crawl_otc_daily(start_date, end_date, dirs['StockOTCDaily'])
     results['otc_inst'] = crawl_otc_institutional(start_date, end_date, dirs['StockOTCShares'])
 
@@ -730,12 +730,12 @@ def setup_config(market_type='TSE', base_path='.'):
     if market_type == 'TSE':
         config = {
             'market_type': market_type,
-            'folder_path': os.path.join(base_path, 'StockShares'),
-            'stock_daily_folder': os.path.join(base_path, 'StockDaily'),
+            'folder_path': os.path.join(base_path, 'StockTSEShares'),
+            'stock_daily_folder': os.path.join(base_path, 'StockTSEDaily'),
             'output_folder': os.path.join(base_path, 'StockInfo'),
-            'history_folder': os.path.join(base_path, 'StockHistory'),
-            'market_list_filename': 'market_company_list.csv',
-            'output_filename': 'analysis_result.xlsx',
+            'history_folder': os.path.join(base_path, 'StockTSEHistory'),
+            'market_list_filename': 'tse_company_list.csv',
+            'output_filename': 'tse_analysis_result.xlsx',
             'sigma_threshold': 2.5,  # 標準差閾值
             'aggregate_threshold': 10000,  # 彙整分析的買賣超張數閾值
             'show_top_n': None  # 不使用排名模式
@@ -851,7 +851,7 @@ def get_stock_sector(stock_code, stock_sector_map):
 # 從第二步程式複製 load_stock_daily_prices 函數
 def load_stock_daily_prices(stock_daily_folder, allowed_stock_codes, num_days=5):
     """
-    讀取StockDaily的收盤價和漲跌價差
+    讀取StockTSEDaily的收盤價和漲跌價差
 
     Returns:
         dict: {日期: {證券代號: {'收盤價': x, '漲跌價差': y}}}
@@ -859,11 +859,11 @@ def load_stock_daily_prices(stock_daily_folder, allowed_stock_codes, num_days=5)
     stock_daily_prices = {}
 
     print(f"\n{'='*80}")
-    print("開始讀取 StockDaily 的收盤價和漲跌價差資料...")
+    print("開始讀取 StockTSEDaily 的收盤價和漲跌價差資料...")
     print(f"{'='*80}")
 
     if not os.path.exists(stock_daily_folder):
-        print(f"警告: StockDaily 資料夾不存在: {stock_daily_folder}")
+        print(f"警告: StockTSEDaily 資料夾不存在: {stock_daily_folder}")
         print("將無法顯示收盤價和漲跌價差")
         print(f"{'='*80}\n")
         return stock_daily_prices
@@ -872,7 +872,7 @@ def load_stock_daily_prices(stock_daily_folder, allowed_stock_codes, num_days=5)
     daily_files_sorted = sorted(all_daily_files, key=lambda x: os.path.basename(x).replace('.csv', ''), reverse=True)
     latest_files = daily_files_sorted[:num_days]
 
-    print(f"找到 {len(all_daily_files)} 個 StockDaily 檔案")
+    print(f"找到 {len(all_daily_files)} 個 StockTSEDaily 檔案")
     print(f"將讀取最近 {num_days} 個檔案的價格資料")
 
     for daily_file in latest_files:
@@ -921,7 +921,7 @@ def load_stock_daily_prices(stock_daily_folder, allowed_stock_codes, num_days=5)
             print(f"  已讀取: {os.path.basename(daily_file)} - {len(stock_daily_prices[file_date])} 檔股票")
 
         except Exception as e:
-            print(f"讀取StockDaily檔案 {daily_file} 時發生錯誤: {e}")
+            print(f"讀取StockTSEDaily檔案 {daily_file} 時發生錯誤: {e}")
 
     print(f"完成讀取價格資料,共 {len(stock_daily_prices)} 天")
     print(f"{'='*80}\n")
@@ -1354,8 +1354,8 @@ def collect_stock_history(latest_buy_stocks_50, folder_path, stock_daily_folder,
     for stock_code in latest_buy_stocks_50:
         stock_history_data[stock_code] = {}
 
-    # 從 StockShares 讀取
-    print("\n從 StockShares 收集數據(2025-01-01 之後)...")
+    # 從 StockTSEShares 讀取
+    print("\n從 StockTSEShares 收集數據(2025-01-01 之後)...")
     all_shares_files = glob.glob(os.path.join(folder_path, '*.csv'))
 
     shares_files_2025 = []
@@ -1365,7 +1365,7 @@ def collect_stock_history(latest_buy_stocks_50, folder_path, stock_daily_folder,
             shares_files_2025.append(file_path)
 
     shares_files_2025 = sorted(shares_files_2025, key=lambda x: os.path.basename(x).replace('.csv', ''), reverse=True)
-    print(f"找到 {len(shares_files_2025)} 個 StockShares 檔案(2025-01-01 之後)")
+    print(f"找到 {len(shares_files_2025)} 個 StockTSEShares 檔案(2025-01-01 之後)")
 
     shares_processed = 0
     for file_path in shares_files_2025:
@@ -1399,13 +1399,13 @@ def collect_stock_history(latest_buy_stocks_50, folder_path, stock_daily_folder,
             shares_processed += 1
 
         except Exception as e:
-            print(f"讀取StockShares檔案 {file_path} 時發生錯誤: {e}")
+            print(f"讀取StockTSEShares檔案 {file_path} 時發生錯誤: {e}")
 
-    print(f"成功處理 {shares_processed} 個 StockShares 檔案")
+    print(f"成功處理 {shares_processed} 個 StockTSEShares 檔案")
 
-    # 從 StockDaily 讀取
+    # 從 StockTSEDaily 讀取
     if os.path.exists(stock_daily_folder):
-        print("\n從 StockDaily 收集數據(2025-01-01 之後)...")
+        print("\n從 StockTSEDaily 收集數據(2025-01-01 之後)...")
 
         all_daily_files = glob.glob(os.path.join(stock_daily_folder, '*.csv'))
 
@@ -1416,7 +1416,7 @@ def collect_stock_history(latest_buy_stocks_50, folder_path, stock_daily_folder,
                 daily_files_2025.append(file_path)
 
         daily_files_2025 = sorted(daily_files_2025, key=lambda x: os.path.basename(x).replace('.csv', ''), reverse=True)
-        print(f"找到 {len(daily_files_2025)} 個 StockDaily 檔案(2025-01-01 之後)")
+        print(f"找到 {len(daily_files_2025)} 個 StockTSEDaily 檔案(2025-01-01 之後)")
 
         stock_data_count = {code: 0 for code in latest_buy_stocks_50}
         daily_processed = 0
@@ -1464,9 +1464,9 @@ def collect_stock_history(latest_buy_stocks_50, folder_path, stock_daily_folder,
                 daily_processed += 1
 
             except Exception as e:
-                print(f"讀取StockDaily檔案 {daily_file} 時發生錯誤: {e}")
+                print(f"讀取StockTSEDaily檔案 {daily_file} 時發生錯誤: {e}")
 
-        print(f"成功處理 {daily_processed} 個 StockDaily 檔案")
+        print(f"成功處理 {daily_processed} 個 StockTSEDaily 檔案")
 
         print(f"\n資料統計(前5檔股票):")
         for i, code in enumerate(list(latest_buy_stocks_50)[:5]):
@@ -1474,10 +1474,10 @@ def collect_stock_history(latest_buy_stocks_50, folder_path, stock_daily_folder,
             daily_count = stock_data_count[code]
             print(f"  {code}: 總共 {shares_count} 天資料,其中 {daily_count} 天有價格資料")
     else:
-        print(f"\n警告: StockDaily 資料夾不存在: {stock_daily_folder}")
+        print(f"\n警告: StockTSEDaily 資料夾不存在: {stock_daily_folder}")
 
     # 儲存歷史數據
-    print("\n儲存歷史數據到 StockHistory...")
+    print("\n儲存歷史數據到 StockTSEHistory...")
 
     if not os.path.exists(history_folder):
         os.makedirs(history_folder, exist_ok=True)
@@ -1508,7 +1508,7 @@ def collect_stock_history(latest_buy_stocks_50, folder_path, stock_daily_folder,
                 print(f"  已儲存: {stock_code}.csv ({len(history_list)} 筆記錄)")
 
     print(f"\n完成! 共儲存 {saved_count} 個股票的歷史數據到: {history_folder}")
-    print(f"每個檔案包含最近100天的合併數據(StockDaily + StockShares)")
+    print(f"每個檔案包含最近100天的合併數據(StockTSEDaily + StockTSEShares)")
     print(f"注意: 所有股數欄位已轉換為張數(除以1000取整數)")
 
 # 【第二步-aggregate_analysis】
@@ -2007,8 +2007,10 @@ def run_step2_analysis(base_dir, market_type):
 # 第三步：圖表生成的所有類別和函數
 # ============================================================================
 
-# 【第三步-Config類別】
-# 從第三步程式複製整個 Config 類別 (需要修改路徑和字體設定)
+# ============================================================================
+# 模組 1: 配置管理 (Config)
+# ============================================================================
+
 class Config:
     """配置管理類別"""
 
@@ -2016,11 +2018,10 @@ class Config:
     OVERWRITE_EXISTING = True  # True: 覆蓋已存在的檔案, False: 跳過已存在的檔案
     MARKET_TYPE = 'TSE'  # 'TSE': 上市, 'OTC': 上櫃, 'ALL': 全部
     RUN_ALL = True  # True: 批次處理所有股票, False: 手動輸入單一股票
-    MERGE_MODE = True  # True: 合併成單一HTML, False: 每支股票獨立HTML
+    # 批次處理會同時生成: (1) 個別HTML到StockTSEHTML, (2) 合併HTML到StockInfo
     # ==============================
 
     FONT_PATH = None  # 中文字體路徑
-    BASE_PATH = '.'  # 基礎路徑
 
     @staticmethod
     def setup_config(market_type='TSE', base_path='.'):
@@ -2034,25 +2035,14 @@ class Config:
         Returns:
             dict: 包含所有路徑配置的字典
         """
-        Config.BASE_PATH = base_path
-
-        # 根據 MERGE_MODE 決定輸出資料夾
-        if Config.MERGE_MODE:
-            # 合併模式: 輸出到 StockInfo
-            html_output_folder = os.path.join(base_path, 'StockInfo')
-        else:
-            # 獨立模式: 輸出到各自的 HTML 資料夾
-            if market_type == 'TSE':
-                html_output_folder = os.path.join(base_path, 'StockHTML')
-            else:
-                html_output_folder = os.path.join(base_path, 'StockOTCHTML')
 
         if market_type == 'TSE':
             config = {
                 'market_type': market_type,
                 'market_name': '上市',
-                'history_folder': os.path.join(base_path, 'StockHistory'),
-                'html_output_folder': html_output_folder,
+                'history_folder': os.path.join(base_path, 'StockTSEHistory'),
+                'html_output_folder': os.path.join(base_path, 'StockTSEHTML'),
+                'merged_output_folder': os.path.join(base_path, 'StockInfo'),
                 'stocklist_folder': os.path.join(base_path, 'StockList'),
             }
         else:  # OTC
@@ -2060,31 +2050,35 @@ class Config:
                 'market_type': market_type,
                 'market_name': '上櫃',
                 'history_folder': os.path.join(base_path, 'StockOTCHistory'),
-                'html_output_folder': html_output_folder,
+                'html_output_folder': os.path.join(base_path, 'StockOTCHTML'),
+                'merged_output_folder': os.path.join(base_path, 'StockInfo'),
                 'stocklist_folder': os.path.join(base_path, 'StockList'),
             }
 
         # 建立輸出資料夾
         os.makedirs(config['html_output_folder'], exist_ok=True)
+        os.makedirs(config['merged_output_folder'], exist_ok=True)
 
         print(f"{'='*80}")
         print(f"市場類型: {market_type} ({config['market_name']})")
-        print(f"圖表格式: HTML")
-        print(f"輸出模式: {'合併單一HTML' if Config.MERGE_MODE else '獨立HTML檔案'}")
-        print(f"基礎路徑: {base_path}")
+        print(f"輸出模式: 個別HTML + 合併HTML")
         print(f"歷史數據資料夾: {config['history_folder']}")
-        print(f"HTML輸出資料夾: {config['html_output_folder']}")
+        print(f"個別HTML輸出: {config['html_output_folder']}")
+        print(f"合併HTML輸出: {config['merged_output_folder']}")
         print(f"{'='*80}\n")
 
         return config
-    
-# 【第三步-Utils類別】
-# 從第三步程式複製整個 Utils 類別 (需要修改字體設定)
+
+
+# ============================================================================
+# 模組 2: 工具函數 (Utils)
+# ============================================================================
+
 class Utils:
     """工具函數類別"""
 
     @staticmethod
-    def setup_chinese_font(base_path):
+    def setup_chinese_font(base_path='.'):
         """設定中文字體"""
         font_path = os.path.join(base_path, 'StockList', 'Font.ttf')
 
@@ -2183,9 +2177,12 @@ class Utils:
                 df_chart[col] = pd.to_numeric(df_chart[col], errors='coerce')
 
         return df_chart
-    
-# 【第三步-ChartPlotly類別】
-# 從第三步程式複製整個 ChartPlotly 類別
+
+
+# ============================================================================
+# 模組 3: Plotly 圖表生成 (ChartPlotly)
+# ============================================================================
+
 class ChartPlotly:
     """Plotly 圖表生成類別"""
 
@@ -2193,7 +2190,7 @@ class ChartPlotly:
     def generate_chart(df, stock_code, stock_name, html_output_path=None):
         """
         使用 Plotly 生成互動式技術分析圖表 (HTML)
-        
+
         Args:
             html_output_path: 如果為 None, 則只返回 HTML 字串不儲存檔案
         """
@@ -2654,18 +2651,24 @@ class ChartPlotly:
                 row=i, col=1
             )
 
-# 【第三步-Processor類別】
-# 從第三步程式複製整個 Processor 類別
+
+# ============================================================================
+# 模組 4: 股票處理器 (Processor)
+# ============================================================================
+
 class Processor:
     """股票處理類別"""
 
     @staticmethod
-    def process_stock(stock_code, base_path, config, return_html=False):
+    def process_stock(stock_code, base_path, config, save_individual=True):
         """
         處理單一股票
 
         Args:
-            return_html: True 則返回 HTML 字串, False 則儲存為檔案
+            save_individual: True 則儲存個別檔案, False 則只返回 HTML 字串
+        
+        Returns:
+            HTML 字串 (用於合併), 或 True/False (儲存狀態)
         """
 
         print(f"\n{'='*70}")
@@ -2676,7 +2679,7 @@ class Processor:
 
         if not os.path.exists(csv_file):
             print(f"❌ 找不到檔案: {csv_file}")
-            return False if not return_html else None
+            return None
 
         print(f"⏳ 讀取 {os.path.basename(config['history_folder'])}/{stock_code}.csv...")
 
@@ -2685,7 +2688,7 @@ class Processor:
             print(f"✓ 成功讀取 {len(result)} 筆資料")
         except Exception as e:
             print(f"❌ 讀取失敗: {str(e)}")
-            return False if not return_html else None
+            return None
 
         stock_name = result['股票名稱'].iloc[0] if '股票名稱' in result.columns and len(result) > 0 else ''
         if not stock_name:
@@ -2700,46 +2703,45 @@ class Processor:
         print(f"⏳ 生成技術分析圖表...")
 
         try:
-            if return_html:
-                # 只返回 HTML 字串,不儲存檔案
-                html_string = ChartPlotly.generate_chart(
-                    result,
-                    stock_code,
-                    stock_name,
-                    html_output_path=None
-                )
-                print(f"✅ 圖表已生成")
-                return html_string
-            else:
-                # 儲存為獨立檔案
+            # 生成 HTML 字串 (用於合併)
+            html_string = ChartPlotly.generate_chart(
+                result,
+                stock_code,
+                stock_name,
+                html_output_path=None
+            )
+            
+            # 如果需要,同時儲存個別檔案
+            if save_individual:
                 html_output_file = os.path.join(config['html_output_folder'], f"{stock_code}.html")
-
+                
                 if not Config.OVERWRITE_EXISTING and os.path.exists(html_output_file):
-                    print(f"⏭️  檔案已存在，跳過: {stock_code}")
-                    return None
-
-                ChartPlotly.generate_chart(
-                    result,
-                    stock_code,
-                    stock_name,
-                    html_output_path=html_output_file
-                )
-                print(f"✅ 圖表檔案: {os.path.basename(config['html_output_folder'])}/{stock_code}.html")
-                return True
+                    print(f"⏭️  個別檔案已存在，跳過: {stock_code}")
+                else:
+                    ChartPlotly.generate_chart(
+                        result,
+                        stock_code,
+                        stock_name,
+                        html_output_path=html_output_file
+                    )
+                    print(f"✅ 個別圖表: {os.path.basename(config['html_output_folder'])}/{stock_code}.html")
+            
+            print(f"✅ 圖表已生成")
+            return html_string
 
         except Exception as e:
             print(f"❌ 圖表生成失敗: {str(e)}")
             import traceback
             traceback.print_exc()
-            return False if not return_html else None
+            return None
 
     @staticmethod
     def batch_process_all_stocks(base_path, config):
-        """批次處理所有股票"""
+        """批次處理所有股票 - 同時生成個別HTML和合併HTML"""
 
         print("\n" + "="*70)
         print(f"批次處理模式 - {config['market_name']}")
-        print(f"輸出模式: {'合併單一HTML' if Config.MERGE_MODE else '獨立HTML檔案'}")
+        print(f"輸出方式: 個別HTML + 合併HTML")
         print(f"覆蓋模式: {'覆蓋已存在檔案' if Config.OVERWRITE_EXISTING else '跳過已存在檔案'}")
         print("="*70)
 
@@ -2754,36 +2756,22 @@ class Processor:
 
         start_time = datetime.now()
 
-        if Config.MERGE_MODE:
-            # 合併模式: 所有股票合併成一個 HTML
-            Processor._batch_merge_mode(base_path, config, stock_codes)
-        else:
-            # 獨立模式: 每支股票一個 HTML
-            Processor._batch_individual_mode(base_path, config, stock_codes)
-
-        end_time = datetime.now()
-        elapsed_time = (end_time - start_time).total_seconds()
-
-        print("\n" + "="*70)
-        print("批次處理完成")
-        print("="*70)
-        print(f"處理時間: {elapsed_time:.1f} 秒 ({elapsed_time/60:.1f} 分鐘)")
-        print("="*70)
-
-    @staticmethod
-    def _batch_merge_mode(base_path, config, stock_codes):
-        """合併模式: 所有股票合併成一個 HTML"""
-
-        print("\n⏳ 開始合併所有股票圖表...")
-
+        # 同時生成個別HTML和收集合併HTML
         merged_html_parts = []
         success_count = 0
         fail_count = 0
 
         for idx, stock_code in enumerate(stock_codes, 1):
-            print(f"\n[{idx}/{len(stock_codes)}] ({idx/len(stock_codes)*100:.1f}%) {stock_code}")
+            print(f"\n{'='*70}")
+            print(f"進度: [{idx}/{len(stock_codes)}] ({idx/len(stock_codes)*100:.1f}%)")
+            print(f"{'='*70}")
 
-            html_string = Processor.process_stock(stock_code, base_path, config, return_html=True)
+            html_string = Processor.process_stock(
+                stock_code, 
+                base_path, 
+                config, 
+                save_individual=True  # 同時儲存個別檔案
+            )
 
             if html_string:
                 merged_html_parts.append(html_string)
@@ -2794,8 +2782,12 @@ class Processor:
             else:
                 fail_count += 1
 
-        # 組合所有圖表
+        # 生成合併的 HTML
         if merged_html_parts:
+            print(f"\n{'='*70}")
+            print("⏳ 生成合併HTML...")
+            print(f"{'='*70}")
+            
             all_charts_html = '\n'.join(merged_html_parts)
 
             # 包裝成完整的 HTML
@@ -2804,47 +2796,32 @@ class Processor:
                 f"{config['market_name']}股票技術分析圖表合集"
             )
 
-            # 儲存合併後的 HTML
-            current_date = datetime.now().strftime('%Y%m%d')
-            merged_filename = f"ALL_{config['market_type']}_{current_date}.html"
-            merged_output_path = os.path.join(config['html_output_folder'], merged_filename)
+            # 儲存合併後的 HTML 到 StockInfo 資料夾
+            merged_filename = f"ALL_{config['market_type']}.html"
+            merged_output_path = os.path.join(config['merged_output_folder'], merged_filename)
 
             with open(merged_output_path, 'w', encoding='utf-8') as f:
                 f.write(full_html)
 
-            print(f"\n✅ 合併完成!")
+            print(f"\n✅ 合併HTML已儲存!")
             print(f"  檔案: {merged_filename}")
             print(f"  路徑: {merged_output_path}")
-            print(f"  成功: {success_count} 支")
-            print(f"  失敗: {fail_count} 支")
             print(f"  檔案大小: {os.path.getsize(merged_output_path) / 1024 / 1024:.2f} MB")
 
-    @staticmethod
-    def _batch_individual_mode(base_path, config, stock_codes):
-        """獨立模式: 每支股票一個 HTML"""
+        end_time = datetime.now()
+        elapsed_time = (end_time - start_time).total_seconds()
 
-        success_count = 0
-        fail_count = 0
-        skip_count = 0
-
-        for idx, stock_code in enumerate(stock_codes, 1):
-            print(f"\n{'='*70}")
-            print(f"進度: [{idx}/{len(stock_codes)}] ({idx/len(stock_codes)*100:.1f}%)")
-            print(f"{'='*70}")
-
-            result = Processor.process_stock(stock_code, base_path, config, return_html=False)
-
-            if result is True:
-                success_count += 1
-            elif result is False:
-                fail_count += 1
-            elif result is None:
-                skip_count += 1
-
-        print(f"\n總股票數: {len(stock_codes)}")
+        print("\n" + "="*70)
+        print("批次處理完成")
+        print("="*70)
+        print(f"總股票數: {len(stock_codes)}")
         print(f"成功處理: {success_count}")
-        print(f"跳過處理: {skip_count}")
         print(f"處理失敗: {fail_count}")
+        print(f"處理時間: {elapsed_time:.1f} 秒 ({elapsed_time/60:.1f} 分鐘)")
+        print("="*70)
+        print(f"個別HTML位置: {config['html_output_folder']}")
+        print(f"合併HTML位置: {config['merged_output_folder']}")
+        print("="*70)
 
 def run_step3_chart_generation(base_dir, market_type):
     """執行第三步：圖表生成"""
@@ -2884,14 +2861,14 @@ def copy_data_to_repo(base_dir, repo_data_dir='data'):
     
     # 定義需要複製的資料夾
     folders_to_copy = [
-        'StockDaily',      # 上市每日交易
-        'StockShares',     # 上市三大法人
+        'StockTSEDaily',      # 上市每日交易
+        'StockTSEShares',     # 上市三大法人
         'StockOTCDaily',   # 上櫃每日交易
         'StockOTCShares',  # 上櫃三大法人
-        'StockHistory',    # 上市歷史資料
+        'StockTSEHistory',    # 上市歷史資料
         'StockOTCHistory', # 上櫃歷史資料
         'StockInfo',       # 分析報告
-        'StockHTML',       # 上市圖表 HTML
+        'StockTSEHTML',       # 上市圖表 HTML
         'StockOTCHTML'    # 上櫃圖表 HTML
     ]
     
@@ -2991,7 +2968,7 @@ def main():
             print("\n" + "🔥"*40)
             print("步驟 2：清理 History 資料夾")
             print("🔥"*40)
-            delete_folders(base_dir, ['StockHistory', 'StockOTCHistory'])
+            delete_folders(base_dir, ['StockTSEHistory', 'StockOTCHistory'])
             
             # 執行分析
             if args.market in ['TSE', 'BOTH']:
@@ -3006,7 +2983,7 @@ def main():
         print("\n" + "🔥"*40)
         print("步驟 5：清理圖表資料夾")
         print("🔥"*40)
-        delete_folders(base_dir, ['StockHTML', 'StockOTCHTML'])
+        delete_folders(base_dir, ['StockTSEHTML', 'StockOTCHTML'])
         
         # 執行圖表生成
         if args.market in ['TSE', 'BOTH']:

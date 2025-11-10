@@ -35,7 +35,7 @@ jobs:
       
       - name: Ensure data directories exist
         run: |
-          mkdir -p StockHTML StockPNG StockOTCHTML StockOTCPNG
+          mkdir -p StockHTML StockOTCHTML
       
       - name: Run stock analysis
         env:
@@ -63,10 +63,8 @@ jobs:
           cp -f *.xlsx release_package/ 2>/dev/null || true
           
           # 複製 HTML 和 PNG 圖表
-          cp -f StockHTML/*.html release_package/ 2>/dev/null || true
-          cp -f StockPNG/*.png release_package/ 2>/dev/null || true
+          cp -f StockTSEHTML/*.html release_package/ 2>/dev/null || true
           cp -f StockOTCHTML/*.html release_package/ 2>/dev/null || true
-          cp -f StockOTCPNG/*.png release_package/ 2>/dev/null || true
           
           # 創建壓縮檔
           cd release_package
@@ -107,8 +105,7 @@ jobs:
             
             ⚠️ 此 release 會在 30 天後自動刪除
           files: |
-            stock-analysis-${{ env.DATE }}.zip
-            analysis_result.xlsx
+            tse_analysis_result.xlsx
             otc_analysis_result.xlsx
           draft: false
           prerelease: false
@@ -253,11 +250,13 @@ jobs:
               <div class="info-box">
                 <h3 style="color: #667eea; margin-top: 0;">📎 郵件附件</h3>
                 <ul style="margin: 10px 0;">
-                  <li style="margin: 8px 0;">✅ <strong>analysis_result.xlsx</strong> - 上市股票分析報表（完整資料）</li>
+                  <li style="margin: 8px 0;">✅ <strong>tse_analysis_result.xlsx</strong> - 上市股票分析報表（完整資料）</li>
                   <li style="margin: 8px 0;">✅ <strong>otc_analysis_result.xlsx</strong> - 上櫃股票分析報表（完整資料）</li>
+                  <li style="margin: 8px 0;">✅ <strong>ALL_TSE.html</strong> - 上市股票彙整圖表（互動式）</li>
+                  <li style="margin: 8px 0;">✅ <strong>ALL_OTC.html</strong> - 上櫃股票彙整圖表（互動式）</li>
                 </ul>
                 <p style="color: #666; font-size: 14px; margin-top: 15px;">
-                  💡 建議使用 Excel 開啟附件查看完整分析數據和格式
+                  💡 Excel 使用 Excel 開啟，HTML 使用瀏覽器開啟查看互動圖表
                 </p>
               </div>
               
@@ -281,10 +280,12 @@ jobs:
               
               msg.attach(MIMEText(body, 'html', 'utf-8'))
               
-              # 附加 Excel 檔案
+              # 附加檔案
               files_to_attach = [
-                  'StockInfo/analysis_result.xlsx',
-                  'StockInfo/otc_analysis_result.xlsx'
+                  'StockInfo/tse_analysis_result.xlsx',
+                  'StockInfo/otc_analysis_result.xlsx',
+                  'StockInfo/ALL_TSE.html',
+                  'StockInfo/ALL_OTC.html'
               ]
               
               for filename in files_to_attach:
@@ -330,17 +331,22 @@ jobs:
           mkdir -p StockInfo
           
           # 複製 Excel 分析報表到 StockInfo 資料夾
-          cp -f analysis_result.xlsx StockInfo/ 2>/dev/null || true
+          cp -f tse_analysis_result.xlsx StockInfo/ 2>/dev/null || true
           cp -f otc_analysis_result.xlsx StockInfo/ 2>/dev/null || true
           
+          # 複製 HTML 彙整檔案到 StockInfo 資料夾
+          cp -f ALL_TSE.html StockInfo/ 2>/dev/null || true
+          cp -f ALL_OTC.html StockInfo/ 2>/dev/null || true
+          
           # 加入所有要提交的檔案
-          git add -A StockDaily/*.csv \
-                     StockShares/*.csv \
+          git add -A StockTSEDaily/*.csv \
+                     StockTSEShares/*.csv \
                      StockOTCDaily/*.csv \
                      StockOTCShares/*.csv \
-                     StockHistory/*.csv \
+                     StockTSEHistory/*.csv \
                      StockOTCHistory/*.csv \
-                     StockInfo/*.xlsx 2>/dev/null || true
+                     StockInfo/*.xlsx \
+                     StockInfo/*.html 2>/dev/null || true
           
           if git diff --staged --quiet; then
             echo "❌ 沒有資料變更"
@@ -350,6 +356,7 @@ jobs:
             echo "✅ 成功推送資料到 repository"
             echo "   - CSV 原始資料已更新"
             echo "   - Excel 分析報表已更新 (StockInfo/)"
+            echo "   - HTML 彙整圖表已更新 (StockInfo/)"
           fi
       
       - name: Clean old releases (keep last 30 days)
