@@ -3,7 +3,7 @@ name: 每日台股分析-Gmail通知
 on:
   schedule:
     # 每天 UTC 09:15 執行 = 台灣時間下午 17:15 (UTC+8)
-    - cron: '50 9 * * *'
+    - cron: '30 8 * * *'
   
   workflow_dispatch:
 
@@ -158,18 +158,62 @@ jobs:
           GMAIL_PASSWORD: ${{ secrets.GMAIL_PASSWORD }}
           RECIPIENT_EMAIL: ${{ secrets.RECIPIENT_EMAIL }}
         run: |
-          # 安裝 Python 郵件套件
-          pip install secure-smtplib
+          # 安裝 Python 郵件套件和資料處理套件
+          pip install secure-smtplib pandas openpyxl
           
           # 創建發送郵件的 Python 腳本
           cat > send_email.py << 'EOF'
           import smtplib
           import os
+          import pandas as pd
           from email.mime.multipart import MIMEMultipart
           from email.mime.text import MIMEText
           from email.mime.base import MIMEBase
           from email import encoders
           from datetime import datetime
+          
+          def read_excel_data():
+              """讀取 Excel 檔案並提取關鍵統計資料"""
+              tables_html = ""
+              
+              try:
+                  # 讀取上市股票分析報表
+                  if os.path.exists('analysis_result.xlsx'):
+                      df = pd.read_excel('analysis_result.xlsx', sheet_name='成交量異常', nrows=10)
+                      tables_html += """
+                      <h3 style="color: #d32f2f; margin-top: 30px;">🔴 上市 - 成交量異常 TOP 10</h3>
+                      """ + df.to_html(index=False, classes='stock-table', border=0, justify='left')
+                      
+                      # 讀取漲幅前10
+                      df_up = pd.read_excel('analysis_result.xlsx', sheet_name='漲幅前10', nrows=10)
+                      tables_html += """
+                      <h3 style="color: #388e3c; margin-top: 30px;">📈 上市 - 漲幅前 10</h3>
+                      """ + df_up.to_html(index=False, classes='stock-table', border=0, justify='left')
+                      
+                      # 讀取跌幅前10
+                      df_down = pd.read_excel('analysis_result.xlsx', sheet_name='跌幅前10', nrows=10)
+                      tables_html += """
+                      <h3 style="color: #f57c00; margin-top: 30px;">📉 上市 - 跌幅前 10</h3>
+                      """ + df_down.to_html(index=False, classes='stock-table', border=0, justify='left')
+                  
+                  # 讀取上櫃股票分析報表
+                  if os.path.exists('otc_analysis_result.xlsx'):
+                      df_otc = pd.read_excel('otc_analysis_result.xlsx', sheet_name='成交量異常', nrows=10)
+                      tables_html += """
+                      <h3 style="color: #d32f2f; margin-top: 30px;">🔴 上櫃 - 成交量異常 TOP 10</h3>
+                      """ + df_otc.to_html(index=False, classes='stock-table', border=0, justify='left')
+                      
+                      # 讀取上櫃漲幅前10
+                      df_otc_up = pd.read_excel('otc_analysis_result.xlsx', sheet_name='漲幅前10', nrows=10)
+                      tables_html += """
+                      <h3 style="color: #388e3c; margin-top: 30px;">📈 上櫃 - 漲幅前 10</h3>
+                      """ + df_otc_up.to_html(index=False, classes='stock-table', border=0, justify='left')
+                      
+              except Exception as e:
+                  print(f'⚠️  讀取 Excel 資料時發生錯誤: {str(e)}')
+                  tables_html = "<p style='color: #f57c00;'>⚠️ 無法讀取統計資料</p>"
+              
+              return tables_html
           
           def send_email():
               # 從環境變數讀取設定
@@ -180,6 +224,9 @@ jobs:
               date_str = os.environ.get('DATE')
               datetime_str = os.environ.get('DATETIME')
               
+              # 讀取統計資料
+              statistics_tables = read_excel_data()
+              
               # 創建郵件
               msg = MIMEMultipart()
               msg['From'] = sender_email
@@ -189,38 +236,103 @@ jobs:
               # 郵件內容
               body = f"""
           <html>
-            <body style="font-family: Arial, sans-serif;">
-              <h2>📊 台股每日分析報告</h2>
+            <head>
+              <style>
+                body {{ 
+                  font-family: 'Microsoft JhengHei', Arial, sans-serif;
+                  line-height: 1.6;
+                  color: #333;
+                }}
+                .download-section {{
+                  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                  padding: 30px;
+                  border-radius: 12px;
+                  margin: 20px 0;
+                  text-align: center;
+                }}
+                .download-title {{
+                  color: white;
+                  font-size: 20px;
+                  font-weight: bold;
+                  margin-bottom: 15px;
+                }}
+                .download-btn {{
+                  display: inline-block;
+                  padding: 15px 40px;
+                  background-color: white;
+                  color: #667eea;
+                  text-decoration: none;
+                  border-radius: 8px;
+                  font-size: 16px;
+                  font-weight: bold;
+                  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+                  transition: transform 0.2s;
+                }}
+                .download-btn:hover {{
+                  transform: translateY(-2px);
+                  box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+                }}
+                .stock-table {{
+                  border-collapse: collapse;
+                  width: 100%;
+                  margin: 15px 0;
+                  font-size: 13px;
+                }}
+                .stock-table th {{
+                  background-color: #f5f5f5;
+                  padding: 10px 8px;
+                  text-align: left;
+                  font-weight: bold;
+                  border-bottom: 2px solid #ddd;
+                }}
+                .stock-table td {{
+                  padding: 8px;
+                  border-bottom: 1px solid #eee;
+                }}
+                .stock-table tr:hover {{
+                  background-color: #f9f9f9;
+                }}
+                .section-title {{
+                  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                  color: white;
+                  padding: 15px 20px;
+                  border-radius: 8px;
+                  margin-top: 30px;
+                  font-size: 18px;
+                }}
+              </style>
+            </head>
+            <body>
+              <h2 style="color: #667eea;">📊 台股每日分析報告</h2>
               
               <p><strong>分析時間:</strong> {datetime_str}</p>
               
-              <h3>📎 附件檔案</h3>
-              <ul>
-                <li>✅ analysis_result.xlsx - 上市股票分析報表</li>
-                <li>✅ otc_analysis_result.xlsx - 上櫃股票分析報表</li>
-              </ul>
-              
-              <h3>📦 完整報告下載</h3>
-              <p>
-                <a href="{release_url}" style="display: inline-block; padding: 10px 20px; background-color: #0066cc; color: white; text-decoration: none; border-radius: 5px;">
+              <div class="download-section">
+                <div class="download-title">📦 完整報告下載</div>
+                <a href="{release_url}" class="download-btn">
                   🔗 下載完整分析包 (含所有圖表)
                 </a>
-              </p>
+                <p style="color: white; margin-top: 15px; font-size: 14px; opacity: 0.9;">
+                  包含: Excel 報表 • HTML 互動圖表 • PNG 靜態圖表
+                </p>
+              </div>
               
-              <p style="margin-top: 20px; color: #666; font-size: 12px;">
-                此報告由 GitHub Actions 自動產生<br>
-                完整分析包包含: Excel 報表、HTML 互動圖表、PNG 靜態圖表
-              </p>
+              <hr style="margin: 30px 0; border: none; border-top: 2px solid #ddd;">
               
-              <hr style="margin-top: 30px; border: none; border-top: 1px solid #ddd;">
+              {statistics_tables}
               
-              <h3>📈 分析內容</h3>
-              <ul>
-                <li>成交量異常分析 (標準差統計)</li>
-                <li>法人買賣超統計</li>
-                <li>漲跌幅排行榜</li>
-                <li>技術指標分析</li>
+              <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+              
+              <div class="section-title">📎 附件檔案</div>
+              <ul style="margin-top: 15px;">
+                <li style="margin: 8px 0;">✅ <strong>analysis_result.xlsx</strong> - 上市股票分析報表（完整資料）</li>
+                <li style="margin: 8px 0;">✅ <strong>otc_analysis_result.xlsx</strong> - 上櫃股票分析報表（完整資料）</li>
               </ul>
+              
+              <p style="margin-top: 30px; color: #666; font-size: 12px; text-align: center; padding-top: 20px; border-top: 1px solid #eee;">
+                🤖 此報告由 GitHub Actions 自動產生<br>
+                📅 生成時間: {datetime_str}
+              </p>
             </body>
           </html>
           """
