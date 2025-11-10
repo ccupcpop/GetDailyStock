@@ -2,8 +2,8 @@ name: 每日台股分析 (郵件通知)
 
 on:
   schedule:
-    # 週一到週五 UTC 09:00 執行 = 台灣時間下午 17:00 (UTC+8)
-    - cron: '0 9 * * 1-5'
+    # 每天 UTC 09:15 執行 = 台灣時間下午 17:15 (UTC+8)
+    - cron: '15 9 * * *'
   
   workflow_dispatch:
 
