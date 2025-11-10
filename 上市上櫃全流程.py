@@ -2894,7 +2894,8 @@ def main():
     parser.add_argument('--market', type=str, choices=['TSE', 'OTC', 'BOTH'], 
                        default='BOTH', help='處理市場類型')
     
-    args = parser.parse_args()
+    parser.add_argument('--debug-skip-data-processing', action='store_true',
+                       help='除錯模式：跳過爬蟲和 History 生成,直接測試報表和上傳')
     
     print("\n" + "="*80)
     print("台灣股市資料完整處理流程 - GitHub Actions 版本")
@@ -2921,24 +2922,29 @@ def main():
     create_required_directories(base_dir)
     
     # ========== 步驟 1：爬蟲 ==========
-    if not args.skip_crawler:
-        start_date = datetime.strptime(args.start_date, '%Y-%m-%d')
-        run_step1_crawler(base_dir, start_date=start_date)
+    if args.debug_skip_data_processing:
+        print("\n" + "⚡"*40)
+        print("除錯模式：跳過爬蟲和 History 生成步驟")
+        print("⚡"*40 + "\n")
+    else:
+        if not args.skip_crawler:
+            start_date = datetime.strptime(args.start_date, '%Y-%m-%d')
+            run_step1_crawler(base_dir, start_date=start_date)
     
     # ========== 步驟 2-4：分析 ==========
     if not args.skip_analysis:
-        # 刪除 History 資料夾
-        print("\n" + "🔥"*40)
-        print("步驟 2：清理 History 資料夾")
-        print("🔥"*40)
-        delete_folders(base_dir, ['StockHistory', 'StockOTCHistory'])
-        
-        # 執行分析
-        if args.market in ['TSE', 'BOTH']:
-            run_step2_analysis(base_dir, 'TSE')
-        
-        if args.market in ['OTC', 'BOTH']:
-            run_step2_analysis(base_dir, 'OTC')
+            # 刪除 History 資料夾
+            print("\n" + "🔥"*40)
+            print("步驟 2：清理 History 資料夾")
+            print("🔥"*40)
+            delete_folders(base_dir, ['StockHistory', 'StockOTCHistory'])
+            
+            # 執行分析
+            if args.market in ['TSE', 'BOTH']:
+                run_step2_analysis(base_dir, 'TSE')
+            
+            if args.market in ['OTC', 'BOTH']:
+                run_step2_analysis(base_dir, 'OTC')
     
     # ========== 步驟 5-7：圖表生成 ==========
     if not args.skip_charts:
