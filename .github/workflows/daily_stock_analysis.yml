@@ -3,7 +3,7 @@ name: 每日台股分析-Gmail通知
 on:
   schedule:
     # 每天 UTC 09:15 執行 = 台灣時間下午 17:15 (UTC+8)
-    - cron: '15 9 * * *'
+    - cron: '50 9 * * *'
   
   workflow_dispatch:
 
