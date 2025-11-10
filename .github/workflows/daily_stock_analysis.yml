@@ -172,45 +172,124 @@ jobs:
           from email import encoders
           from datetime import datetime
           
-          def read_excel_data():
-              """讀取 Excel 檔案並提取關鍵統計資料"""
+          def read_summary_data():
+              """讀取彙整分析的買超和賣超資料"""
               tables_html = ""
               
               try:
-                  # 讀取上市股票分析報表
-                  if os.path.exists('analysis_result.xlsx'):
-                      df = pd.read_excel('analysis_result.xlsx', sheet_name='成交量異常', nrows=10)
-                      tables_html += """
-                      <h3 style="color: #d32f2f; margin-top: 30px;">🔴 上市 - 成交量異常 TOP 10</h3>
-                      """ + df.to_html(index=False, classes='stock-table', border=0, justify='left')
-                      
-                      # 讀取漲幅前10
-                      df_up = pd.read_excel('analysis_result.xlsx', sheet_name='漲幅前10', nrows=10)
-                      tables_html += """
-                      <h3 style="color: #388e3c; margin-top: 30px;">📈 上市 - 漲幅前 10</h3>
-                      """ + df_up.to_html(index=False, classes='stock-table', border=0, justify='left')
-                      
-                      # 讀取跌幅前10
-                      df_down = pd.read_excel('analysis_result.xlsx', sheet_name='跌幅前10', nrows=10)
-                      tables_html += """
-                      <h3 style="color: #f57c00; margin-top: 30px;">📉 上市 - 跌幅前 10</h3>
-                      """ + df_down.to_html(index=False, classes='stock-table', border=0, justify='left')
+                  # 讀取上市彙整分析
+                  df_all_tse = pd.read_excel('analysis_result.xlsx', sheet_name='彙整分析', header=None)
                   
-                  # 讀取上櫃股票分析報表
-                  if os.path.exists('otc_analysis_result.xlsx'):
-                      df_otc = pd.read_excel('otc_analysis_result.xlsx', sheet_name='成交量異常', nrows=10)
-                      tables_html += """
-                      <h3 style="color: #d32f2f; margin-top: 30px;">🔴 上櫃 - 成交量異常 TOP 10</h3>
-                      """ + df_otc.to_html(index=False, classes='stock-table', border=0, justify='left')
+                  # 找到買超標題行
+                  buy_header_row = None
+                  for idx in range(len(df_all_tse)):
+                      row_vals = df_all_tse.iloc[idx].tolist()
+                      if any(pd.notna(v) and '證券代號' in str(v) for v in row_vals):
+                          buy_header_row = idx
+                          break
+                  
+                  # 找到賣超標題行
+                  sell_header_row = None
+                  for idx in range(buy_header_row + 1, len(df_all_tse)):
+                      row_vals = df_all_tse.iloc[idx].tolist()
+                      if any(pd.notna(v) and '賣超' in str(v) and '【' in str(v) for v in row_vals):
+                          # 找到賣超的資料標題行
+                          for j in range(idx + 1, min(idx + 5, len(df_all_tse))):
+                              row_vals2 = df_all_tse.iloc[j].tolist()
+                              if any(pd.notna(v) and '證券代號' in str(v) for v in row_vals2):
+                                  sell_header_row = j
+                                  break
+                          break
+                  
+                  # 提取買超資料
+                  if buy_header_row is not None and sell_header_row is not None:
+                      df_buy_tse = df_all_tse.iloc[buy_header_row:sell_header_row-2].copy()
+                      df_buy_tse.columns = df_buy_tse.iloc[0]
+                      df_buy_tse = df_buy_tse[1:].reset_index(drop=True)
+                      df_buy_tse = df_buy_tse[df_buy_tse.iloc[:, 0].notna()]
                       
-                      # 讀取上櫃漲幅前10
-                      df_otc_up = pd.read_excel('otc_analysis_result.xlsx', sheet_name='漲幅前10', nrows=10)
-                      tables_html += """
-                      <h3 style="color: #388e3c; margin-top: 30px;">📈 上櫃 - 漲幅前 10</h3>
-                      """ + df_otc_up.to_html(index=False, classes='stock-table', border=0, justify='left')
+                      # 提取賣超資料
+                      df_sell_tse = df_all_tse.iloc[sell_header_row:].copy()
+                      df_sell_tse.columns = df_sell_tse.iloc[0]
+                      df_sell_tse = df_sell_tse[1:].reset_index(drop=True)
+                      df_sell_tse = df_sell_tse[df_sell_tse.iloc[:, 0].notna()]
                       
+                      # 生成上市買超表格
+                      tables_html += """
+                      <h2 style="color: #2c3e50; margin-top: 30px; padding: 15px; background: white; border-radius: 8px; border-left: 5px solid #e53935;">
+                        🔴 上市股票 (TSE) - Taiwan Stock Exchange
+                      </h2>
+                      
+                      <div style="background: linear-gradient(135deg, #e53935 0%, #c62828 100%); padding: 15px; border-radius: 10px 10px 0 0; margin-top: 20px;">
+                        <h3 style="color: white; margin: 0;">🔺 最近5天買超彙整分析</h3>
+                      </div>
+                      """ + df_buy_tse.to_html(index=False, border=0, justify='left', classes='buy-table') + """
+                      
+                      <div style="background: linear-gradient(135deg, #43a047 0%, #2e7d32 100%); padding: 15px; border-radius: 10px 10px 0 0; margin-top: 30px;">
+                        <h3 style="color: white; margin: 0;">🔻 最近5天賣超彙整分析</h3>
+                      </div>
+                      """ + df_sell_tse.to_html(index=False, border=0, justify='left', classes='sell-table')
+                  
+                  # 讀取上櫃彙整分析
+                  df_all_otc = pd.read_excel('otc_analysis_result.xlsx', sheet_name='彙整分析', header=None)
+                  
+                  # 找到買超標題行
+                  buy_header_row_otc = None
+                  for idx in range(len(df_all_otc)):
+                      row_vals = df_all_otc.iloc[idx].tolist()
+                      if any(pd.notna(v) and '證券代號' in str(v) for v in row_vals):
+                          buy_header_row_otc = idx
+                          break
+                  
+                  # 找到賣超標題行
+                  sell_header_row_otc = None
+                  for idx in range(buy_header_row_otc + 1, len(df_all_otc)):
+                      row_vals = df_all_otc.iloc[idx].tolist()
+                      if any(pd.notna(v) and '賣超' in str(v) and '【' in str(v) for v in row_vals):
+                          for j in range(idx + 1, min(idx + 5, len(df_all_otc))):
+                              row_vals2 = df_all_otc.iloc[j].tolist()
+                              if any(pd.notna(v) and '證券代號' in str(v) for v in row_vals2):
+                                  sell_header_row_otc = j
+                                  break
+                          break
+                  
+                  # 提取上櫃買超賣超資料
+                  if buy_header_row_otc is not None:
+                      if sell_header_row_otc:
+                          df_buy_otc = df_all_otc.iloc[buy_header_row_otc:sell_header_row_otc-2].copy()
+                      else:
+                          df_buy_otc = df_all_otc.iloc[buy_header_row_otc:].copy()
+                      
+                      df_buy_otc.columns = df_buy_otc.iloc[0]
+                      df_buy_otc = df_buy_otc[1:].reset_index(drop=True)
+                      df_buy_otc = df_buy_otc[df_buy_otc.iloc[:, 0].notna()]
+                      
+                      tables_html += """
+                      <h2 style="color: #2c3e50; margin-top: 50px; padding: 15px; background: white; border-radius: 8px; border-left: 5px solid #43a047;">
+                        🟢 上櫃股票 (OTC) - Taipei Exchange
+                      </h2>
+                      
+                      <div style="background: linear-gradient(135deg, #e53935 0%, #c62828 100%); padding: 15px; border-radius: 10px 10px 0 0; margin-top: 20px;">
+                        <h3 style="color: white; margin: 0;">🔺 最近5天買超彙整分析</h3>
+                      </div>
+                      """ + df_buy_otc.to_html(index=False, border=0, justify='left', classes='buy-table')
+                      
+                      if sell_header_row_otc:
+                          df_sell_otc = df_all_otc.iloc[sell_header_row_otc:].copy()
+                          df_sell_otc.columns = df_sell_otc.iloc[0]
+                          df_sell_otc = df_sell_otc[1:].reset_index(drop=True)
+                          df_sell_otc = df_sell_otc[df_sell_otc.iloc[:, 0].notna()]
+                          
+                          tables_html += """
+                          <div style="background: linear-gradient(135deg, #43a047 0%, #2e7d32 100%); padding: 15px; border-radius: 10px 10px 0 0; margin-top: 30px;">
+                            <h3 style="color: white; margin: 0;">🔻 最近5天賣超彙整分析</h3>
+                          </div>
+                          """ + df_sell_otc.to_html(index=False, border=0, justify='left', classes='sell-table')
+                  
               except Exception as e:
-                  print(f'⚠️  讀取 Excel 資料時發生錯誤: {str(e)}')
+                  print(f'⚠️  讀取彙整分析時發生錯誤: {str(e)}')
+                  import traceback
+                  traceback.print_exc()
                   tables_html = "<p style='color: #f57c00;'>⚠️ 無法讀取統計資料</p>"
               
               return tables_html
@@ -225,7 +304,7 @@ jobs:
               datetime_str = os.environ.get('DATETIME')
               
               # 讀取統計資料
-              statistics_tables = read_excel_data()
+              statistics_tables = read_summary_data()
               
               # 創建郵件
               msg = MIMEMultipart()
@@ -242,6 +321,7 @@ jobs:
                   font-family: 'Microsoft JhengHei', Arial, sans-serif;
                   line-height: 1.6;
                   color: #333;
+                  background-color: #f5f5f5;
                 }}
                 .download-section {{
                   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -266,31 +346,44 @@ jobs:
                   font-size: 16px;
                   font-weight: bold;
                   box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-                  transition: transform 0.2s;
                 }}
-                .download-btn:hover {{
-                  transform: translateY(-2px);
-                  box-shadow: 0 6px 20px rgba(0,0,0,0.3);
-                }}
-                .stock-table {{
+                .buy-table, .sell-table {{
                   border-collapse: collapse;
                   width: 100%;
-                  margin: 15px 0;
+                  margin: 0 0 20px 0;
                   font-size: 13px;
+                  background: white;
                 }}
-                .stock-table th {{
-                  background-color: #f5f5f5;
-                  padding: 10px 8px;
+                .buy-table th, .sell-table th {{
+                  background-color: #495057;
+                  color: white;
+                  padding: 12px 10px;
                   text-align: left;
                   font-weight: bold;
-                  border-bottom: 2px solid #ddd;
+                  border-right: 1px solid rgba(255,255,255,0.1);
                 }}
-                .stock-table td {{
-                  padding: 8px;
-                  border-bottom: 1px solid #eee;
+                .buy-table td {{
+                  padding: 10px;
+                  border-bottom: 1px solid #e9ecef;
                 }}
-                .stock-table tr:hover {{
-                  background-color: #f9f9f9;
+                .sell-table td {{
+                  padding: 10px;
+                  border-bottom: 1px solid #e9ecef;
+                }}
+                .buy-table tr:nth-child(even) {{
+                  background-color: #fff5f5;
+                }}
+                .buy-table tr:nth-child(odd) {{
+                  background-color: #ffffff;
+                }}
+                .sell-table tr:nth-child(even) {{
+                  background-color: #f1f8f4;
+                }}
+                .sell-table tr:nth-child(odd) {{
+                  background-color: #ffffff;
+                }}
+                .buy-table tr:hover, .sell-table tr:hover {{
+                  background-color: #f8f9fa;
                 }}
                 .section-title {{
                   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -321,10 +414,10 @@ jobs:
               
               {statistics_tables}
               
-              <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+              <hr style="margin: 40px 0; border: none; border-top: 1px solid #ddd;">
               
               <div class="section-title">📎 附件檔案</div>
-              <ul style="margin-top: 15px;">
+              <ul style="margin-top: 15px; background: white; padding: 20px; border-radius: 8px;">
                 <li style="margin: 8px 0;">✅ <strong>analysis_result.xlsx</strong> - 上市股票分析報表（完整資料）</li>
                 <li style="margin: 8px 0;">✅ <strong>otc_analysis_result.xlsx</strong> - 上櫃股票分析報表（完整資料）</li>
               </ul>
@@ -384,12 +477,21 @@ jobs:
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           
+          # 確保 StockInfo 資料夾存在
+          mkdir -p StockInfo
+          
+          # 複製 Excel 分析報表到 StockInfo 資料夾
+          cp -f analysis_result.xlsx StockInfo/ 2>/dev/null || true
+          cp -f otc_analysis_result.xlsx StockInfo/ 2>/dev/null || true
+          
+          # 加入所有要提交的檔案
           git add -A StockDaily/*.csv \
                      StockShares/*.csv \
                      StockOTCDaily/*.csv \
                      StockOTCShares/*.csv \
                      StockHistory/*.csv \
-                     StockOTCHistory/*.csv 2>/dev/null || true
+                     StockOTCHistory/*.csv \
+                     StockInfo/*.xlsx 2>/dev/null || true
           
           if git diff --staged --quiet; then
             echo "❌ 沒有資料變更"
@@ -397,6 +499,8 @@ jobs:
             git commit -m "📊 更新股票資料 $(TZ=Asia/Taipei date +'%Y-%m-%d %H:%M')"
             git push
             echo "✅ 成功推送資料到 repository"
+            echo "   - CSV 原始資料已更新"
+            echo "   - Excel 分析報表已更新 (StockInfo/)"
           fi
       
       - name: Clean old releases (keep last 30 days)
