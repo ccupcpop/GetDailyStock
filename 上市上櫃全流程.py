@@ -49,21 +49,52 @@ def setup_base_directory():
     return base_dir
 
 def delete_folders(base_dir, folder_names):
-    """刪除指定的資料夾"""
+    """刪除並重建指定的資料夾"""
     print(f"\n{'='*80}")
     print("清理資料夾...")
     print(f"{'='*80}")
     
     for folder_name in folder_names:
         folder_path = os.path.join(base_dir, folder_name)
+        
+        # 統計現有檔案數量
+        file_count = 0
+        if os.path.exists(folder_path):
+            try:
+                files = [f for f in os.listdir(folder_path) if f.endswith('.csv')]
+                file_count = len(files)
+                print(f"📂 {folder_name}: 發現 {file_count} 個 CSV 檔案")
+            except Exception as e:
+                print(f"⚠️  無法讀取 {folder_name}: {e}")
+        
+        # 刪除資料夾
         if os.path.exists(folder_path):
             try:
                 shutil.rmtree(folder_path)
-                print(f"✓ 已刪除: {folder_name}")
+                print(f"✓ 已刪除: {folder_name} ({file_count} 個檔案)")
+                
+                # 等待檔案系統完成操作
+                import time
+                time.sleep(0.5)
+                
             except Exception as e:
                 print(f"✗ 刪除失敗 {folder_name}: {e}")
+                continue
         else:
             print(f"⊘ 資料夾不存在: {folder_name}")
+        
+        # 重新建立空資料夾
+        try:
+            os.makedirs(folder_path, exist_ok=True)
+            print(f"✓ 已重建空資料夾: {folder_name}")
+            
+            # 驗證資料夾是空的
+            remaining = os.listdir(folder_path)
+            if remaining:
+                print(f"⚠️  警告: {folder_name} 內還有 {len(remaining)} 個項目！")
+            
+        except Exception as e:
+            print(f"✗ 重建資料夾失敗 {folder_name}: {e}")
     
     print(f"{'='*80}\n")
 
