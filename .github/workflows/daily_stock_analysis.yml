@@ -236,17 +236,6 @@ jobs:
               <h2 style="color: #667eea;">📊 台股每日分析報告</h2>
               
               <p><strong>分析時間:</strong> {datetime_str}</p>
-              
-              <div class="download-section">
-                <div class="download-title">📦 完整報告下載</div>
-                <a href="{release_url}" class="download-btn">
-                  🔗 下載完整分析包 (含所有圖表)
-                </a>
-                <p style="color: white; margin-top: 15px; font-size: 14px; opacity: 0.9;">
-                  包含: Excel 報表 • HTML 互動圖表 • PNG 靜態圖表
-                </p>
-              </div>
-              
               <div class="info-box">
                 <h3 style="color: #667eea; margin-top: 0;">📎 郵件附件</h3>
                 <ul style="margin: 10px 0;">
@@ -362,7 +351,7 @@ jobs:
       - name: Clean old releases (keep last 30 days)
         uses: dev-drprasad/delete-older-releases@v0.3.2
         with:
-          keep_latest: 30
+          keep_latest: 7
           delete_tags: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
