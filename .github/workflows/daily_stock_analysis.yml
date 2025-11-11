@@ -327,13 +327,11 @@ jobs:
           cp -f ALL_TSE.html StockInfo/ 2>/dev/null || true
           cp -f ALL_OTC.html StockInfo/ 2>/dev/null || true
           
-          # 加入所有要提交的檔案
+          # 加入所有要提交的檔案 (不包含 History 資料夾)
           git add -A StockTSEDaily/*.csv \
                      StockTSEShares/*.csv \
                      StockOTCDaily/*.csv \
                      StockOTCShares/*.csv \
-                     StockTSEHistory/*.csv \
-                     StockOTCHistory/*.csv \
                      StockInfo/*.xlsx \
                      StockInfo/*.html 2>/dev/null || true
           
