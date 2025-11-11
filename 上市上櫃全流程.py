@@ -747,17 +747,19 @@ def format_date_short(date_str):
     
 # 【第二步-setup_config】
 # 從第二步程式複製 setup_config 函數 (需要修改路徑)
-def setup_config(market_type='TSE', base_path='.'):
+def setup_config(market_type='TSE'):
     """
-    設定所有路徑變數
+    設定所有路徑變數 (GitHub Actions 版本)
 
     Args:
         market_type: 'TSE' (上市) 或 'OTC' (上櫃)
-        base_path: 基礎路徑，默認為當前目錄
 
     Returns:
         dict: 包含所有路徑配置的字典
     """
+    # GitHub Actions 使用當前目錄
+    base_path = os.getcwd()
+
     if market_type == 'TSE':
         config = {
             'market_type': market_type,
@@ -767,9 +769,11 @@ def setup_config(market_type='TSE', base_path='.'):
             'history_folder': os.path.join(base_path, 'StockTSEHistory'),
             'market_list_filename': 'tse_company_list.csv',
             'output_filename': 'tse_analysis_result.xlsx',
-            'sigma_threshold': 2.5,  # 標準差閾值
-            'aggregate_threshold': 10000,  # 彙整分析的買賣超張數閾值
-            'show_top_n': None  # 不使用排名模式
+            'sigma_threshold': 2.5,
+            'aggregate_threshold': 10000,
+            'show_top_n': None,
+            'top_buy_count': 50,   # 買超前50名
+            'top_sell_count': 20   # 賣超前20名
         }
     else:  # OTC
         config = {
@@ -781,8 +785,10 @@ def setup_config(market_type='TSE', base_path='.'):
             'market_list_filename': 'otc_company_list.csv',
             'output_filename': 'otc_analysis_result.xlsx',
             'sigma_threshold': 2.5,
-            'aggregate_threshold': None,  # OTC不使用閾值
-            'show_top_n': 50  # OTC直接顯示前50名
+            'aggregate_threshold': None,
+            'show_top_n': 50,
+            'top_buy_count': 50,   # 買超前50名
+            'top_sell_count': 20   # 賣超前20名
         }
 
     # 建立完整路徑
@@ -801,6 +807,8 @@ def setup_config(market_type='TSE', base_path='.'):
     print(f"歷史數據資料夾: {config['history_folder']}")
     print(f"股票清單檔案: {config['market_list_path']}")
     print(f"輸出Excel檔案: {config['output_path']}")
+    print(f"買超分析數量: 前 {config['top_buy_count']} 名")
+    print(f"賣超分析數量: 前 {config['top_sell_count']} 名")
     if config['show_top_n'] is not None:
         print(f"彙整分析模式: 顯示前 {config['show_top_n']} 名")
     else:
@@ -970,9 +978,13 @@ def get_latest_files(folder_path, num_files=61):
 # 【第二步-process_shares_files】
 # 從第二步程式複製 process_shares_files 函數
 def process_shares_files(latest_files, allowed_stock_codes, stock_daily_prices,
-                         stock_sector_map, etf_stock_codes):
+                         stock_sector_map, etf_stock_codes, top_buy_count=50, top_sell_count=20):
     """
     處理三大法人買賣超檔案
+
+    Args:
+        top_buy_count: 買超顯示前N名 (預設50)
+        top_sell_count: 賣超顯示前N名 (預設20)
 
     Returns:
         tuple: (all_data, daily_buy_sell_data, etf_daily_data, buy_top20_tracker,
@@ -1040,11 +1052,9 @@ def process_shares_files(latest_files, allowed_stock_codes, stock_daily_prices,
                     print(f"檔案:{os.path.basename(file_path)}")
                     print(f"{'='*80}")
 
-                    display_count = 50
-
-                    # 買超處理
-                    buy_top = df[df['買賣超張數'] > 0].nlargest(display_count, '買賣超張數')
-                    print(f"\n【買超 TOP {display_count}】")
+                    # 買超處理 - 使用參數控制數量
+                    buy_top = df[df['買賣超張數'] > 0].nlargest(top_buy_count, '買賣超張數')
+                    print(f"\n【買超 TOP {top_buy_count}】")
                     print("-" * 80)
 
                     if len(buy_top) > 0:
@@ -1083,9 +1093,9 @@ def process_shares_files(latest_files, allowed_stock_codes, stock_daily_prices,
                         print("無買超資料")
                         daily_buy_stocks[file_date] = set()
 
-                    # 賣超處理
-                    sell_top = df[df['買賣超張數'] < 0].nsmallest(display_count, '買賣超張數')
-                    print(f"\n【賣超 TOP {display_count}】")
+                    # 賣超處理 - 使用參數控制數量
+                    sell_top = df[df['買賣超張數'] < 0].nsmallest(top_sell_count, '買賣超張數')
+                    print(f"\n【賣超 TOP {top_sell_count}】")
                     print("-" * 80)
 
                     if len(sell_top) > 0:
@@ -1241,21 +1251,25 @@ def calculate_stock_statistics(all_historical_data, sigma_threshold):
 # 從第二步程式複製 analyze_new_entries_and_observables 函數
 def analyze_new_entries_and_observables(latest_file, daily_buy_stocks, daily_sell_stocks,
                                         daily_all_stocks, stock_statistics, allowed_stock_codes,
-                                        sigma_threshold):
+                                        sigma_threshold, top_buy_count=50, top_sell_count=20):
     """
     找出最新一天的新進榜證券和值得觀察證券
 
+    Args:
+        top_buy_count: 買超分析前N名 (預設50)
+        top_sell_count: 賣超分析前N名 (預設20)
+
     Returns:
         tuple: (new_buy_stocks, new_sell_stocks, observable_buy_stocks, observable_sell_stocks,
-                latest_date, latest_buy_stocks_50, latest_sell_stocks_50)
+                latest_date, latest_buy_stocks_n, latest_sell_stocks_n)
     """
     sorted_dates = sorted(daily_buy_stocks.keys(), reverse=True)
     observable_buy_stocks = {}
     observable_sell_stocks = {}
     new_buy_stocks = set()
     new_sell_stocks = set()
-    latest_buy_stocks_50 = set()
-    latest_sell_stocks_50 = set()
+    latest_buy_stocks_n = set()
+    latest_sell_stocks_n = set()
     latest_date = None
 
     if len(sorted_dates) >= 2:
@@ -1276,11 +1290,12 @@ def analyze_new_entries_and_observables(latest_file, daily_buy_stocks, daily_sel
         )
         latest_df['買賣超張數'] = (latest_df['三大法人買賣超股數'] / 1000).fillna(0).astype(int)
 
-        buy_top50 = latest_df[latest_df['買賣超張數'] > 0].nlargest(50, '買賣超張數')
-        sell_top50 = latest_df[latest_df['買賣超張數'] < 0].nsmallest(50, '買賣超張數')
+        # 使用參數控制的數量
+        buy_top_n = latest_df[latest_df['買賣超張數'] > 0].nlargest(top_buy_count, '買賣超張數')
+        sell_top_n = latest_df[latest_df['買賣超張數'] < 0].nsmallest(top_sell_count, '買賣超張數')
 
-        latest_buy_stocks_50 = set(buy_top50['證券代號'].tolist())
-        latest_sell_stocks_50 = set(sell_top50['證券代號'].tolist())
+        latest_buy_stocks_n = set(buy_top_n['證券代號'].tolist())
+        latest_sell_stocks_n = set(sell_top_n['證券代號'].tolist())
 
         # 計算新進榜
         previous_buy_stocks = set()
@@ -1298,7 +1313,7 @@ def analyze_new_entries_and_observables(latest_file, daily_buy_stocks, daily_sel
         new_sell_stocks = latest_sell_stocks - previous_sell_stocks
 
         # 買超值得觀察
-        for stock_code in latest_buy_stocks_50:
+        for stock_code in latest_buy_stocks_n:
             reasons = []
             z_score = 0
             mean_val = 0
@@ -1322,7 +1337,7 @@ def analyze_new_entries_and_observables(latest_file, daily_buy_stocks, daily_sel
                 observable_buy_stocks[stock_code] = ('+'.join(reasons), z_score, mean_val, std_val)
 
         # 賣超值得觀察
-        for stock_code in latest_sell_stocks_50:
+        for stock_code in latest_sell_stocks_n:
             reasons = []
             z_score = 0
             mean_val = 0
@@ -1355,34 +1370,42 @@ def analyze_new_entries_and_observables(latest_file, daily_buy_stocks, daily_sel
         print(f"賣超前20新進榜: {len(new_sell_stocks)} 檔")
         if new_sell_stocks:
             print(f"  證券代號: {', '.join(sorted(new_sell_stocks))}")
-        print(f"\n買超前50值得觀察: {len(observable_buy_stocks)} 檔")
+        print(f"\n買超前{top_buy_count}值得觀察: {len(observable_buy_stocks)} 檔")
         if observable_buy_stocks:
             for code, (reason, z, mean_val, std_val) in sorted(observable_buy_stocks.items()):
                 print(f"  {code}: {reason}")
-        print(f"賣超前50值得觀察: {len(observable_sell_stocks)} 檔")
+        print(f"賣超前{top_sell_count}值得觀察: {len(observable_sell_stocks)} 檔")
         if observable_sell_stocks:
             for code, (reason, z, mean_val, std_val) in sorted(observable_sell_stocks.items()):
                 print(f"  {code}: {reason}")
 
     return (new_buy_stocks, new_sell_stocks, observable_buy_stocks, observable_sell_stocks,
-            latest_date, latest_buy_stocks_50, latest_sell_stocks_50)
+            latest_date, latest_buy_stocks_n, latest_sell_stocks_n)
 
 
 # 【第二步-collect_stock_history】
 # 從第二步程式複製 collect_stock_history 函數
-def collect_stock_history(latest_buy_stocks_50, folder_path, stock_daily_folder,
+def collect_stock_history(latest_buy_stocks_n, latest_sell_stocks_n, folder_path, stock_daily_folder,
                           history_folder, allowed_stock_codes):
-    """收集買超前50檔股票的歷史數據"""
+    """收集買超前N檔和賣超前N檔股票的歷史數據"""
     print(f"\n{'='*80}")
-    print("開始收集買超前50檔股票的歷史數據...")
+    print(f"開始收集買超前{len(latest_buy_stocks_n)}檔 + 賣超前{len(latest_sell_stocks_n)}檔股票的歷史數據...")
     print(f"{'='*80}")
 
-    if len(latest_buy_stocks_50) == 0:
-        print("沒有買超前50的股票需要收集歷史數據")
+    # 合併買超和賣超的股票代碼
+    all_target_stocks = latest_buy_stocks_n.union(latest_sell_stocks_n)
+    
+    if len(all_target_stocks) == 0:
+        print(f"沒有股票需要收集歷史數據")
         return
 
+    print(f"總共需要收集 {len(all_target_stocks)} 檔股票的歷史數據")
+    print(f"  - 買超: {len(latest_buy_stocks_n)} 檔")
+    print(f"  - 賣超: {len(latest_sell_stocks_n)} 檔")
+    print(f"  - 重複: {len(latest_buy_stocks_n & latest_sell_stocks_n)} 檔")
+
     stock_history_data = {}
-    for stock_code in latest_buy_stocks_50:
+    for stock_code in all_target_stocks:
         stock_history_data[stock_code] = {}
 
     # 從 StockTSEShares 讀取
@@ -1411,7 +1434,7 @@ def collect_stock_history(latest_buy_stocks_50, folder_path, stock_daily_folder,
 
             file_date = os.path.basename(file_path).replace('.csv', '')
 
-            for stock_code in latest_buy_stocks_50:
+            for stock_code in all_target_stocks:
                 stock_data = df[df['證券代號'] == stock_code]
                 if len(stock_data) > 0:
                     row = stock_data.iloc[0]
@@ -1449,7 +1472,7 @@ def collect_stock_history(latest_buy_stocks_50, folder_path, stock_daily_folder,
         daily_files_2025 = sorted(daily_files_2025, key=lambda x: os.path.basename(x).replace('.csv', ''), reverse=True)
         print(f"找到 {len(daily_files_2025)} 個 StockTSEDaily 檔案(2025-01-01 之後)")
 
-        stock_data_count = {code: 0 for code in latest_buy_stocks_50}
+        stock_data_count = {code: 0 for code in all_target_stocks}
         daily_processed = 0
 
         for daily_file in daily_files_2025:
@@ -1468,7 +1491,7 @@ def collect_stock_history(latest_buy_stocks_50, folder_path, stock_daily_folder,
                 if allowed_stock_codes is not None:
                     df_daily = df_daily[df_daily['證券代號'].isin(allowed_stock_codes)]
 
-                for stock_code in latest_buy_stocks_50:
+                for stock_code in all_target_stocks:
                     stock_data = df_daily[df_daily['證券代號'] == stock_code]
 
                     if len(stock_data) > 0:
@@ -1500,7 +1523,7 @@ def collect_stock_history(latest_buy_stocks_50, folder_path, stock_daily_folder,
         print(f"成功處理 {daily_processed} 個 StockTSEDaily 檔案")
 
         print(f"\n資料統計(前5檔股票):")
-        for i, code in enumerate(list(latest_buy_stocks_50)[:5]):
+        for i, code in enumerate(list(all_target_stocks)[:5]):
             shares_count = len([d for d in stock_history_data[code].keys()])
             daily_count = stock_data_count[code]
             print(f"  {code}: 總共 {shares_count} 天資料,其中 {daily_count} 天有價格資料")
@@ -1973,12 +1996,12 @@ def beautify_excel(output_path):
     wb.save(output_path)
 
 def run_step2_analysis(base_dir, market_type):
-    """執行第二步：分析程式"""
+    """執行第二步：分析程式 (GitHub Actions 版本)"""
     print(f"\n{'🔥'*40}")
     print(f"第二步分析：{market_type} ({'上市' if market_type == 'TSE' else '上櫃'})")
     print(f"{'🔥'*40}\n")
 
-    # 設定配置
+    # 設定配置 (使用當前目錄，不使用 Google Drive)
     config = setup_config(market_type=market_type)
 
     # 讀取股票清單
@@ -1994,8 +2017,13 @@ def run_step2_analysis(base_dir, market_type):
     (all_data, daily_buy_sell_data, etf_daily_data, buy_top20_tracker,
      sell_top20_tracker, daily_buy_stocks, daily_sell_stocks,
      daily_all_stocks, all_historical_data, statistics) = process_shares_files(
-        latest_61_files, allowed_stock_codes, stock_daily_prices,
-        stock_sector_map, etf_stock_codes
+        latest_61_files, 
+        allowed_stock_codes, 
+        stock_daily_prices,
+        stock_sector_map, 
+        etf_stock_codes,
+        top_buy_count=config['top_buy_count'],
+        top_sell_count=config['top_sell_count']
     )
 
     # 計算標準差
@@ -2003,16 +2031,18 @@ def run_step2_analysis(base_dir, market_type):
 
     # 分析新進榜與值得觀察
     (new_buy_stocks, new_sell_stocks, observable_buy_stocks, observable_sell_stocks,
-     latest_date, latest_buy_stocks_50, latest_sell_stocks_50) = analyze_new_entries_and_observables(
+     latest_date, latest_buy_stocks_n, latest_sell_stocks_n) = analyze_new_entries_and_observables(
         latest_61_files[0], daily_buy_stocks, daily_sell_stocks,
         daily_all_stocks, stock_statistics, allowed_stock_codes,
-        config['sigma_threshold']
+        config['sigma_threshold'],
+        top_buy_count=config['top_buy_count'],
+        top_sell_count=config['top_sell_count']
     )
 
     # 收集歷史數據
-    collect_stock_history(latest_buy_stocks_50, config['folder_path'],
-                          config['stock_daily_folder'], config['history_folder'],
-                          allowed_stock_codes)
+    collect_stock_history(latest_buy_stocks_n, latest_sell_stocks_n, config['folder_path'],
+                      config['stock_daily_folder'], config['history_folder'],
+                      allowed_stock_codes)
 
     # 彙整分析
     buy_stocks, sell_stocks, both_stocks_set, both_stocks_df = aggregate_analysis(
@@ -2034,42 +2064,60 @@ def run_step2_analysis(base_dir, market_type):
         print(f"\n✓ {market_type} 分析完成")
         print(f"✓ Excel 已儲存: {config['output_path']}")
 
-    # ========== 新增：儲存買超排名順序 ==========
-    if latest_date and latest_buy_stocks_50:
+    # ========== 儲存買超排名順序 ==========
+    # ========== 儲存買超+賣超排名順序 ==========
+    if latest_date and latest_buy_stocks_n:
         try:
             # 讀取最新一天的資料來取得完整排名
             latest_file = latest_61_files[0]
             latest_df = pd.read_csv(latest_file, encoding='utf-8')
-            
+
             if '證券代號' in latest_df.columns:
                 latest_df['證券代號'] = latest_df['證券代號'].apply(normalize_stock_code)
-            
+
             if allowed_stock_codes is not None:
                 latest_df = latest_df[latest_df['證券代號'].isin(allowed_stock_codes)]
-            
+
             latest_df['三大法人買賣超股數'] = pd.to_numeric(
                 latest_df['三大法人買賣超股數'].astype(str).str.replace(',', ''),
                 errors='coerce'
             )
             latest_df['買賣超張數'] = (latest_df['三大法人買賣超股數'] / 1000).fillna(0).astype(int)
+
+            # 取得買超前N和賣超前N的排名順序
+            top_buy_count = config.get('top_buy_count', 50)
+            top_sell_count = config.get('top_sell_count', 20)
             
-            # 取得買超前50的排名順序
-            buy_top50 = latest_df[latest_df['買賣超張數'] > 0].nlargest(50, '買賣超張數')
-            buy_ranking = buy_top50['證券代號'].tolist()
+            buy_top = latest_df[latest_df['買賣超張數'] > 0].nlargest(top_buy_count, '買賣超張數')
+            sell_top = latest_df[latest_df['買賣超張數'] < 0].nsmallest(top_sell_count, '買賣超張數')
             
-            # 儲存排名到檔案
+            buy_ranking = buy_top['證券代號'].tolist()
+            sell_ranking = sell_top['證券代號'].tolist()
+
+            # 儲存排名到檔案（買超+賣超）
             ranking_file = os.path.join(config['output_folder'], f'{market_type}_buy_ranking.txt')
             with open(ranking_file, 'w', encoding='utf-8') as f:
-                f.write(f"# {market_type} 買超排名 - {latest_date}\n")
+                f.write(f"# {market_type} - {latest_date}\n")
+                
+                # 寫入買超前N名
                 for rank, code in enumerate(buy_ranking, 1):
                     stock_name = latest_df[latest_df['證券代號'] == code]['證券名稱'].iloc[0] if len(latest_df[latest_df['證券代號'] == code]) > 0 else ''
                     buy_amount = latest_df[latest_df['證券代號'] == code]['買賣超張數'].iloc[0] if len(latest_df[latest_df['證券代號'] == code]) > 0 else 0
                     f.write(f"{rank},{code},{stock_name},{buy_amount}\n")
-            
-            print(f"\n✓ 買超排名已儲存: {ranking_file}")
-            print(f"  前10名: {', '.join(buy_ranking[:10])}")
+                
+                # 寫入賣超前N名
+                for rank, code in enumerate(sell_ranking, top_buy_count + 1):
+                    stock_name = latest_df[latest_df['證券代號'] == code]['證券名稱'].iloc[0] if len(latest_df[latest_df['證券代號'] == code]) > 0 else ''
+                    sell_amount = latest_df[latest_df['證券代號'] == code]['買賣超張數'].iloc[0] if len(latest_df[latest_df['證券代號'] == code]) > 0 else 0
+                    f.write(f"{rank},{code},{stock_name},{sell_amount}\n")
+
+            print(f"\n✓ 排名已儲存: {ranking_file}")
+            print(f"  買超前{top_buy_count}名 + 賣超前{top_sell_count}名 = 共{top_buy_count + top_sell_count}筆")
+            print(f"  買超前10名: {', '.join(buy_ranking[:10])}")
+            print(f"  賣超前5名: {', '.join(sell_ranking[:5])}")
         except Exception as e:
-            print(f"\n⚠ 儲存買超排名時發生錯誤: {e}")
+            print(f"\n⚠ 儲存排名時發生錯誤: {e}")
+
 
 # ============================================================================
 # 第三步：圖表生成的所有類別和函數
