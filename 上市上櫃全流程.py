@@ -1977,19 +1977,19 @@ def run_step2_analysis(base_dir, market_type):
     print(f"\n{'🔥'*40}")
     print(f"第二步分析：{market_type} ({'上市' if market_type == 'TSE' else '上櫃'})")
     print(f"{'🔥'*40}\n")
-    
+
     # 設定配置
-    config = setup_config(base_path=base_dir, market_type=market_type)
-    
+    config = setup_config(market_type=market_type)
+
     # 讀取股票清單
     allowed_stock_codes, stock_sector_map, etf_stock_codes = load_stock_list(config['market_list_path'])
-    
+
     # 讀取價格資料
     stock_daily_prices = load_stock_daily_prices(config['stock_daily_folder'], allowed_stock_codes)
-    
+
     # 取得最新檔案
     latest_61_files = get_latest_files(config['folder_path'], num_files=61)
-    
+
     # 處理三大法人數據
     (all_data, daily_buy_sell_data, etf_daily_data, buy_top20_tracker,
      sell_top20_tracker, daily_buy_stocks, daily_sell_stocks,
@@ -1997,10 +1997,10 @@ def run_step2_analysis(base_dir, market_type):
         latest_61_files, allowed_stock_codes, stock_daily_prices,
         stock_sector_map, etf_stock_codes
     )
-    
+
     # 計算標準差
     stock_statistics = calculate_stock_statistics(all_historical_data, config['sigma_threshold'])
-    
+
     # 分析新進榜與值得觀察
     (new_buy_stocks, new_sell_stocks, observable_buy_stocks, observable_sell_stocks,
      latest_date, latest_buy_stocks_50, latest_sell_stocks_50) = analyze_new_entries_and_observables(
@@ -2008,31 +2008,68 @@ def run_step2_analysis(base_dir, market_type):
         daily_all_stocks, stock_statistics, allowed_stock_codes,
         config['sigma_threshold']
     )
-    
+
     # 收集歷史數據
     collect_stock_history(latest_buy_stocks_50, config['folder_path'],
                           config['stock_daily_folder'], config['history_folder'],
                           allowed_stock_codes)
-    
+
     # 彙整分析
     buy_stocks, sell_stocks, both_stocks_set, both_stocks_df = aggregate_analysis(
         buy_top20_tracker, sell_top20_tracker, stock_sector_map,
         aggregate_threshold=config.get('aggregate_threshold', 10000),
         show_top_n=config.get('show_top_n', None)
     )
-    
+
     # 輸出 Excel
     if buy_stocks is not None and sell_stocks is not None:
         export_to_excel(config['output_path'], buy_stocks, sell_stocks, both_stocks_set,
                        both_stocks_df, daily_buy_sell_data, etf_daily_data, latest_date,
                        new_buy_stocks, new_sell_stocks, observable_buy_stocks,
                        observable_sell_stocks, stock_sector_map, etf_stock_codes)
-        
+
         # 美化 Excel
         beautify_excel(config['output_path'])
-        
+
         print(f"\n✓ {market_type} 分析完成")
         print(f"✓ Excel 已儲存: {config['output_path']}")
+
+    # ========== 新增：儲存買超排名順序 ==========
+    if latest_date and latest_buy_stocks_50:
+        try:
+            # 讀取最新一天的資料來取得完整排名
+            latest_file = latest_61_files[0]
+            latest_df = pd.read_csv(latest_file, encoding='utf-8')
+            
+            if '證券代號' in latest_df.columns:
+                latest_df['證券代號'] = latest_df['證券代號'].apply(normalize_stock_code)
+            
+            if allowed_stock_codes is not None:
+                latest_df = latest_df[latest_df['證券代號'].isin(allowed_stock_codes)]
+            
+            latest_df['三大法人買賣超股數'] = pd.to_numeric(
+                latest_df['三大法人買賣超股數'].astype(str).str.replace(',', ''),
+                errors='coerce'
+            )
+            latest_df['買賣超張數'] = (latest_df['三大法人買賣超股數'] / 1000).fillna(0).astype(int)
+            
+            # 取得買超前50的排名順序
+            buy_top50 = latest_df[latest_df['買賣超張數'] > 0].nlargest(50, '買賣超張數')
+            buy_ranking = buy_top50['證券代號'].tolist()
+            
+            # 儲存排名到檔案
+            ranking_file = os.path.join(config['output_folder'], f'{market_type}_buy_ranking.txt')
+            with open(ranking_file, 'w', encoding='utf-8') as f:
+                f.write(f"# {market_type} 買超排名 - {latest_date}\n")
+                for rank, code in enumerate(buy_ranking, 1):
+                    stock_name = latest_df[latest_df['證券代號'] == code]['證券名稱'].iloc[0] if len(latest_df[latest_df['證券代號'] == code]) > 0 else ''
+                    buy_amount = latest_df[latest_df['證券代號'] == code]['買賣超張數'].iloc[0] if len(latest_df[latest_df['證券代號'] == code]) > 0 else 0
+                    f.write(f"{rank},{code},{stock_name},{buy_amount}\n")
+            
+            print(f"\n✓ 買超排名已儲存: {ranking_file}")
+            print(f"  前10名: {', '.join(buy_ranking[:10])}")
+        except Exception as e:
+            print(f"\n⚠ 儲存買超排名時發生錯誤: {e}")
 
 # ============================================================================
 # 第三步：圖表生成的所有類別和函數
@@ -2767,23 +2804,56 @@ class Processor:
             return None
 
     @staticmethod
-    def batch_process_all_stocks(base_path, config):
-        """批次處理所有股票 - 同時生成個別HTML和合併HTML"""
+    def batch_process_all_stocks(base_dir, config):
+        """批次處理所有股票 - 按照買超排名順序生成"""
 
         print("\n" + "="*70)
         print(f"批次處理模式 - {config['market_name']}")
-        print(f"輸出方式: 個別HTML + 合併HTML")
+        print(f"輸出方式: 個別HTML + 合併HTML (按買超排名排序)")
         print(f"覆蓋模式: {'覆蓋已存在檔案' if Config.OVERWRITE_EXISTING else '跳過已存在檔案'}")
         print("="*70)
 
-        print("\n⏳ 掃描歷史資料夾...")
-        stock_codes = Utils.get_all_stock_codes_from_history(config['history_folder'])
+        # 讀取買超排名順序
+        ranking_file = os.path.join(config['merged_output_folder'], f"{config['market_type']}_buy_ranking.txt")
+        ranked_stocks = []
+        
+        if os.path.exists(ranking_file):
+            print(f"\n✓ 找到買超排名檔案: {os.path.basename(ranking_file)}")
+            with open(ranking_file, 'r', encoding='utf-8') as f:
+                lines = f.readlines()
+                for line in lines[1:]:  # 跳過標題行
+                    parts = line.strip().split(',')
+                    if len(parts) >= 2:
+                        ranked_stocks.append(parts[1])  # 證券代號
+            print(f"  已載入 {len(ranked_stocks)} 支排名股票")
+            if len(ranked_stocks) > 0:
+                print(f"  前10名: {', '.join(ranked_stocks[:10])}")
+        else:
+            print(f"\n⚠ 找不到買超排名檔案: {ranking_file}")
+            print("  將使用預設順序處理")
 
-        if not stock_codes:
+        # 取得所有股票代碼
+        print("\n⏳ 掃描歷史資料夾...")
+        all_stocks = Utils.get_all_stock_codes_from_history(config['history_folder'])
+
+        if not all_stocks:
             print("❌ 無法取得股票清單")
             return
 
-        print(f"✓ 找到 {len(stock_codes)} 支股票")
+        # 將股票分為兩組：有排名的 + 其他的
+        if ranked_stocks:
+            # 確保排名中的股票都存在於歷史資料中
+            ranked_stocks = [s for s in ranked_stocks if s in all_stocks]
+            # 其他未排名的股票（按代碼排序）
+            other_stocks = sorted([s for s in all_stocks if s not in ranked_stocks])
+            # 合併：先排名的，後其他的
+            stock_codes = ranked_stocks + other_stocks
+            print(f"\n✓ 股票處理順序:")
+            print(f"  - 買超排名股票: {len(ranked_stocks)} 支 (優先處理)")
+            print(f"  - 其他股票: {len(other_stocks)} 支")
+        else:
+            stock_codes = sorted(all_stocks)
+            print(f"\n✓ 找到 {len(stock_codes)} 支股票 (按代碼排序)")
 
         start_time = datetime.now()
 
@@ -2794,13 +2864,20 @@ class Processor:
 
         for idx, stock_code in enumerate(stock_codes, 1):
             print(f"\n{'='*70}")
-            print(f"進度: [{idx}/{len(stock_codes)}] ({idx/len(stock_codes)*100:.1f}%)")
+            
+            # 顯示是否為排名股票
+            if ranked_stocks and stock_code in ranked_stocks:
+                rank = ranked_stocks.index(stock_code) + 1
+                print(f"進度: [{idx}/{len(stock_codes)}] 📊 買超排名 #{rank}")
+            else:
+                print(f"進度: [{idx}/{len(stock_codes)}] ({idx/len(stock_codes)*100:.1f}%)")
+            
             print(f"{'='*70}")
 
             html_string = Processor.process_stock(
-                stock_code, 
-                base_path, 
-                config, 
+                stock_code,
+                base_dir,  # 修改：改用 base_dir
+                config,
                 save_individual=True  # 同時儲存個別檔案
             )
 
@@ -2818,7 +2895,7 @@ class Processor:
             print(f"\n{'='*70}")
             print("⏳ 生成合併HTML...")
             print(f"{'='*70}")
-            
+
             all_charts_html = '\n'.join(merged_html_parts)
 
             # 包裝成完整的 HTML

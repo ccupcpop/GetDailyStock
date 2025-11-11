@@ -177,15 +177,19 @@ jobs:
           def send_email():
               sender_email = os.environ.get('GMAIL_USER')
               sender_password = os.environ.get('GMAIL_PASSWORD')
-              recipient_email = os.environ.get('RECIPIENT_EMAIL')
+              recipient_email_primary = os.environ.get('RECIPIENT_EMAIL')
               release_url = os.environ.get('RELEASE_URL')
               date_str = os.environ.get('DATE')
               datetime_str = os.environ.get('DATETIME')
               
+              # 多個收件人
+              recipient_emails = [recipient_email_primary, 'i07250717@gmail.com']
+              recipients_str = ', '.join(recipient_emails)
+              
               # 創建郵件
               msg = MIMEMultipart()
               msg['From'] = sender_email
-              msg['To'] = recipient_email
+              msg['To'] = recipients_str
               msg['Subject'] = f'📊 台股分析報告 {datetime_str}'
               
               # 郵件內容
@@ -299,7 +303,7 @@ jobs:
                   server.login(sender_email, sender_password)
                   server.send_message(msg)
                   server.quit()
-                  print(f'✅ 郵件已成功發送到: {recipient_email}')
+                  print(f'✅ 郵件已成功發送到: {recipients_str}')
               except Exception as e:
                   print(f'❌ 郵件發送失敗: {str(e)}')
                   raise
