@@ -331,13 +331,18 @@ jobs:
           cp -f ALL_TSE.html StockInfo/ 2>/dev/null || true
           cp -f ALL_OTC.html StockInfo/ 2>/dev/null || true
           
+          # 複製排行榜檔案到 StockInfo 資料夾
+          cp -f TSE_buy_ranking.txt StockInfo/ 2>/dev/null || true
+          cp -f OTC_buy_ranking.txt StockInfo/ 2>/dev/null || true
+          
           # 加入所有要提交的檔案 (不包含 History 資料夾)
           git add -A StockTSEDaily/*.csv \
                      StockTSEShares/*.csv \
                      StockOTCDaily/*.csv \
                      StockOTCShares/*.csv \
                      StockInfo/*.xlsx \
-                     StockInfo/*.html 2>/dev/null || true
+                     StockInfo/*.html \
+                     StockInfo/*.txt 2>/dev/null || true
           
           if git diff --staged --quiet; then
             echo "❌ 沒有資料變更"
@@ -348,6 +353,7 @@ jobs:
             echo "   - CSV 原始資料已更新"
             echo "   - Excel 分析報表已更新 (StockInfo/)"
             echo "   - HTML 彙整圖表已更新 (StockInfo/)"
+            echo "   - 排行榜檔案已更新 (StockInfo/)"
           fi
       
       - name: Clean old releases (keep last 30 days)
