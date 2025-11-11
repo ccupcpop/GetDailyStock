@@ -35,7 +35,7 @@ jobs:
       
       - name: Ensure data directories exist
         run: |
-          mkdir -p StockHTML StockOTCHTML
+          mkdir -p StockTSEHTML StockOTCHTML
       
       - name: Run stock analysis
         env:
