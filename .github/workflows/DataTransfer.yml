@@ -1,0 +1,92 @@
+name: Transfer Data to StockTracker
+
+on:
+  schedule:
+    # 每天台北時間下午6點執行 (UTC+8 = 18:00, UTC = 10:00)
+    - cron: '0 10 * * *'  # 每天執行
+  workflow_dispatch:  # 允許手動觸發
+  push:
+    paths:
+      - 'TSE_buy_ranking.txt'
+      - 'OTC_buy_ranking.txt'
+
+jobs:
+  transfer-data:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout GetDailyStock repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+      
+      - name: Check if data files exist
+        run: |
+          echo "Checking for data files..."
+          ls -la
+          if [ -f "TSE_buy_ranking.txt" ]; then
+            echo "✅ TSE_buy_ranking.txt found"
+          else
+            echo "❌ TSE_buy_ranking.txt not found"
+          fi
+          if [ -f "OTC_buy_ranking.txt" ]; then
+            echo "✅ OTC_buy_ranking.txt found"
+          else
+            echo "❌ OTC_buy_ranking.txt not found"
+          fi
+      
+      - name: Checkout StockTracker repository
+        uses: actions/checkout@v3
+        with:
+          repository: ccupcpop/StockTracker
+          token: ${{ secrets.PAT_TOKEN }}
+          path: stocktracker
+          fetch-depth: 1
+      
+      - name: Create StockInfo folder if not exists
+        run: |
+          mkdir -p stocktracker/StockInfo
+          echo "StockInfo folder ready"
+      
+      - name: Copy data files to StockTracker
+        run: |
+          echo "Copying files to StockTracker/StockInfo..."
+          if [ -f "TSE_buy_ranking.txt" ]; then
+            cp TSE_buy_ranking.txt stocktracker/StockInfo/
+            echo "✅ Copied TSE_buy_ranking.txt"
+          fi
+          if [ -f "OTC_buy_ranking.txt" ]; then
+            cp OTC_buy_ranking.txt stocktracker/StockInfo/
+            echo "✅ Copied OTC_buy_ranking.txt"
+          fi
+          ls -la stocktracker/StockInfo/
+      
+      - name: Commit and push to StockTracker
+        run: |
+          cd stocktracker
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add StockInfo/*.txt
+          
+          # 生成台北時間的時間戳
+          TAIPEI_TIME=$(TZ='Asia/Taipei' date +'%Y-%m-%d %H:%M:%S')
+          
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "📊 Update stock data - ${TAIPEI_TIME}"
+            git push
+            echo "✅ Successfully pushed to StockTracker"
+          fi
+      
+      - name: Summary
+        if: always()
+        run: |
+          echo "================================"
+          echo "📋 Transfer Summary"
+          echo "================================"
+          echo "Source: GetDailyStock"
+          echo "Target: StockTracker/StockInfo"
+          echo "Files: TSE_buy_ranking.txt, OTC_buy_ranking.txt"
+          echo "Time: $(TZ='Asia/Taipei' date +'%Y-%m-%d %H:%M:%S') (Taipei)"
+          echo "================================"
