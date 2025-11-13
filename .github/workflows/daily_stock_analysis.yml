@@ -35,7 +35,7 @@ jobs:
       
       - name: Ensure data directories exist
         run: |
-          mkdir -p StockTSEHTML StockOTCHTML
+          mkdir -p StockTSEHTML StockOTCHTML StockInfo
       
       - name: Run stock analysis
         env:
@@ -49,6 +49,68 @@ jobs:
             echo "🚀 完整流程模式"
             python 上市上櫃全流程.py --copy-to-repo
           fi
+      
+      - name: Copy files to StockInfo directory
+        run: |
+          echo "📦 複製檔案到 StockInfo 資料夾..."
+          
+          # 確保目錄存在
+          mkdir -p StockInfo
+          
+          # 複製 Excel 分析報表
+          if [ -f "tse_analysis_result.xlsx" ]; then
+            cp -f tse_analysis_result.xlsx StockInfo/
+            touch StockInfo/tse_analysis_result.xlsx
+            echo "✅ 已複製: tse_analysis_result.xlsx"
+          else
+            echo "⚠️  找不到: tse_analysis_result.xlsx"
+          fi
+          
+          if [ -f "otc_analysis_result.xlsx" ]; then
+            cp -f otc_analysis_result.xlsx StockInfo/
+            touch StockInfo/otc_analysis_result.xlsx
+            echo "✅ 已複製: otc_analysis_result.xlsx"
+          else
+            echo "⚠️  找不到: otc_analysis_result.xlsx"
+          fi
+          
+          # 複製 HTML 彙整檔案
+          if [ -f "ALL_TSE.html" ]; then
+            cp -f ALL_TSE.html StockInfo/
+            touch StockInfo/ALL_TSE.html
+            echo "✅ 已複製: ALL_TSE.html"
+          else
+            echo "⚠️  找不到: ALL_TSE.html"
+          fi
+          
+          if [ -f "ALL_OTC.html" ]; then
+            cp -f ALL_OTC.html StockInfo/
+            touch StockInfo/ALL_OTC.html
+            echo "✅ 已複製: ALL_OTC.html"
+          else
+            echo "⚠️  找不到: ALL_OTC.html"
+          fi
+          
+          # 複製排行榜檔案
+          if [ -f "TSE_buy_ranking.txt" ]; then
+            cp -f TSE_buy_ranking.txt StockInfo/
+            touch StockInfo/TSE_buy_ranking.txt
+            echo "✅ 已複製: TSE_buy_ranking.txt"
+          else
+            echo "⚠️  找不到: TSE_buy_ranking.txt"
+          fi
+          
+          if [ -f "OTC_buy_ranking.txt" ]; then
+            cp -f OTC_buy_ranking.txt StockInfo/
+            touch StockInfo/OTC_buy_ranking.txt
+            echo "✅ 已複製: OTC_buy_ranking.txt"
+          else
+            echo "⚠️  找不到: OTC_buy_ranking.txt"
+          fi
+          
+          echo ""
+          echo "📋 StockInfo 資料夾內容:"
+          ls -lh StockInfo/
       
       - name: Package analysis results
         run: |
@@ -320,40 +382,58 @@ jobs:
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           
-          # 確保 StockInfo 資料夾存在
-          mkdir -p StockInfo
+          echo "📋 準備提交的檔案列表:"
+          echo ""
           
-          # 複製 Excel 分析報表到 StockInfo 資料夾
-          cp -f tse_analysis_result.xlsx StockInfo/ 2>/dev/null || true
-          cp -f otc_analysis_result.xlsx StockInfo/ 2>/dev/null || true
+          # 檢查檔案是否存在
+          echo "🔍 檢查 StockInfo 資料夾的檔案:"
+          ls -lh StockInfo/ || echo "⚠️  StockInfo 資料夾不存在"
+          echo ""
           
-          # 複製 HTML 彙整檔案到 StockInfo 資料夾
-          cp -f ALL_TSE.html StockInfo/ 2>/dev/null || true
-          cp -f ALL_OTC.html StockInfo/ 2>/dev/null || true
+          # 強制加入所有檔案（使用 --force 忽略 .gitignore）
+          echo "📦 加入檔案到 Git staging area..."
           
-          # 複製排行榜檔案到 StockInfo 資料夾
-          cp -f TSE_buy_ranking.txt StockInfo/ 2>/dev/null || true
-          cp -f OTC_buy_ranking.txt StockInfo/ 2>/dev/null || true
+          # 加入 CSV 原始資料
+          git add -f StockTSEDaily/*.csv 2>/dev/null || true
+          git add -f StockTSEShares/*.csv 2>/dev/null || true
+          git add -f StockOTCDaily/*.csv 2>/dev/null || true
+          git add -f StockOTCShares/*.csv 2>/dev/null || true
           
-          # 加入所有要提交的檔案 (不包含 History 資料夾)
-          git add -A StockTSEDaily/*.csv \
-                     StockTSEShares/*.csv \
-                     StockOTCDaily/*.csv \
-                     StockOTCShares/*.csv \
-                     StockInfo/*.xlsx \
-                     StockInfo/*.html \
-                     StockInfo/*.txt 2>/dev/null || true
+          # 加入 StockInfo 資料夾的所有檔案（強制加入）
+          git add -f StockInfo/*.xlsx 2>/dev/null || true
+          git add -f StockInfo/*.html 2>/dev/null || true
+          git add -f StockInfo/*.txt 2>/dev/null || true
           
+          echo ""
+          echo "📦 Git staging area 中的檔案:"
+          git diff --staged --name-status
+          echo ""
+          
+          # 檢查是否有變更
           if git diff --staged --quiet; then
-            echo "❌ 沒有資料變更"
+            echo "❌ 沒有檔案變更，跳過提交"
+            echo ""
+            echo "🔍 除錯資訊："
+            echo "StockInfo 目錄內容:"
+            ls -la StockInfo/ 2>/dev/null || echo "StockInfo 不存在"
+            echo ""
+            echo "Git 狀態:"
+            git status
           else
+            echo "✅ 發現檔案變更，準備提交..."
+            echo ""
+            
+            # 提交並推送
             git commit -m "📊 更新股票資料 $(TZ=Asia/Taipei date +'%Y-%m-%d %H:%M')"
             git push
+            
+            echo ""
             echo "✅ 成功推送資料到 repository"
-            echo "   - CSV 原始資料已更新"
-            echo "   - Excel 分析報表已更新 (StockInfo/)"
-            echo "   - HTML 彙整圖表已更新 (StockInfo/)"
-            echo "   - 排行榜檔案已更新 (StockInfo/)"
+            echo ""
+            echo "📂 已更新的檔案:"
+            git diff HEAD~1 --name-only | while read file; do
+              echo "   ✓ $file"
+            done
           fi
       
       - name: Clean old releases (keep last 30 days)
