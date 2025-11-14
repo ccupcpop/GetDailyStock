@@ -7,8 +7,8 @@ on:
   workflow_dispatch:  # 允許手動觸發
   push:
     paths:
-      - 'TSE_buy_ranking.txt'
-      - 'OTC_buy_ranking.txt'
+      - 'StockInfo/TSE_buy_ranking.txt'
+      - 'StockInfo/OTC_buy_ranking.txt'
 
 jobs:
   transfer-data:
@@ -23,13 +23,13 @@ jobs:
       - name: Check if data files exist
         run: |
           echo "Checking for data files..."
-          ls -la
-          if [ -f "TSE_buy_ranking.txt" ]; then
+          ls -la StockInfo/
+          if [ -f "StockInfo/TSE_buy_ranking.txt" ]; then
             echo "✅ TSE_buy_ranking.txt found"
           else
             echo "❌ TSE_buy_ranking.txt not found"
           fi
-          if [ -f "OTC_buy_ranking.txt" ]; then
+          if [ -f "StockInfo/OTC_buy_ranking.txt" ]; then
             echo "✅ OTC_buy_ranking.txt found"
           else
             echo "❌ OTC_buy_ranking.txt not found"
@@ -51,12 +51,12 @@ jobs:
       - name: Copy data files to StockTracker
         run: |
           echo "Copying files to StockTracker/StockInfo..."
-          if [ -f "TSE_buy_ranking.txt" ]; then
-            cp TSE_buy_ranking.txt stocktracker/StockInfo/
+          if [ -f "StockInfo/TSE_buy_ranking.txt" ]; then
+            cp StockInfo/TSE_buy_ranking.txt stocktracker/StockInfo/
             echo "✅ Copied TSE_buy_ranking.txt"
           fi
-          if [ -f "OTC_buy_ranking.txt" ]; then
-            cp OTC_buy_ranking.txt stocktracker/StockInfo/
+          if [ -f "StockInfo/OTC_buy_ranking.txt" ]; then
+            cp StockInfo/OTC_buy_ranking.txt stocktracker/StockInfo/
             echo "✅ Copied OTC_buy_ranking.txt"
           fi
           ls -la stocktracker/StockInfo/
@@ -85,7 +85,7 @@ jobs:
           echo "================================"
           echo "📋 Transfer Summary"
           echo "================================"
-          echo "Source: GetDailyStock"
+          echo "Source: GetDailyStock/StockInfo"
           echo "Target: StockTracker/StockInfo"
           echo "Files: TSE_buy_ranking.txt, OTC_buy_ranking.txt"
           echo "Time: $(TZ='Asia/Taipei' date +'%Y-%m-%d %H:%M:%S') (Taipei)"
