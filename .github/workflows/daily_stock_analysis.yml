@@ -402,6 +402,11 @@ jobs:
           echo "📋 準備提交的檔案列表:"
           echo ""
           
+          # 取得台灣時間日期
+          DATE=$(TZ=Asia/Taipei date +'%Y%m%d')
+          echo "📅 當前日期: ${DATE}"
+          echo ""
+          
           # 檢查檔案是否存在
           echo "🔍 檢查 StockInfo 資料夾的檔案:"
           ls -lh StockInfo/ || echo "⚠️  StockInfo 資料夾不存在"
@@ -416,14 +421,37 @@ jobs:
           git add -f StockOTCDaily/*.csv 2>/dev/null || true
           git add -f StockOTCShares/*.csv 2>/dev/null || true
           
-          # 加入 StockInfo 資料夾的所有檔案（強制加入）
-          git add -f StockInfo/*.xlsx 2>/dev/null || true
-          git add -f StockInfo/*.html 2>/dev/null || true
-          git add -f StockInfo/*.txt 2>/dev/null || true
+          # 加入 StockInfo 資料夾的所有檔案（包括帶日期的）
+          echo "📦 加入 StockInfo 資料夾的檔案..."
+          
+          # 不帶日期的檔案
+          git add -f StockInfo/tse_analysis_result.xlsx 2>/dev/null || true
+          git add -f StockInfo/otc_analysis_result.xlsx 2>/dev/null || true
+          git add -f StockInfo/ALL_TSE.html 2>/dev/null || true
+          git add -f StockInfo/ALL_OTC.html 2>/dev/null || true
+          git add -f StockInfo/TSE_buy_ranking.txt 2>/dev/null || true
+          git add -f StockInfo/OTC_buy_ranking.txt 2>/dev/null || true
+          
+          # 帶日期的檔案
+          git add -f StockInfo/tse_analysis_result_${DATE}.xlsx 2>/dev/null || true
+          git add -f StockInfo/otc_analysis_result_${DATE}.xlsx 2>/dev/null || true
+          git add -f StockInfo/ALL_TSE_${DATE}.html 2>/dev/null || true
+          git add -f StockInfo/ALL_OTC_${DATE}.html 2>/dev/null || true
+          
+          # 也加入所有可能的帶日期檔案（萬用字元）
+          git add -f StockInfo/*_[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9].xlsx 2>/dev/null || true
+          git add -f StockInfo/*_[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9].html 2>/dev/null || true
           
           echo ""
           echo "📦 Git staging area 中的檔案:"
           git diff --staged --name-status
+          echo ""
+          
+          echo "🔍 檢查特定帶日期檔案是否存在:"
+          [ -f "StockInfo/tse_analysis_result_${DATE}.xlsx" ] && echo "✅ tse_analysis_result_${DATE}.xlsx 存在" || echo "❌ tse_analysis_result_${DATE}.xlsx 不存在"
+          [ -f "StockInfo/otc_analysis_result_${DATE}.xlsx" ] && echo "✅ otc_analysis_result_${DATE}.xlsx 存在" || echo "❌ otc_analysis_result_${DATE}.xlsx 不存在"
+          [ -f "StockInfo/ALL_TSE_${DATE}.html" ] && echo "✅ ALL_TSE_${DATE}.html 存在" || echo "❌ ALL_TSE_${DATE}.html 不存在"
+          [ -f "StockInfo/ALL_OTC_${DATE}.html" ] && echo "✅ ALL_OTC_${DATE}.html 存在" || echo "❌ ALL_OTC_${DATE}.html 不存在"
           echo ""
           
           # 檢查是否有變更
