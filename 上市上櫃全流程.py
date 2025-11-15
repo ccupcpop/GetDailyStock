@@ -34,6 +34,95 @@ import argparse
 # 共用工具函數
 # ============================================================================
 
+def clean_excel_keep_second_sheet(input_file):
+    """
+    只保留 Excel 的第二個分頁（最近交易日），並以該分頁的日期重新命名檔案
+    
+    Args:
+        input_file: 輸入的 Excel 檔案路徑
+        
+    Returns:
+        新檔案路徑或 None (如果失敗)
+    """
+    
+    # 檢查檔案是否存在
+    if not os.path.exists(input_file):
+        print(f"  ❌ 檔案不存在: {input_file}")
+        return None
+    
+    try:
+        # 載入 Excel 檔案
+        wb = load_workbook(input_file)
+        sheet_names = wb.sheetnames
+        
+        print(f"  📋 原始分頁數: {len(sheet_names)}")
+        
+        # 檢查是否至少有 2 個分頁
+        if len(sheet_names) < 2:
+            print(f"  ⚠️  只有 {len(sheet_names)} 個分頁，跳過清理")
+            wb.close()
+            return None
+        
+        # 取得第二個分頁的名稱（這是要保留的）
+        second_sheet_name = sheet_names[1]
+        print(f"  ✓ 保留分頁: {second_sheet_name}")
+        
+        # 從分頁名稱提取日期 (假設格式為 YYYYMMDD)
+        match = re.search(r'(\d{8})', second_sheet_name)
+        if not match:
+            print(f"  ⚠️  無法從分頁名稱提取日期: {second_sheet_name}")
+            wb.close()
+            return None
+        
+        new_date_str = match.group(1)
+        print(f"  📅 提取日期: {new_date_str}")
+        
+        # 刪除其他所有分頁（除了第二個）
+        sheets_to_delete = [name for i, name in enumerate(sheet_names) if i != 1]
+        for sheet_name in sheets_to_delete:
+            wb.remove(wb[sheet_name])
+            print(f"  🗑️  已刪除分頁: {sheet_name}")
+        
+        # 生成新檔案名稱
+        dir_name = os.path.dirname(input_file)
+        base_name = os.path.basename(input_file)
+        
+        # 提取檔案前綴 (tse_analysis_result 或 otc_analysis_result)
+        if 'tse_analysis_result' in base_name.lower():
+            prefix = 'tse_analysis_result'
+        elif 'otc_analysis_result' in base_name.lower():
+            prefix = 'otc_analysis_result'
+        else:
+            # 使用原始檔案名去掉日期部分
+            prefix = re.sub(r'_\d{8}', '', base_name.replace('.xlsx', ''))
+        
+        new_file_name = f"{prefix}_{new_date_str}.xlsx"
+        new_file_path = os.path.join(dir_name, new_file_name)
+        
+        # 儲存新檔案
+        wb.save(new_file_path)
+        wb.close()
+        
+        file_size = os.path.getsize(new_file_path) / 1024  # KB
+        print(f"  ✅ 已生成: {new_file_name} ({file_size:.1f} KB)")
+        
+        # 如果新舊檔案名不同，刪除舊檔案
+        if new_file_path != input_file:
+            try:
+                os.remove(input_file)
+                print(f"  🗑️  已刪除舊檔: {base_name}")
+            except Exception as e:
+                print(f"  ⚠️  無法刪除舊檔: {e}")
+        
+        return new_file_path
+        
+    except Exception as e:
+        print(f"  ❌ 處理失敗: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
+
+
 def setup_base_directory():
     """
     設定基礎工作目錄
@@ -3189,6 +3278,33 @@ def main():
             print(f"⚠️  檔案不存在: {source_name}")
     
     print(f"\n✓ 共備份 {backup_count} 個檔案")
+    print("="*80 + "\n")
+    
+    # ========== 步驟 7.6：清理 Excel 分頁 ==========
+    print("\n" + "📝"*40)
+    print("步驟 7.6：清理 Excel 分頁（只保留最近交易日）")
+    print("📝"*40 + "\n")
+    
+    # 處理帶日期的 Excel 檔案
+    excel_files_to_clean = [
+        f'tse_analysis_result_{date_str}.xlsx',
+        f'otc_analysis_result_{date_str}.xlsx'
+    ]
+    
+    cleaned_count = 0
+    for excel_file in excel_files_to_clean:
+        excel_path = os.path.join(stock_info_dir, excel_file)
+        
+        if os.path.exists(excel_path):
+            print(f"處理檔案: {excel_file}")
+            result = clean_excel_keep_second_sheet(excel_path)
+            if result:
+                cleaned_count += 1
+                print()
+        else:
+            print(f"⊘ 檔案不存在: {excel_file}\n")
+    
+    print(f"✓ 共處理 {cleaned_count} 個 Excel 檔案")
     print("="*80 + "\n")
     
     # ========== 步驟 8：複製到 Repository ==========
