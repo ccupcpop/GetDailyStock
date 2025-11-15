@@ -3242,40 +3242,101 @@ def main():
     print("步驟 7.5：備份帶日期的分析檔案")
     print("📅"*40 + "\n")
     
-    # 取得台灣時間日期 (使用 UTC+8)
-    from datetime import timezone, timedelta as td
-    taiwan_tz = timezone(td(hours=8))
-    taiwan_time = datetime.now(taiwan_tz)
-    date_str = taiwan_time.strftime('%Y%m%d')
-    
-    print(f"📅 台灣時間: {taiwan_time.strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"📅 日期標籤: {date_str}\n")
-    
-    # 定義需要備份的檔案
-    files_to_backup = [
-        ('tse_analysis_result.xlsx', f'tse_analysis_result_{date_str}.xlsx'),
-        ('otc_analysis_result.xlsx', f'otc_analysis_result_{date_str}.xlsx'),
-        ('ALL_TSE.html', f'ALL_TSE_{date_str}.html'),
-        ('ALL_OTC.html', f'ALL_OTC_{date_str}.html'),
-    ]
     
     stock_info_dir = os.path.join(base_dir, 'StockInfo')
+    
+    # 先從 Excel 檔案提取日期
+    def extract_date_from_excel(excel_file_path):
+        """從 Excel 檔案的第二個分頁名稱提取日期"""
+        try:
+            wb = load_workbook(excel_file_path)
+            sheet_names = wb.sheetnames
+            if len(sheet_names) >= 2:
+                second_sheet_name = sheet_names[1]
+                match = re.search(r'(\d{8})', second_sheet_name)
+                wb.close()
+                if match:
+                    return match.group(1)
+            wb.close()
+        except Exception as e:
+            print(f"  ⚠️  提取日期失敗: {e}")
+        return None
+    
+    # 先備份 Excel 檔案並提取日期
+    tse_date_str = None
+    otc_date_str = None
+    
+    excel_files_to_backup = [
+        ('tse_analysis_result.xlsx', 'TSE'),
+        ('otc_analysis_result.xlsx', 'OTC'),
+    ]
+    
     backup_count = 0
     
-    for source_name, backup_name in files_to_backup:
+    for source_name, market_type in excel_files_to_backup:
         source_path = os.path.join(stock_info_dir, source_name)
-        backup_path = os.path.join(stock_info_dir, backup_name)
         
         if os.path.exists(source_path):
-            try:
-                shutil.copy2(source_path, backup_path)
-                file_size = os.path.getsize(backup_path) / 1024  # KB
-                print(f"✅ 已備份: {source_name} → {backup_name} ({file_size:.1f} KB)")
-                backup_count += 1
-            except Exception as e:
-                print(f"❌ 備份失敗: {source_name} - {e}")
+            # 提取日期
+            date_str = extract_date_from_excel(source_path)
+            
+            if date_str:
+                # 儲存日期供後續 HTML 使用
+                if market_type == 'TSE':
+                    tse_date_str = date_str
+                else:
+                    otc_date_str = date_str
+                
+                # 備份 Excel
+                backup_name = f'{source_name.replace(".xlsx", "")}_{date_str}.xlsx'
+                backup_path = os.path.join(stock_info_dir, backup_name)
+                
+                try:
+                    shutil.copy2(source_path, backup_path)
+                    file_size = os.path.getsize(backup_path) / 1024  # KB
+                    print(f"✅ 已備份: {source_name} → {backup_name} ({file_size:.1f} KB, 日期: {date_str})")
+                    backup_count += 1
+                except Exception as e:
+                    print(f"❌ 備份失敗: {source_name} - {e}")
+            else:
+                print(f"⚠️  無法從 {source_name} 提取日期,使用當前日期")
+                # 如果無法提取日期,使用台灣時間
+                from datetime import timezone, timedelta as td
+                taiwan_tz = timezone(td(hours=8))
+                taiwan_time = datetime.now(taiwan_tz)
+                date_str = taiwan_time.strftime('%Y%m%d')
+                
+                if market_type == 'TSE':
+                    tse_date_str = date_str
+                else:
+                    otc_date_str = date_str
         else:
-            print(f"⚠️  檔案不存在: {source_name}")
+            print(f"⚠️  Excel 檔案不存在: {source_name}")
+    
+    # 使用提取的日期備份 HTML
+    html_files_to_backup = [
+        ('ALL_TSE.html', tse_date_str),
+        ('ALL_OTC.html', otc_date_str),
+    ]
+    
+    for source_name, date_str in html_files_to_backup:
+        if date_str:
+            source_path = os.path.join(stock_info_dir, source_name)
+            backup_name = f'{source_name.replace(".html", "")}_{date_str}.html'
+            backup_path = os.path.join(stock_info_dir, backup_name)
+            
+            if os.path.exists(source_path):
+                try:
+                    shutil.copy2(source_path, backup_path)
+                    file_size = os.path.getsize(backup_path) / 1024  # KB
+                    print(f"✅ 已備份: {source_name} → {backup_name} ({file_size:.1f} KB, 日期: {date_str})")
+                    backup_count += 1
+                except Exception as e:
+                    print(f"❌ 備份失敗: {source_name} - {e}")
+            else:
+                print(f"⚠️  HTML 檔案不存在: {source_name}")
+        else:
+            print(f"⚠️  無法取得 {source_name} 的日期,跳過備份")
     
     print(f"\n✓ 共備份 {backup_count} 個檔案")
     print("="*80 + "\n")
@@ -3285,11 +3346,13 @@ def main():
     print("步驟 7.6：清理 Excel 分頁（只保留最近交易日）")
     print("📝"*40 + "\n")
     
-    # 處理帶日期的 Excel 檔案
-    excel_files_to_clean = [
-        f'tse_analysis_result_{date_str}.xlsx',
-        f'otc_analysis_result_{date_str}.xlsx'
-    ]
+    # 處理帶日期的 Excel 檔案 - 使用從 Excel 提取的日期
+    excel_files_to_clean = []
+    if tse_date_str:
+        excel_files_to_clean.append(f'tse_analysis_result_{tse_date_str}.xlsx')
+    if otc_date_str:
+        excel_files_to_clean.append(f'otc_analysis_result_{otc_date_str}.xlsx')
+
     
     cleaned_count = 0
     for excel_file in excel_files_to_clean:
