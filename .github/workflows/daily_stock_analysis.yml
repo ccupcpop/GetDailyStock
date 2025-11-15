@@ -57,19 +57,30 @@ jobs:
           # 確保目錄存在
           mkdir -p StockInfo
           
+          # 取得台灣時間日期 (格式: YYYYMMDD)
+          DATE=$(TZ=Asia/Taipei date +'%Y%m%d')
+          echo "📅 台灣時間日期: ${DATE}"
+          echo ""
+          
           # 複製 Excel 分析報表
           if [ -f "tse_analysis_result.xlsx" ]; then
             cp -f tse_analysis_result.xlsx StockInfo/
+            cp -f tse_analysis_result.xlsx StockInfo/tse_analysis_result_${DATE}.xlsx
             touch StockInfo/tse_analysis_result.xlsx
+            touch StockInfo/tse_analysis_result_${DATE}.xlsx
             echo "✅ 已複製: tse_analysis_result.xlsx"
+            echo "✅ 已複製: tse_analysis_result_${DATE}.xlsx"
           else
             echo "⚠️  找不到: tse_analysis_result.xlsx"
           fi
           
           if [ -f "otc_analysis_result.xlsx" ]; then
             cp -f otc_analysis_result.xlsx StockInfo/
+            cp -f otc_analysis_result.xlsx StockInfo/otc_analysis_result_${DATE}.xlsx
             touch StockInfo/otc_analysis_result.xlsx
+            touch StockInfo/otc_analysis_result_${DATE}.xlsx
             echo "✅ 已複製: otc_analysis_result.xlsx"
+            echo "✅ 已複製: otc_analysis_result_${DATE}.xlsx"
           else
             echo "⚠️  找不到: otc_analysis_result.xlsx"
           fi
@@ -77,16 +88,22 @@ jobs:
           # 複製 HTML 彙整檔案
           if [ -f "ALL_TSE.html" ]; then
             cp -f ALL_TSE.html StockInfo/
+            cp -f ALL_TSE.html StockInfo/ALL_TSE_${DATE}.html
             touch StockInfo/ALL_TSE.html
+            touch StockInfo/ALL_TSE_${DATE}.html
             echo "✅ 已複製: ALL_TSE.html"
+            echo "✅ 已複製: ALL_TSE_${DATE}.html"
           else
             echo "⚠️  找不到: ALL_TSE.html"
           fi
           
           if [ -f "ALL_OTC.html" ]; then
             cp -f ALL_OTC.html StockInfo/
+            cp -f ALL_OTC.html StockInfo/ALL_OTC_${DATE}.html
             touch StockInfo/ALL_OTC.html
+            touch StockInfo/ALL_OTC_${DATE}.html
             echo "✅ 已複製: ALL_OTC.html"
+            echo "✅ 已複製: ALL_OTC_${DATE}.html"
           else
             echo "⚠️  找不到: ALL_OTC.html"
           fi
