@@ -3148,6 +3148,50 @@ def main():
         if args.market in ['OTC', 'BOTH']:
             run_step3_chart_generation(base_dir, 'OTC')
     
+    # ========== 步驟 7.5：複製帶日期的檔案 ==========
+    print("\n" + "📅"*40)
+    print("步驟 7.5：備份帶日期的分析檔案")
+    print("📅"*40 + "\n")
+    
+    # 取得台灣時間日期
+    from datetime import datetime
+    import pytz
+    taiwan_tz = pytz.timezone('Asia/Taipei')
+    taiwan_time = datetime.now(taiwan_tz)
+    date_str = taiwan_time.strftime('%Y%m%d')
+    
+    print(f"📅 台灣時間: {taiwan_time.strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"📅 日期標籤: {date_str}\n")
+    
+    # 定義需要備份的檔案
+    files_to_backup = [
+        ('tse_analysis_result.xlsx', f'tse_analysis_result_{date_str}.xlsx'),
+        ('otc_analysis_result.xlsx', f'otc_analysis_result_{date_str}.xlsx'),
+        ('ALL_TSE.html', f'ALL_TSE_{date_str}.html'),
+        ('ALL_OTC.html', f'ALL_OTC_{date_str}.html'),
+    ]
+    
+    stock_info_dir = os.path.join(base_dir, 'StockInfo')
+    backup_count = 0
+    
+    for source_name, backup_name in files_to_backup:
+        source_path = os.path.join(stock_info_dir, source_name)
+        backup_path = os.path.join(stock_info_dir, backup_name)
+        
+        if os.path.exists(source_path):
+            try:
+                shutil.copy2(source_path, backup_path)
+                file_size = os.path.getsize(backup_path) / 1024  # KB
+                print(f"✅ 已備份: {source_name} → {backup_name} ({file_size:.1f} KB)")
+                backup_count += 1
+            except Exception as e:
+                print(f"❌ 備份失敗: {source_name} - {e}")
+        else:
+            print(f"⚠️  檔案不存在: {source_name}")
+    
+    print(f"\n✓ 共備份 {backup_count} 個檔案")
+    print("="*80 + "\n")
+    
     # ========== 步驟 8：複製到 Repository ==========
     if args.copy_to_repo:
         copy_data_to_repo(base_dir, args.repo_data_dir)

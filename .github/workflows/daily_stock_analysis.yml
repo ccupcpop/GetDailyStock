@@ -50,84 +50,30 @@ jobs:
             python 上市上櫃全流程.py --copy-to-repo
           fi
       
-      - name: Copy files to StockInfo directory
+      - name: Verify files in StockInfo directory
         run: |
-          echo "📦 複製檔案到 StockInfo 資料夾..."
-          
-          # 確保目錄存在
-          mkdir -p StockInfo
+          echo "📦 檢查 StockInfo 資料夾的檔案..."
           
           # 取得台灣時間日期 (格式: YYYYMMDD)
           DATE=$(TZ=Asia/Taipei date +'%Y%m%d')
           echo "📅 台灣時間日期: ${DATE}"
           echo ""
           
-          # 複製 Excel 分析報表
-          if [ -f "tse_analysis_result.xlsx" ]; then
-            cp -f tse_analysis_result.xlsx StockInfo/
-            cp -f tse_analysis_result.xlsx StockInfo/tse_analysis_result_${DATE}.xlsx
-            touch StockInfo/tse_analysis_result.xlsx
-            touch StockInfo/tse_analysis_result_${DATE}.xlsx
-            echo "✅ 已複製: tse_analysis_result.xlsx"
-            echo "✅ 已複製: tse_analysis_result_${DATE}.xlsx"
+          # 檢查 StockInfo 資料夾
+          if [ -d "StockInfo" ]; then
+            echo "📋 StockInfo 資料夾內容:"
+            ls -lh StockInfo/
+            echo ""
+            
+            # 檢查帶日期的檔案是否存在
+            echo "🔍 檢查帶日期的檔案:"
+            [ -f "StockInfo/tse_analysis_result_${DATE}.xlsx" ] && echo "✅ tse_analysis_result_${DATE}.xlsx" || echo "⚠️  tse_analysis_result_${DATE}.xlsx 不存在"
+            [ -f "StockInfo/otc_analysis_result_${DATE}.xlsx" ] && echo "✅ otc_analysis_result_${DATE}.xlsx" || echo "⚠️  otc_analysis_result_${DATE}.xlsx 不存在"
+            [ -f "StockInfo/ALL_TSE_${DATE}.html" ] && echo "✅ ALL_TSE_${DATE}.html" || echo "⚠️  ALL_TSE_${DATE}.html 不存在"
+            [ -f "StockInfo/ALL_OTC_${DATE}.html" ] && echo "✅ ALL_OTC_${DATE}.html" || echo "⚠️  ALL_OTC_${DATE}.html 不存在"
           else
-            echo "⚠️  找不到: tse_analysis_result.xlsx"
+            echo "❌ StockInfo 資料夾不存在！"
           fi
-          
-          if [ -f "otc_analysis_result.xlsx" ]; then
-            cp -f otc_analysis_result.xlsx StockInfo/
-            cp -f otc_analysis_result.xlsx StockInfo/otc_analysis_result_${DATE}.xlsx
-            touch StockInfo/otc_analysis_result.xlsx
-            touch StockInfo/otc_analysis_result_${DATE}.xlsx
-            echo "✅ 已複製: otc_analysis_result.xlsx"
-            echo "✅ 已複製: otc_analysis_result_${DATE}.xlsx"
-          else
-            echo "⚠️  找不到: otc_analysis_result.xlsx"
-          fi
-          
-          # 複製 HTML 彙整檔案
-          if [ -f "ALL_TSE.html" ]; then
-            cp -f ALL_TSE.html StockInfo/
-            cp -f ALL_TSE.html StockInfo/ALL_TSE_${DATE}.html
-            touch StockInfo/ALL_TSE.html
-            touch StockInfo/ALL_TSE_${DATE}.html
-            echo "✅ 已複製: ALL_TSE.html"
-            echo "✅ 已複製: ALL_TSE_${DATE}.html"
-          else
-            echo "⚠️  找不到: ALL_TSE.html"
-          fi
-          
-          if [ -f "ALL_OTC.html" ]; then
-            cp -f ALL_OTC.html StockInfo/
-            cp -f ALL_OTC.html StockInfo/ALL_OTC_${DATE}.html
-            touch StockInfo/ALL_OTC.html
-            touch StockInfo/ALL_OTC_${DATE}.html
-            echo "✅ 已複製: ALL_OTC.html"
-            echo "✅ 已複製: ALL_OTC_${DATE}.html"
-          else
-            echo "⚠️  找不到: ALL_OTC.html"
-          fi
-          
-          # 複製排行榜檔案
-          if [ -f "TSE_buy_ranking.txt" ]; then
-            cp -f TSE_buy_ranking.txt StockInfo/
-            touch StockInfo/TSE_buy_ranking.txt
-            echo "✅ 已複製: TSE_buy_ranking.txt"
-          else
-            echo "⚠️  找不到: TSE_buy_ranking.txt"
-          fi
-          
-          if [ -f "OTC_buy_ranking.txt" ]; then
-            cp -f OTC_buy_ranking.txt StockInfo/
-            touch StockInfo/OTC_buy_ranking.txt
-            echo "✅ 已複製: OTC_buy_ranking.txt"
-          else
-            echo "⚠️  找不到: OTC_buy_ranking.txt"
-          fi
-          
-          echo ""
-          echo "📋 StockInfo 資料夾內容:"
-          ls -lh StockInfo/
       
       - name: Package analysis results
         run: |
