@@ -3153,10 +3153,9 @@ def main():
     print("步驟 7.5：備份帶日期的分析檔案")
     print("📅"*40 + "\n")
     
-    # 取得台灣時間日期
-    from datetime import datetime
-    import pytz
-    taiwan_tz = pytz.timezone('Asia/Taipei')
+    # 取得台灣時間日期 (使用 UTC+8)
+    from datetime import timezone, timedelta as td
+    taiwan_tz = timezone(td(hours=8))
     taiwan_time = datetime.now(taiwan_tz)
     date_str = taiwan_time.strftime('%Y%m%d')
     
