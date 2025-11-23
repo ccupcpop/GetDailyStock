@@ -9,6 +9,10 @@ on:
     paths:
       - 'StockInfo/TSE_buy_ranking.txt'
       - 'StockInfo/OTC_buy_ranking.txt'
+      - 'StockInfo/ALL_TSE.html'
+      - 'StockInfo/ALL_OTC.html'
+      - 'StockInfo/tse_analysis_result_complete.html'
+      - 'StockInfo/otc_analysis_result_complete.html'
 
 jobs:
   transfer-data:
@@ -34,6 +38,26 @@ jobs:
           else
             echo "❌ OTC_buy_ranking.txt not found"
           fi
+          if [ -f "StockInfo/ALL_TSE.html" ]; then
+            echo "✅ ALL_TSE.html found"
+          else
+            echo "❌ ALL_TSE.html not found"
+          fi
+          if [ -f "StockInfo/ALL_OTC.html" ]; then
+            echo "✅ ALL_OTC.html found"
+          else
+            echo "❌ ALL_OTC.html not found"
+          fi
+          if [ -f "StockInfo/tse_analysis_result_complete.html" ]; then
+            echo "✅ tse_analysis_result_complete.html found"
+          else
+            echo "❌ tse_analysis_result_complete.html not found"
+          fi
+          if [ -f "StockInfo/otc_analysis_result_complete.html" ]; then
+            echo "✅ otc_analysis_result_complete.html found"
+          else
+            echo "❌ otc_analysis_result_complete.html not found"
+          fi
       
       - name: Checkout StockTracker repository
         uses: actions/checkout@v3
@@ -47,6 +71,17 @@ jobs:
         run: |
           mkdir -p stocktracker/StockInfo
           echo "StockInfo folder ready"
+      
+      - name: Remove old files in StockTracker
+        run: |
+          echo "Removing old files from StockTracker/StockInfo..."
+          rm -f stocktracker/StockInfo/TSE_buy_ranking.txt
+          rm -f stocktracker/StockInfo/OTC_buy_ranking.txt
+          rm -f stocktracker/StockInfo/ALL_TSE.html
+          rm -f stocktracker/StockInfo/ALL_OTC.html
+          rm -f stocktracker/StockInfo/tse_analysis_result_complete.html
+          rm -f stocktracker/StockInfo/otc_analysis_result_complete.html
+          echo "✅ Old files removed"
       
       - name: Copy data files to StockTracker
         run: |
@@ -75,6 +110,8 @@ jobs:
             cp StockInfo/otc_analysis_result_complete.html stocktracker/StockInfo/
             echo "✅ Copied otc_analysis_result_complete.html"
           fi
+          echo ""
+          echo "Files in stocktracker/StockInfo:"
           ls -la stocktracker/StockInfo/
       
       - name: Commit and push to StockTracker
@@ -104,6 +141,12 @@ jobs:
           echo "================================"
           echo "Source: GetDailyStock/StockInfo"
           echo "Target: StockTracker/StockInfo"
-          echo "Files: TSE_buy_ranking.txt, OTC_buy_ranking.txt, ALL_TSE.html, ALL_OTC.html, tse_analysis_result_complete.html, otc_analysis_result_complete.html"
+          echo "Files:"
+          echo "  - TSE_buy_ranking.txt"
+          echo "  - OTC_buy_ranking.txt"
+          echo "  - ALL_TSE.html"
+          echo "  - ALL_OTC.html"
+          echo "  - tse_analysis_result_complete.html"
+          echo "  - otc_analysis_result_complete.html"
           echo "Time: $(TZ='Asia/Taipei' date +'%Y-%m-%d %H:%M:%S') (Taipei)"
           echo "================================"
