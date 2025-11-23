@@ -1296,27 +1296,27 @@ def process_shares_files(latest_files, allowed_stock_codes, stock_daily_prices,
             sell_top20_tracker, daily_buy_stocks, daily_sell_stocks,
             daily_all_stocks, all_historical_data, statistics)
 
-def organize_daily_buy_sell_data_for_html(daily_buy_sell_data):
+def organize_daily_buy_sell_data_for_html(daily_buy_sell_data_list):
     """
     將 daily_buy_sell_data 轉換為 HTML 需要的字典格式
     
     Args:
-        daily_buy_sell_data: 可以是 list of DataFrames 或 list of dicts
+        daily_buy_sell_data_list: list of DataFrames 或 list of dicts
     
     Returns:
         list of dicts: 每個字典包含 {'日期': date, '買超': [...], '賣超': [...]}
     """
-    # 如果輸入已經是處理好的字典列表,直接返回
-    if daily_buy_sell_data and isinstance(daily_buy_sell_data, list):
-        if len(daily_buy_sell_data) > 0 and isinstance(daily_buy_sell_data[0], dict):
+    # 如果輸入已經是處理好的字典列表，直接返回
+    if daily_buy_sell_data_list and isinstance(daily_buy_sell_data_list, list):
+        if len(daily_buy_sell_data_list) > 0 and isinstance(daily_buy_sell_data_list[0], dict):
             # 檢查是否已經是正確的格式
-            if '日期' in daily_buy_sell_data[0] and '買超' in daily_buy_sell_data[0] and '賣超' in daily_buy_sell_data[0]:
-                return daily_buy_sell_data
+            if '日期' in daily_buy_sell_data_list[0] and '買超' in daily_buy_sell_data_list[0] and '賣超' in daily_buy_sell_data_list[0]:
+                return daily_buy_sell_data_list
     
-    # 按日期分組(處理 DataFrame list 的情況)
+    # 按日期分組（處理 DataFrame list 的情況）
     date_data_map = {}
     
-    for item in daily_buy_sell_data:
+    for item in daily_buy_sell_data_list:
         # 檢查是否為 DataFrame
         if hasattr(item, 'empty'):  # DataFrame
             if item.empty:
@@ -1354,7 +1354,7 @@ def organize_daily_buy_sell_data_for_html(daily_buy_sell_data):
                 elif category == '賣超':
                     date_data_map[date]['賣超'].append(stock_dict)
     
-    # 轉換為列表並按日期排序(最新的在前面)
+    # 轉換為列表並按日期排序（最新的在前面）
     result = list(date_data_map.values())
     result.sort(key=lambda x: x['日期'], reverse=True)
     
@@ -1987,7 +1987,44 @@ def export_to_excel(output_path, buy_stocks, sell_stocks, both_stocks_set, both_
 
         # 工作表2-6: 每日買賣超
         if daily_buy_sell_data:
-            daily_df = pd.concat(daily_buy_sell_data, ignore_index=True)
+            # 檢查是否為 DataFrame list
+            if daily_buy_sell_data and len(daily_buy_sell_data) > 0:
+                if hasattr(daily_buy_sell_data[0], 'empty'):  # 是 DataFrame
+                    daily_df = pd.concat(daily_buy_sell_data, ignore_index=True)
+                else:  # 是字典，需要轉換
+                    # 將字典列表轉換為 DataFrame
+                    all_rows = []
+                    for day_data in daily_buy_sell_data:
+                        date = day_data['日期']
+                        # 處理買超數據
+                        if '買超' in day_data:
+                            for stock in day_data['買超']:
+                                all_rows.append({
+                                    '日期': date,
+                                    '類別': '買超',
+                                    '排名': stock.get('排名', ''),
+                                    '證券代號': stock['證券代號'],
+                                    '證券名稱': stock['證券名稱'],
+                                    '買賣超張數': stock['買賣超張數'],
+                                    '收盤價': stock['收盤價'],
+                                    '漲跌價差': stock['漲跌']
+                                })
+                        # 處理賣超數據
+                        if '賣超' in day_data:
+                            for stock in day_data['賣超']:
+                                all_rows.append({
+                                    '日期': date,
+                                    '類別': '賣超',
+                                    '排名': stock.get('排名', ''),
+                                    '證券代號': stock['證券代號'],
+                                    '證券名稱': stock['證券名稱'],
+                                    '買賣超張數': stock['買賣超張數'],
+                                    '收盤價': stock['收盤價'],
+                                    '漲跌價差': stock['漲跌']
+                                })
+                    daily_df = pd.DataFrame(all_rows) if all_rows else pd.DataFrame()
+            else:
+                daily_df = pd.DataFrame()  # 空的 DataFrame
 
             for date in sorted(daily_df['日期'].unique(), reverse=True):
                 date_data = daily_df[daily_df['日期'] == date]
@@ -2811,11 +2848,12 @@ def run_step2_analysis(base_dir, market_type):
     )
     
 
-    daily_buy_sell_data = organize_daily_buy_sell_data(daily_buy_sell_data_raw)
-    print(f"\n✓ 已整理 {len(daily_buy_sell_data)} 天的買賣超數據")
-
-    daily_buy_sell_data_html = organize_daily_buy_sell_data_for_html(daily_buy_sell_data)
-    print(f"\n✓ 已整理 {len(daily_buy_sell_data_html)} 天的買賣超數據供 HTML 使用")
+    # 保留原始 DataFrame list 用於 Excel 輸出
+    daily_buy_sell_data = daily_buy_sell_data_raw
+    
+    # 轉換為字典格式用於 HTML 輸出
+    daily_buy_sell_data_html = organize_daily_buy_sell_data_for_html(daily_buy_sell_data_raw)
+    print(f"\n✓ 已整理 {len(daily_buy_sell_data_html)} 天的買賣超數據")
 
     # 計算標準差
     stock_statistics = calculate_stock_statistics(all_historical_data, config['sigma_threshold'])
