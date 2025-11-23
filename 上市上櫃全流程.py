@@ -1958,6 +1958,183 @@ def export_to_excel(output_path, buy_stocks, sell_stocks, both_stocks_set, both_
 
 # 【第二步-beautify_excel】
 # 從第二步程式複製 beautify_excel 函數
+def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set, both_stocks_df,
+                          daily_buy_sell_data, etf_daily_data, latest_date, new_buy_stocks,
+                          new_sell_stocks, observable_buy_stocks, observable_sell_stocks,
+                          stock_sector_map, etf_stock_codes, market_type='TSE'):
+    """生成完整的 HTML 分析報告"""
+    
+    market_name = '上市' if market_type == 'TSE' else '上櫃'
+    
+    html_content = f"""<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{market_name}三大法人分析報告</title>
+    <style>
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        body {{ font-family: "Microsoft JhengHei", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; min-height: 100vh; }}
+        .container {{ max-width: 1400px; margin: 0 auto; }}
+        .header {{ background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); margin-bottom: 30px; text-align: center; }}
+        .header h1 {{ font-size: 2.5em; color: #2d3748; margin-bottom: 10px; }}
+        .header .date {{ font-size: 1.2em; color: #718096; }}
+        .tabs {{ background: white; border-radius: 15px; padding: 20px 20px 0 20px; margin-bottom: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }}
+        .tab-buttons {{ display: flex; gap: 10px; flex-wrap: wrap; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; }}
+        .tab-button {{ padding: 12px 24px; border: none; background: #f7fafc; color: #4a5568; cursor: pointer; border-radius: 8px 8px 0 0; font-size: 1em; font-weight: 600; transition: all 0.3s ease; }}
+        .tab-button:hover {{ background: #edf2f7; }}
+        .tab-button.active {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }}
+        .tab-content {{ display: none; padding: 20px 0; }}
+        .tab-content.active {{ display: block; }}
+        .section {{ background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); margin-bottom: 30px; }}
+        .section-title {{ font-size: 1.8em; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 3px solid #667eea; color: #2d3748; }}
+        .section-title.buy {{ border-bottom-color: #48bb78; }}
+        .section-title.sell {{ border-bottom-color: #f56565; }}
+        .section-title.etf {{ border-bottom-color: #ed8936; }}
+        .section-title.attention {{ border-bottom-color: #ecc94b; }}
+        table {{ width: 100%; border-collapse: collapse; background: white; }}
+        thead {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }}
+        thead.buy {{ background: linear-gradient(135deg, #48bb78 0%, #38a169 100%); }}
+        thead.sell {{ background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%); }}
+        thead.etf {{ background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%); }}
+        thead.attention {{ background: linear-gradient(135deg, #ecc94b 0%, #d69e2e 100%); }}
+        th {{ padding: 15px 10px; text-align: left; font-weight: 600; font-size: 0.95em; }}
+        td {{ padding: 12px 10px; border-bottom: 1px solid #e2e8f0; font-size: 0.9em; }}
+        tr:hover {{ background-color: #f7fafc; }}
+        .rank {{ font-weight: bold; color: #667eea; font-size: 1.1em; }}
+        .stock-code {{ font-weight: 600; color: #2d3748; }}
+        .stock-name {{ font-weight: 600; color: #4a5568; }}
+        .volume-positive {{ color: #e53e3e; font-weight: 600; }}
+        .volume-negative {{ color: #38a169; font-weight: 600; }}
+        .badge {{ display: inline-block; padding: 3px 8px; border-radius: 12px; font-size: 0.85em; font-weight: 600; margin-left: 5px; }}
+        .badge-new {{ background-color: #fed7d7; color: #c53030; }}
+        .badge-alert {{ background-color: #feebc8; color: #c05621; }}
+        .badge-watch {{ background-color: #fef5e7; color: #d69e2e; }}
+        .no-data {{ text-align: center; padding: 40px; color: #a0aec0; font-size: 1.1em; }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 {market_name}三大法人分析報告</h1>
+            <div class="date">資料日期: {latest_date if latest_date else '最新'}</div>
+        </div>
+        <div class="tabs">
+            <div class="tab-buttons">
+                <button class="tab-button active" onclick="switchTab('summary')">📈 彙整分析</button>
+                <button class="tab-button" onclick="switchTab('daily')">📅 每日買賣超</button>
+                <button class="tab-button" onclick="switchTab('etf')">💼 ETF 分析</button>
+                <button class="tab-button" onclick="switchTab('attention')">⚠️ 特別注意</button>
+            </div>
+            <div id="summary" class="tab-content active">
+"""
+    
+    # 彙整買超
+    if buy_stocks is not None and len(buy_stocks) > 0:
+        html_content += '<div class="section"><h2 class="section-title buy">🔥 買超分析 (最近5天淨買超 >= 10000張)</h2><table><thead class="buy"><tr><th>排名</th><th>股票代號</th><th>股票名稱</th><th>產業類別</th><th>買超總和(張)</th><th>注意事項</th></tr></thead><tbody>'
+        for idx, row in buy_stocks.iterrows():
+            note_html = f'<span class="badge badge-alert">{row.get("注意事項", "")}</span>' if row.get("注意事項", "") else ''
+            html_content += f'<tr><td class="rank">{idx + 1}</td><td class="stock-code">{row["證券代號"]}</td><td class="stock-name">{row["證券名稱"]}</td><td>{row.get("證券領域", "")}</td><td class="volume-positive">{row["買超總和"]:,}</td><td>{note_html}</td></tr>'
+        html_content += '</tbody></table></div>'
+    
+    # 彙整賣超
+    if sell_stocks is not None and len(sell_stocks) > 0:
+        html_content += '<div class="section"><h2 class="section-title sell">📉 賣超分析 (最近5天淨賣超 <= -10000張)</h2><table><thead class="sell"><tr><th>排名</th><th>股票代號</th><th>股票名稱</th><th>產業類別</th><th>賣超總和(張)</th><th>注意事項</th></tr></thead><tbody>'
+        for idx, row in sell_stocks.iterrows():
+            note_html = f'<span class="badge badge-alert">{row.get("注意事項", "")}</span>' if row.get("注意事項", "") else ''
+            html_content += f'<tr><td class="rank">{idx + 1}</td><td class="stock-code">{row["證券代號"]}</td><td class="stock-name">{row["證券名稱"]}</td><td>{row.get("證券領域", "")}</td><td class="volume-negative">{row["賣超總和"]:,}</td><td>{note_html}</td></tr>'
+        html_content += '</tbody></table></div>'
+    
+    html_content += '</div><div id="daily" class="tab-content">'
+    
+    # 每日買賣超
+    if daily_buy_sell_data and len(daily_buy_sell_data) > 0:
+        latest_daily = daily_buy_sell_data[0]
+        date = latest_daily['日期']
+        buy_data = latest_daily.get('買超', [])
+        
+        if buy_data:
+            html_content += f'<div class="section"><h2 class="section-title buy">🔥 {date} 買超前50名</h2><table><thead class="buy"><tr><th>排名</th><th>股票代號</th><th>股票名稱</th><th>產業類別</th><th>買賣超(張)</th></tr></thead><tbody>'
+            for idx, stock in enumerate(buy_data[:50], 1):
+                code = stock.get('證券代號', '')
+                badges = []
+                if code in new_buy_stocks:
+                    badges.append('<span class="badge badge-new">🔥NEW</span>')
+                if code in observable_buy_stocks:
+                    badges.append('<span class="badge badge-watch">👀值得觀察</span>')
+                badge_html = ' '.join(badges)
+                sector = stock_sector_map.get(code, '') if stock_sector_map else ''
+                html_content += f'<tr><td class="rank">{idx}</td><td class="stock-code">{code}</td><td class="stock-name">{stock.get("證券名稱", "")} {badge_html}</td><td>{sector}</td><td class="volume-positive">{stock.get("買賣超張數", 0):,}</td></tr>'
+            html_content += '</tbody></table></div>'
+        
+        sell_data = latest_daily.get('賣超', [])
+        if sell_data:
+            html_content += f'<div class="section"><h2 class="section-title sell">📉 {date} 賣超前20名</h2><table><thead class="sell"><tr><th>排名</th><th>股票代號</th><th>股票名稱</th><th>產業類別</th><th>買賣超(張)</th></tr></thead><tbody>'
+            for idx, stock in enumerate(sell_data[:20], 1):
+                code = stock.get('證券代號', '')
+                badges = []
+                if code in new_sell_stocks:
+                    badges.append('<span class="badge badge-new">📉NEW</span>')
+                if code in observable_sell_stocks:
+                    badges.append('<span class="badge badge-watch">👀值得觀察</span>')
+                badge_html = ' '.join(badges)
+                sector = stock_sector_map.get(code, '') if stock_sector_map else ''
+                html_content += f'<tr><td class="rank">{idx}</td><td class="stock-code">{code}</td><td class="stock-name">{stock.get("證券名稱", "")} {badge_html}</td><td>{sector}</td><td class="volume-negative">{stock.get("買賣超張數", 0):,}</td></tr>'
+            html_content += '</tbody></table></div>'
+    
+    html_content += '</div><div id="etf" class="tab-content">'
+    
+    # ETF 分析
+    if etf_daily_data and len(etf_daily_data) > 0:
+        latest_etf = etf_daily_data[0]
+        date = latest_etf['日期']
+        buy_etf = latest_etf.get('買超', [])
+        
+        if buy_etf:
+            html_content += f'<div class="section"><h2 class="section-title etf">💼 {date} ETF 買超</h2><table><thead class="etf"><tr><th>排名</th><th>ETF代號</th><th>ETF名稱</th><th>買賣超(張)</th></tr></thead><tbody>'
+            for idx, etf in enumerate(buy_etf, 1):
+                html_content += f'<tr><td class="rank">{idx}</td><td class="stock-code">{etf.get("證券代號", "")}</td><td class="stock-name">{etf.get("證券名稱", "")}</td><td class="volume-positive">{etf.get("買賣超張數", 0):,}</td></tr>'
+            html_content += '</tbody></table></div>'
+        
+        sell_etf = latest_etf.get('賣超', [])
+        if sell_etf:
+            html_content += f'<div class="section"><h2 class="section-title etf">💼 {date} ETF 賣超</h2><table><thead class="etf"><tr><th>排名</th><th>ETF代號</th><th>ETF名稱</th><th>買賣超(張)</th></tr></thead><tbody>'
+            for idx, etf in enumerate(sell_etf, 1):
+                html_content += f'<tr><td class="rank">{idx}</td><td class="stock-code">{etf.get("證券代號", "")}</td><td class="stock-name">{etf.get("證券名稱", "")}</td><td class="volume-negative">{etf.get("買賣超張數", 0):,}</td></tr>'
+            html_content += '</tbody></table></div>'
+    else:
+        html_content += '<div class="section"><div class="no-data">無 ETF 資料</div></div>'
+    
+    html_content += '</div><div id="attention" class="tab-content">'
+    
+    # 特別注意
+    if both_stocks_df is not None and len(both_stocks_df) > 0:
+        html_content += '<div class="section"><h2 class="section-title attention">⚠️ 同時出現在買超與賣超榜的股票</h2><p style="margin-bottom: 15px; color: #718096;">這些股票在最近5天內，有些天進入買超榜，有些天進入賣超榜，顯示法人態度反覆。</p><table><thead class="attention"><tr><th>股票代號</th><th>股票名稱</th><th>產業類別</th><th>買超次數</th><th>買超總和(張)</th><th>賣超次數</th><th>賣超總和(張)</th><th>淨買賣超(張)</th></tr></thead><tbody>'
+        for idx, row in both_stocks_df.iterrows():
+            net = row.get('淨買賣超', 0)
+            net_class = 'volume-positive' if net > 0 else 'volume-negative'
+            html_content += f'<tr><td class="stock-code">{row["證券代號"]}</td><td class="stock-name">{row["證券名稱"]}</td><td>{row.get("證券領域", "")}</td><td>{row.get("買超次數", 0)}</td><td class="volume-positive">{row.get("買超總和", 0):,}</td><td>{row.get("賣超次數", 0)}</td><td class="volume-negative">{row.get("賣超總和", 0):,}</td><td class="{net_class}">{net:,}</td></tr>'
+        html_content += '</tbody></table></div>'
+    else:
+        html_content += '<div class="section"><div class="no-data">無同時出現在買賣超榜的股票</div></div>'
+    
+    html_content += """</div></div></div>
+<script>
+function switchTab(tabId) {
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+    document.getElementById(tabId).classList.add('active');
+    event.target.classList.add('active');
+}
+</script>
+</body>
+</html>"""
+    
+    with open(output_path, 'w', encoding='utf-8') as f:
+        f.write(html_content)
+    
+    print(f"✓ HTML 已儲存: {output_path}")
+
 def beautify_excel(output_path):
     """美化 Excel 格式"""
     wb = load_workbook(output_path)
@@ -2149,6 +2326,15 @@ def run_step2_analysis(base_dir, market_type):
 
         # 美化 Excel
         beautify_excel(config['output_path'])
+
+        # 生成 HTML 報告
+        html_output_path = config['output_path'].replace('.xlsx', '_complete.html')
+        generate_complete_html(
+            html_output_path, buy_stocks, sell_stocks, both_stocks_set,
+            both_stocks_df, daily_buy_sell_data, etf_daily_data, latest_date,
+            new_buy_stocks, new_sell_stocks, observable_buy_stocks,
+            observable_sell_stocks, stock_sector_map, etf_stock_codes,
+            market_type=market_type
 
         print(f"\n✓ {market_type} 分析完成")
         print(f"✓ Excel 已儲存: {config['output_path']}")
