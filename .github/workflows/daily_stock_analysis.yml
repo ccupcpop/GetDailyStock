@@ -373,6 +373,8 @@ jobs:
           # 不帶日期的檔案
           git add -f StockInfo/tse_analysis_result.xlsx 2>/dev/null || true
           git add -f StockInfo/otc_analysis_result.xlsx 2>/dev/null || true
+          git add -f StockInfo/tse_analysis_result_complete.html 2>/dev/null || true
+          git add -f StockInfo/otc_analysis_result_complete.html 2>/dev/null || true
           git add -f StockInfo/ALL_TSE.html 2>/dev/null || true
           git add -f StockInfo/ALL_OTC.html 2>/dev/null || true
           git add -f StockInfo/TSE_buy_ranking.txt 2>/dev/null || true
