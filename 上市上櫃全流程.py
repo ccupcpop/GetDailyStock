@@ -1296,56 +1296,65 @@ def process_shares_files(latest_files, allowed_stock_codes, stock_daily_prices,
             sell_top20_tracker, daily_buy_stocks, daily_sell_stocks,
             daily_all_stocks, all_historical_data, statistics)
 
-def organize_daily_buy_sell_data_for_html(daily_buy_sell_data_list):
+def organize_daily_buy_sell_data_for_html(daily_buy_sell_data):
     """
-    將 daily_buy_sell_data 從 DataFrame list 轉換為 HTML 需要的字典格式
+    將 daily_buy_sell_data 轉換為 HTML 需要的字典格式
     
     Args:
-        daily_buy_sell_data_list: list of DataFrames
+        daily_buy_sell_data: 可以是 list of DataFrames 或 list of dicts
     
     Returns:
         list of dicts: 每個字典包含 {'日期': date, '買超': [...], '賣超': [...]}
     """
-    # 按日期分組
+    # 如果輸入已經是處理好的字典列表,直接返回
+    if daily_buy_sell_data and isinstance(daily_buy_sell_data, list):
+        if len(daily_buy_sell_data) > 0 and isinstance(daily_buy_sell_data[0], dict):
+            # 檢查是否已經是正確的格式
+            if '日期' in daily_buy_sell_data[0] and '買超' in daily_buy_sell_data[0] and '賣超' in daily_buy_sell_data[0]:
+                return daily_buy_sell_data
+    
+    # 按日期分組(處理 DataFrame list 的情況)
     date_data_map = {}
     
-    for df in daily_buy_sell_data_list:
-        if df.empty:
-            continue
+    for item in daily_buy_sell_data:
+        # 檢查是否為 DataFrame
+        if hasattr(item, 'empty'):  # DataFrame
+            if item.empty:
+                continue
+                
+            date = item['日期'].iloc[0] if '日期' in item.columns else ''
+            category = item['類別'].iloc[0] if '類別' in item.columns else ''
             
-        date = df['日期'].iloc[0] if '日期' in df.columns else ''
-        category = df['類別'].iloc[0] if '類別' in df.columns else ''
-        
-        if date not in date_data_map:
-            date_data_map[date] = {'日期': date, '買超': [], '賣超': []}
-        
-        # 轉換 DataFrame 為字典列表
-        for _, row in df.iterrows():
-            stock_dict = {
-                '證券代號': str(row.get('證券代號', '')),
-                '證券名稱': str(row.get('證券名稱', '')),
-                '買賣超張數': int(row.get('買賣超張數', 0)),
-                '收盤價': row.get('收盤價', ''),
-                '漲跌': row.get('漲跌價差', '')
-            }
+            if date not in date_data_map:
+                date_data_map[date] = {'日期': date, '買超': [], '賣超': []}
             
-            # 處理漲跌數值
-            price_diff_str = str(stock_dict['漲跌'])
-            if price_diff_str and price_diff_str not in ['', '--', 'X', 'nan']:
-                try:
-                    clean_value = price_diff_str.replace(',', '').replace('+', '')
-                    stock_dict['漲跌'] = float(clean_value)
-                except:
+            # 轉換 DataFrame 為字典列表
+            for _, row in item.iterrows():
+                stock_dict = {
+                    '證券代號': str(row.get('證券代號', '')),
+                    '證券名稱': str(row.get('證券名稱', '')),
+                    '買賣超張數': int(row.get('買賣超張數', 0)),
+                    '收盤價': row.get('收盤價', ''),
+                    '漲跌': row.get('漲跌價差', '')
+                }
+                
+                # 處理漲跌數值
+                price_diff_str = str(stock_dict['漲跌'])
+                if price_diff_str and price_diff_str not in ['', '--', 'X', 'nan']:
+                    try:
+                        clean_value = price_diff_str.replace(',', '').replace('+', '')
+                        stock_dict['漲跌'] = float(clean_value)
+                    except:
+                        stock_dict['漲跌'] = 0
+                else:
                     stock_dict['漲跌'] = 0
-            else:
-                stock_dict['漲跌'] = 0
-            
-            if category == '買超':
-                date_data_map[date]['買超'].append(stock_dict)
-            elif category == '賣超':
-                date_data_map[date]['賣超'].append(stock_dict)
+                
+                if category == '買超':
+                    date_data_map[date]['買超'].append(stock_dict)
+                elif category == '賣超':
+                    date_data_map[date]['賣超'].append(stock_dict)
     
-    # 轉換為列表並按日期排序（最新的在前面）
+    # 轉換為列表並按日期排序(最新的在前面)
     result = list(date_data_map.values())
     result.sort(key=lambda x: x['日期'], reverse=True)
     
