@@ -2334,7 +2334,7 @@ def run_step2_analysis(base_dir, market_type):
             both_stocks_df, daily_buy_sell_data, etf_daily_data, latest_date,
             new_buy_stocks, new_sell_stocks, observable_buy_stocks,
             observable_sell_stocks, stock_sector_map, etf_stock_codes,
-            market_type=market_type
+            market_type=market_type)
 
         print(f"\n✓ {market_type} 分析完成")
         print(f"✓ Excel 已儲存: {config['output_path']}")
