@@ -59,6 +59,22 @@ jobs:
             cp StockInfo/OTC_buy_ranking.txt stocktracker/StockInfo/
             echo "✅ Copied OTC_buy_ranking.txt"
           fi
+          if [ -f "StockInfo/ALL_TSE.html" ]; then
+            cp StockInfo/ALL_TSE.html stocktracker/StockInfo/
+            echo "✅ Copied ALL_TSE.html"
+          fi
+          if [ -f "StockInfo/ALL_OTC.html" ]; then
+            cp StockInfo/ALL_OTC.html stocktracker/StockInfo/
+            echo "✅ Copied ALL_OTC.html"
+          fi
+          if [ -f "StockInfo/tse_analysis_result_complete.html" ]; then
+            cp StockInfo/tse_analysis_result_complete.html stocktracker/StockInfo/
+            echo "✅ Copied tse_analysis_result_complete.html"
+          fi
+          if [ -f "StockInfo/otc_analysis_result_complete.html" ]; then
+            cp StockInfo/otc_analysis_result_complete.html stocktracker/StockInfo/
+            echo "✅ Copied otc_analysis_result_complete.html"
+          fi
           ls -la stocktracker/StockInfo/
       
       - name: Commit and push to StockTracker
@@ -67,6 +83,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add StockInfo/*.txt
+          git add StockInfo/*.html
           
           # 生成台北時間的時間戳
           TAIPEI_TIME=$(TZ='Asia/Taipei' date +'%Y-%m-%d %H:%M:%S')
@@ -87,6 +104,6 @@ jobs:
           echo "================================"
           echo "Source: GetDailyStock/StockInfo"
           echo "Target: StockTracker/StockInfo"
-          echo "Files: TSE_buy_ranking.txt, OTC_buy_ranking.txt"
+          echo "Files: TSE_buy_ranking.txt, OTC_buy_ranking.txt, ALL_TSE.html, ALL_OTC.html, tse_analysis_result_complete.html, otc_analysis_result_complete.html"
           echo "Time: $(TZ='Asia/Taipei' date +'%Y-%m-%d %H:%M:%S') (Taipei)"
           echo "================================"
