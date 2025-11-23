@@ -4071,16 +4071,27 @@ def main():
         else:
             print(f"⚠️  Excel 檔案不存在: {source_name}")
     
-    # 使用提取的日期備份 HTML
+    # 使用提取的日期備份 HTML（包括 complete.html）
     html_files_to_backup = [
         ('ALL_TSE.html', tse_date_str),
         ('ALL_OTC.html', otc_date_str),
+        ('tse_analysis_result_complete.html', tse_date_str),
+        ('otc_analysis_result_complete.html', otc_date_str),
     ]
     
     for source_name, date_str in html_files_to_backup:
         if date_str:
             source_path = os.path.join(stock_info_dir, source_name)
-            backup_name = f'{source_name.replace(".html", "")}_{date_str}.html'
+            
+            # 生成備份檔名
+            if source_name.endswith('_complete.html'):
+                # 例如: tse_analysis_result_complete.html -> tse_analysis_complete_20250101.html
+                base_name = source_name.replace('_result_complete.html', '').replace('_complete.html', '')
+                backup_name = f'{base_name}_complete_{date_str}.html'
+            else:
+                # 例如: ALL_TSE.html -> ALL_TSE_20250101.html
+                backup_name = f'{source_name.replace(".html", "")}_{date_str}.html'
+            
             backup_path = os.path.join(stock_info_dir, backup_name)
             
             if os.path.exists(source_path):

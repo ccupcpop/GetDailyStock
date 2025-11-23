@@ -71,6 +71,8 @@ jobs:
             [ -f "StockInfo/otc_analysis_result_${DATE}.xlsx" ] && echo "✅ otc_analysis_result_${DATE}.xlsx" || echo "⚠️  otc_analysis_result_${DATE}.xlsx 不存在"
             [ -f "StockInfo/ALL_TSE_${DATE}.html" ] && echo "✅ ALL_TSE_${DATE}.html" || echo "⚠️  ALL_TSE_${DATE}.html 不存在"
             [ -f "StockInfo/ALL_OTC_${DATE}.html" ] && echo "✅ ALL_OTC_${DATE}.html" || echo "⚠️  ALL_OTC_${DATE}.html 不存在"
+            [ -f "StockInfo/tse_analysis_complete_${DATE}.html" ] && echo "✅ tse_analysis_complete_${DATE}.html" || echo "⚠️  tse_analysis_complete_${DATE}.html 不存在"
+            [ -f "StockInfo/otc_analysis_complete_${DATE}.html" ] && echo "✅ otc_analysis_complete_${DATE}.html" || echo "⚠️  otc_analysis_complete_${DATE}.html 不存在"
           else
             echo "❌ StockInfo 資料夾不存在！"
           fi
@@ -208,25 +210,27 @@ jobs:
               datetime_str = os.environ.get('DATETIME')
               
               # 多個收件人
-              recipient_emails = [recipient_email_primary, 'i07250717@gmail.com', 'hospital691202@yahoo.com.tw']
-              recipients_str = ', '.join(recipient_emails)
+              recipients = [recipient_email_primary]
+              recipients_str = ', '.join(recipients)
               
               # 創建郵件
               msg = MIMEMultipart()
               msg['From'] = sender_email
               msg['To'] = recipients_str
-              msg['Subject'] = f'📊 台股分析報告 {datetime_str}'
+              msg['Subject'] = f'📊 台股每日分析報告 - {datetime_str}'
               
-              # 郵件內容
+              # 郵件內容 (HTML格式)
               body = f"""
           <html>
             <head>
               <style>
-                body {{ 
-                  font-family: 'Microsoft JhengHei', Arial, sans-serif;
+                body {{
+                  font-family: 'Segoe UI', Arial, sans-serif;
                   line-height: 1.6;
                   color: #333;
-                  background-color: #f5f5f5;
+                  max-width: 800px;
+                  margin: 0 auto;
+                  padding: 20px;
                 }}
                 .download-section {{
                   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -270,8 +274,8 @@ jobs:
                 <ul style="margin: 10px 0;">
                   <li style="margin: 8px 0;">✅ <strong>tse_analysis_result.xlsx</strong> - 上市股票分析報表（完整資料）</li>
                   <li style="margin: 8px 0;">✅ <strong>otc_analysis_result.xlsx</strong> - 上櫃股票分析報表（完整資料）</li>
-                  <li style="margin: 8px 0;">✅ <strong>ALL_TSE.html</strong> - 上市股票彙整圖表（互動式）</li>
-                  <li style="margin: 8px 0;">✅ <strong>ALL_OTC.html</strong> - 上櫃股票彙整圖表（互動式）</li>
+                  <li style="margin: 8px 0;">✅ <strong>tse_analysis_result_complete.html</strong> - 上市完整分析報告（互動式）</li>
+                  <li style="margin: 8px 0;">✅ <strong>otc_analysis_result_complete.html</strong> - 上櫃完整分析報告（互動式）</li>
                 </ul>
                 <p style="color: #666; font-size: 14px; margin-top: 15px;">
                   💡 Excel 使用 Excel 開啟，HTML 使用瀏覽器開啟查看互動圖表
@@ -285,6 +289,7 @@ jobs:
                   <li>✅ 三大法人買賣超統計</li>
                   <li>✅ 漲跌幅排行榜</li>
                   <li>✅ 技術指標分析圖表</li>
+                  <li>✅ 彙整分析與值得觀察股票</li>
                 </ul>
               </div>
               
@@ -298,12 +303,12 @@ jobs:
               
               msg.attach(MIMEText(body, 'html', 'utf-8'))
               
-              # 附加檔案
+              # 附加檔案（包含 complete.html）
               files_to_attach = [
                   'StockInfo/tse_analysis_result.xlsx',
                   'StockInfo/otc_analysis_result.xlsx',
-                  'StockInfo/ALL_TSE.html',
-                  'StockInfo/ALL_OTC.html'
+                  'StockInfo/tse_analysis_result_complete.html',
+                  'StockInfo/otc_analysis_result_complete.html'
               ]
               
               for filename in files_to_attach:
@@ -380,11 +385,17 @@ jobs:
           git add -f StockInfo/TSE_buy_ranking.txt 2>/dev/null || true
           git add -f StockInfo/OTC_buy_ranking.txt 2>/dev/null || true
           
-          # 帶日期的檔案
+          # 帶日期的檔案（Excel）
           git add -f StockInfo/tse_analysis_result_${DATE}.xlsx 2>/dev/null || true
           git add -f StockInfo/otc_analysis_result_${DATE}.xlsx 2>/dev/null || true
+          
+          # 帶日期的檔案（HTML - ALL_TSE/OTC）
           git add -f StockInfo/ALL_TSE_${DATE}.html 2>/dev/null || true
           git add -f StockInfo/ALL_OTC_${DATE}.html 2>/dev/null || true
+          
+          # 帶日期的檔案（HTML - complete）
+          git add -f StockInfo/tse_analysis_complete_${DATE}.html 2>/dev/null || true
+          git add -f StockInfo/otc_analysis_complete_${DATE}.html 2>/dev/null || true
           
           # 也加入所有可能的帶日期檔案（萬用字元）
           git add -f StockInfo/*_[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9].xlsx 2>/dev/null || true
@@ -400,6 +411,8 @@ jobs:
           [ -f "StockInfo/otc_analysis_result_${DATE}.xlsx" ] && echo "✅ otc_analysis_result_${DATE}.xlsx 存在" || echo "❌ otc_analysis_result_${DATE}.xlsx 不存在"
           [ -f "StockInfo/ALL_TSE_${DATE}.html" ] && echo "✅ ALL_TSE_${DATE}.html 存在" || echo "❌ ALL_TSE_${DATE}.html 不存在"
           [ -f "StockInfo/ALL_OTC_${DATE}.html" ] && echo "✅ ALL_OTC_${DATE}.html 存在" || echo "❌ ALL_OTC_${DATE}.html 不存在"
+          [ -f "StockInfo/tse_analysis_complete_${DATE}.html" ] && echo "✅ tse_analysis_complete_${DATE}.html 存在" || echo "❌ tse_analysis_complete_${DATE}.html 不存在"
+          [ -f "StockInfo/otc_analysis_complete_${DATE}.html" ] && echo "✅ otc_analysis_complete_${DATE}.html 存在" || echo "❌ otc_analysis_complete_${DATE}.html 不存在"
           echo ""
           
           # 檢查是否有變更
