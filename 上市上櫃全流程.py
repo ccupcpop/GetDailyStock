@@ -1296,6 +1296,62 @@ def process_shares_files(latest_files, allowed_stock_codes, stock_daily_prices,
             sell_top20_tracker, daily_buy_stocks, daily_sell_stocks,
             daily_all_stocks, all_historical_data, statistics)
 
+def organize_daily_buy_sell_data(daily_buy_sell_data_list):
+    """
+    將 daily_buy_sell_data 從 DataFrame list 轉換為需要的字典格式
+    
+    Args:
+        daily_buy_sell_data_list: list of DataFrames
+    
+    Returns:
+        list of dicts: 每個字典包含 {'日期': date, '買超': [...], '賣超': [...]}
+    """
+    # 按日期分組
+    date_data_map = {}
+    
+    for df in daily_buy_sell_data_list:
+        if df.empty:
+            continue
+            
+        date = df['日期'].iloc[0] if '日期' in df.columns else ''
+        category = df['類別'].iloc[0] if '類別' in df.columns else ''
+        
+        if date not in date_data_map:
+            date_data_map[date] = {'日期': date, '買超': [], '賣超': []}
+        
+        # 轉換 DataFrame 為字典列表
+        for _, row in df.iterrows():
+            stock_dict = {
+                '證券代號': str(row.get('證券代號', '')),
+                '證券名稱': str(row.get('證券名稱', '')),
+                '買賣超張數': int(row.get('買賣超張數', 0)),
+                '收盤價': row.get('收盤價', ''),
+                '漲跌': row.get('漲跌價差', '')  # 改名為 '漲跌'
+            }
+            
+            # 處理漲跌數值
+            price_diff_str = str(stock_dict['漲跌'])
+            if price_diff_str and price_diff_str not in ['', '--', 'X', 'nan']:
+                try:
+                    # 移除逗號並轉換為數值
+                    clean_value = price_diff_str.replace(',', '')
+                    stock_dict['漲跌'] = float(clean_value)
+                except:
+                    stock_dict['漲跌'] = 0
+            else:
+                stock_dict['漲跌'] = 0
+            
+            if category == '買超':
+                date_data_map[date]['買超'].append(stock_dict)
+            elif category == '賣超':
+                date_data_map[date]['賣超'].append(stock_dict)
+    
+    # 轉換為列表並按日期排序（最新的在前面）
+    result = list(date_data_map.values())
+    result.sort(key=lambda x: x['日期'], reverse=True)
+    
+    return result
+
 # 【第二步-calculate_stock_statistics】
 # 從第二步程式複製 calculate_stock_statistics 函數
 def calculate_stock_statistics(all_historical_data, sigma_threshold):
@@ -2678,7 +2734,7 @@ def run_step2_analysis(base_dir, market_type):
     latest_61_files = get_latest_files(config['folder_path'], num_files=61)
 
     # 處理三大法人數據
-    (all_data, daily_buy_sell_data, etf_daily_data, buy_top20_tracker,
+    (all_data, daily_buy_sell_data_raw, etf_daily_data, buy_top20_tracker,
      sell_top20_tracker, daily_buy_stocks, daily_sell_stocks,
      daily_all_stocks, all_historical_data, statistics) = process_shares_files(
         latest_61_files, 
@@ -2689,6 +2745,10 @@ def run_step2_analysis(base_dir, market_type):
         top_buy_count=config['top_buy_count'],
         top_sell_count=config['top_sell_count']
     )
+    
+    # ★★★ 整理 daily_buy_sell_data 為正確格式 ★★★
+    daily_buy_sell_data = organize_daily_buy_sell_data(daily_buy_sell_data_raw)
+    print(f"\n✓ 已整理 {len(daily_buy_sell_data)} 天的買賣超數據")
 
     # 計算標準差
     stock_statistics = calculate_stock_statistics(all_historical_data, config['sigma_threshold'])
@@ -2729,6 +2789,12 @@ def run_step2_analysis(base_dir, market_type):
         html_output_path = config['output_path'].replace('.xlsx', '_complete.html')
         # 移除 _result_ 以符合標準命名
         html_output_path = html_output_path.replace('_result_', '_')
+        
+        print(f"\n準備生成 HTML: {html_output_path}")
+        print(f"  - buy_stocks: {len(buy_stocks) if buy_stocks is not None else 0} rows")
+        print(f"  - sell_stocks: {len(sell_stocks) if sell_stocks is not None else 0} rows")
+        print(f"  - daily_buy_sell_data: {len(daily_buy_sell_data)} days")
+        
         generate_complete_html(
             html_output_path, buy_stocks, sell_stocks, both_stocks_set,
             both_stocks_df, daily_buy_sell_data, etf_daily_data, latest_date,
@@ -2738,6 +2804,7 @@ def run_step2_analysis(base_dir, market_type):
 
         print(f"\n✓ {market_type} 分析完成")
         print(f"✓ Excel 已儲存: {config['output_path']}")
+        print(f"✓ HTML 已儲存: {html_output_path}")
 
     # ========== 儲存買超排名順序 ==========
     # ========== 儲存買超+賣超排名順序 ==========
