@@ -210,7 +210,13 @@ jobs:
               datetime_str = os.environ.get('DATETIME')
               
               # 多個收件人
-              recipients = [recipient_email_primary]
+              recipients = [
+                  recipient_email_primary,
+                  'i07250717@gmail.com',
+                  'hospital691202@yahoo.com.tw',
+                  'miacomtw@yahoo.com.tw',
+                  'a0932973234@gmail.com'
+              ]
               recipients_str = ', '.join(recipients)
               
               # 創建郵件
