@@ -401,6 +401,9 @@ jobs:
           git add -f StockInfo/*_[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9].xlsx 2>/dev/null || true
           git add -f StockInfo/*_[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9].html 2>/dev/null || true
           
+          # 保險措施：確保所有 HTML 都被加入
+          git add -f StockInfo/*.html 2>/dev/null || true
+          
           echo ""
           echo "📦 Git staging area 中的檔案:"
           git diff --staged --name-status

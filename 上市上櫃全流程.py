@@ -1298,61 +1298,52 @@ def process_shares_files(latest_files, allowed_stock_codes, stock_daily_prices,
 
 def organize_daily_buy_sell_data_for_html(daily_buy_sell_data_list):
     """
-    將 daily_buy_sell_data 轉換為 HTML 需要的字典格式
+    將 daily_buy_sell_data 從 DataFrame list 轉換為 HTML 需要的字典格式
     
     Args:
-        daily_buy_sell_data_list: list of DataFrames 或 list of dicts
+        daily_buy_sell_data_list: list of DataFrames
     
     Returns:
         list of dicts: 每個字典包含 {'日期': date, '買超': [...], '賣超': [...]}
     """
-    # 如果輸入已經是處理好的字典列表，直接返回
-    if daily_buy_sell_data_list and isinstance(daily_buy_sell_data_list, list):
-        if len(daily_buy_sell_data_list) > 0 and isinstance(daily_buy_sell_data_list[0], dict):
-            # 檢查是否已經是正確的格式
-            if '日期' in daily_buy_sell_data_list[0] and '買超' in daily_buy_sell_data_list[0] and '賣超' in daily_buy_sell_data_list[0]:
-                return daily_buy_sell_data_list
-    
-    # 按日期分組（處理 DataFrame list 的情況）
+    # 按日期分組
     date_data_map = {}
     
-    for item in daily_buy_sell_data_list:
-        # 檢查是否為 DataFrame
-        if hasattr(item, 'empty'):  # DataFrame
-            if item.empty:
-                continue
-                
-            date = item['日期'].iloc[0] if '日期' in item.columns else ''
-            category = item['類別'].iloc[0] if '類別' in item.columns else ''
+    for df in daily_buy_sell_data_list:
+        if df.empty:
+            continue
             
-            if date not in date_data_map:
-                date_data_map[date] = {'日期': date, '買超': [], '賣超': []}
+        date = df['日期'].iloc[0] if '日期' in df.columns else ''
+        category = df['類別'].iloc[0] if '類別' in df.columns else ''
+        
+        if date not in date_data_map:
+            date_data_map[date] = {'日期': date, '買超': [], '賣超': []}
+        
+        # 轉換 DataFrame 為字典列表
+        for _, row in df.iterrows():
+            stock_dict = {
+                '證券代號': str(row.get('證券代號', '')),
+                '證券名稱': str(row.get('證券名稱', '')),
+                '買賣超張數': int(row.get('買賣超張數', 0)),
+                '收盤價': row.get('收盤價', ''),
+                '漲跌': row.get('漲跌價差', '')
+            }
             
-            # 轉換 DataFrame 為字典列表
-            for _, row in item.iterrows():
-                stock_dict = {
-                    '證券代號': str(row.get('證券代號', '')),
-                    '證券名稱': str(row.get('證券名稱', '')),
-                    '買賣超張數': int(row.get('買賣超張數', 0)),
-                    '收盤價': row.get('收盤價', ''),
-                    '漲跌': row.get('漲跌價差', '')
-                }
-                
-                # 處理漲跌數值
-                price_diff_str = str(stock_dict['漲跌'])
-                if price_diff_str and price_diff_str not in ['', '--', 'X', 'nan']:
-                    try:
-                        clean_value = price_diff_str.replace(',', '').replace('+', '')
-                        stock_dict['漲跌'] = float(clean_value)
-                    except:
-                        stock_dict['漲跌'] = 0
-                else:
+            # 處理漲跌數值
+            price_diff_str = str(stock_dict['漲跌'])
+            if price_diff_str and price_diff_str not in ['', '--', 'X', 'nan']:
+                try:
+                    clean_value = price_diff_str.replace(',', '').replace('+', '')
+                    stock_dict['漲跌'] = float(clean_value)
+                except:
                     stock_dict['漲跌'] = 0
-                
-                if category == '買超':
-                    date_data_map[date]['買超'].append(stock_dict)
-                elif category == '賣超':
-                    date_data_map[date]['賣超'].append(stock_dict)
+            else:
+                stock_dict['漲跌'] = 0
+            
+            if category == '買超':
+                date_data_map[date]['買超'].append(stock_dict)
+            elif category == '賣超':
+                date_data_map[date]['賣超'].append(stock_dict)
     
     # 轉換為列表並按日期排序（最新的在前面）
     result = list(date_data_map.values())
@@ -1987,44 +1978,7 @@ def export_to_excel(output_path, buy_stocks, sell_stocks, both_stocks_set, both_
 
         # 工作表2-6: 每日買賣超
         if daily_buy_sell_data:
-            # 檢查是否為 DataFrame list
-            if daily_buy_sell_data and len(daily_buy_sell_data) > 0:
-                if hasattr(daily_buy_sell_data[0], 'empty'):  # 是 DataFrame
-                    daily_df = pd.concat(daily_buy_sell_data, ignore_index=True)
-                else:  # 是字典，需要轉換
-                    # 將字典列表轉換為 DataFrame
-                    all_rows = []
-                    for day_data in daily_buy_sell_data:
-                        date = day_data['日期']
-                        # 處理買超數據
-                        if '買超' in day_data:
-                            for stock in day_data['買超']:
-                                all_rows.append({
-                                    '日期': date,
-                                    '類別': '買超',
-                                    '排名': stock.get('排名', ''),
-                                    '證券代號': stock['證券代號'],
-                                    '證券名稱': stock['證券名稱'],
-                                    '買賣超張數': stock['買賣超張數'],
-                                    '收盤價': stock['收盤價'],
-                                    '漲跌價差': stock['漲跌']
-                                })
-                        # 處理賣超數據
-                        if '賣超' in day_data:
-                            for stock in day_data['賣超']:
-                                all_rows.append({
-                                    '日期': date,
-                                    '類別': '賣超',
-                                    '排名': stock.get('排名', ''),
-                                    '證券代號': stock['證券代號'],
-                                    '證券名稱': stock['證券名稱'],
-                                    '買賣超張數': stock['買賣超張數'],
-                                    '收盤價': stock['收盤價'],
-                                    '漲跌價差': stock['漲跌']
-                                })
-                    daily_df = pd.DataFrame(all_rows) if all_rows else pd.DataFrame()
-            else:
-                daily_df = pd.DataFrame()  # 空的 DataFrame
+            daily_df = pd.concat(daily_buy_sell_data, ignore_index=True)
 
             for date in sorted(daily_df['日期'].unique(), reverse=True):
                 date_data = daily_df[daily_df['日期'] == date]
@@ -2848,12 +2802,11 @@ def run_step2_analysis(base_dir, market_type):
     )
     
 
-    # 保留原始 DataFrame list 用於 Excel 輸出
-    daily_buy_sell_data = daily_buy_sell_data_raw
-    
-    # 轉換為字典格式用於 HTML 輸出
-    daily_buy_sell_data_html = organize_daily_buy_sell_data_for_html(daily_buy_sell_data_raw)
-    print(f"\n✓ 已整理 {len(daily_buy_sell_data_html)} 天的買賣超數據")
+    daily_buy_sell_data = organize_daily_buy_sell_data(daily_buy_sell_data_raw)
+    print(f"\n✓ 已整理 {len(daily_buy_sell_data)} 天的買賣超數據")
+
+    daily_buy_sell_data_html = organize_daily_buy_sell_data_for_html(daily_buy_sell_data)
+    print(f"\n✓ 已整理 {len(daily_buy_sell_data_html)} 天的買賣超數據供 HTML 使用")
 
     # 計算標準差
     stock_statistics = calculate_stock_statistics(all_historical_data, config['sigma_threshold'])
@@ -2892,8 +2845,6 @@ def run_step2_analysis(base_dir, market_type):
 
         # 生成 HTML 報告 - 使用轉換後的字典格式
         html_output_path = config['output_path'].replace('.xlsx', '_complete.html')
-        # 移除 _result_ 以符合標準命名
-        html_output_path = html_output_path.replace('_result_', '_')
         
         print(f"\n準備生成 HTML: {html_output_path}")
         print(f"  - buy_stocks: {len(buy_stocks) if buy_stocks is not None else 0} rows")
@@ -4071,27 +4022,16 @@ def main():
         else:
             print(f"⚠️  Excel 檔案不存在: {source_name}")
     
-    # 使用提取的日期備份 HTML（包括 complete.html）
+    # 使用提取的日期備份 HTML
     html_files_to_backup = [
         ('ALL_TSE.html', tse_date_str),
         ('ALL_OTC.html', otc_date_str),
-        ('tse_analysis_result_complete.html', tse_date_str),
-        ('otc_analysis_result_complete.html', otc_date_str),
     ]
     
     for source_name, date_str in html_files_to_backup:
         if date_str:
             source_path = os.path.join(stock_info_dir, source_name)
-            
-            # 生成備份檔名
-            if source_name.endswith('_complete.html'):
-                # 例如: tse_analysis_result_complete.html -> tse_analysis_complete_20250101.html
-                base_name = source_name.replace('_result_complete.html', '').replace('_complete.html', '')
-                backup_name = f'{base_name}_complete_{date_str}.html'
-            else:
-                # 例如: ALL_TSE.html -> ALL_TSE_20250101.html
-                backup_name = f'{source_name.replace(".html", "")}_{date_str}.html'
-            
+            backup_name = f'{source_name.replace(".html", "")}_{date_str}.html'
             backup_path = os.path.join(stock_info_dir, backup_name)
             
             if os.path.exists(source_path):

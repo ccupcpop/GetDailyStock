@@ -11,8 +11,8 @@ on:
       - 'StockInfo/OTC_buy_ranking.txt'
       - 'StockInfo/ALL_TSE.html'
       - 'StockInfo/ALL_OTC.html'
-      - 'StockInfo/tse_analysis_complete.html'
-      - 'StockInfo/otc_analysis_complete.html'
+      - 'StockInfo/tse_analysis_result_complete.html'
+      - 'StockInfo/otc_analysis_result_complete.html'
 
 jobs:
   transfer-data:
@@ -48,15 +48,15 @@ jobs:
           else
             echo "❌ ALL_OTC.html not found"
           fi
-          if [ -f "StockInfo/tse_analysis_complete.html" ]; then
-            echo "✅ tse_analysis_complete.html found"
+          if [ -f "StockInfo/tse_analysis_result_complete.html" ]; then
+            echo "✅ tse_analysis_result_complete.html found"
           else
-            echo "❌ tse_analysis_complete.html not found"
+            echo "❌ tse_analysis_result_complete.html not found"
           fi
-          if [ -f "StockInfo/otc_analysis_complete.html" ]; then
-            echo "✅ otc_analysis_complete.html found"
+          if [ -f "StockInfo/otc_analysis_result_complete.html" ]; then
+            echo "✅ otc_analysis_result_complete.html found"
           else
-            echo "❌ otc_analysis_complete.html not found"
+            echo "❌ otc_analysis_result_complete.html not found"
           fi
       
       - name: Checkout StockTracker repository
@@ -79,8 +79,8 @@ jobs:
           rm -f stocktracker/StockInfo/OTC_buy_ranking.txt
           rm -f stocktracker/StockInfo/ALL_TSE.html
           rm -f stocktracker/StockInfo/ALL_OTC.html
-          rm -f stocktracker/StockInfo/tse_analysis_complete.html
-          rm -f stocktracker/StockInfo/otc_analysis_complete.html
+          rm -f stocktracker/StockInfo/tse_analysis_result_complete.html
+          rm -f stocktracker/StockInfo/otc_analysis_result_complete.html
           echo "✅ Old files removed"
       
       - name: Copy data files to StockTracker
@@ -102,13 +102,13 @@ jobs:
             cp StockInfo/ALL_OTC.html stocktracker/StockInfo/
             echo "✅ Copied ALL_OTC.html"
           fi
-          if [ -f "StockInfo/tse_analysis_complete.html" ]; then
-            cp StockInfo/tse_analysis_complete.html stocktracker/StockInfo/
-            echo "✅ Copied tse_analysis_complete.html"
+          if [ -f "StockInfo/tse_analysis_result_complete.html" ]; then
+            cp StockInfo/tse_analysis_result_complete.html stocktracker/StockInfo/
+            echo "✅ Copied tse_analysis_result_complete.html"
           fi
-          if [ -f "StockInfo/otc_analysis_complete.html" ]; then
-            cp StockInfo/otc_analysis_complete.html stocktracker/StockInfo/
-            echo "✅ Copied otc_analysis_complete.html"
+          if [ -f "StockInfo/otc_analysis_result_complete.html" ]; then
+            cp StockInfo/otc_analysis_result_complete.html stocktracker/StockInfo/
+            echo "✅ Copied otc_analysis_result_complete.html"
           fi
           echo ""
           echo "Files in stocktracker/StockInfo:"
@@ -146,7 +146,7 @@ jobs:
           echo "  - OTC_buy_ranking.txt"
           echo "  - ALL_TSE.html"
           echo "  - ALL_OTC.html"
-          echo "  - tse_analysis_complete.html"
-          echo "  - otc_analysis_complete.html"
+          echo "  - tse_analysis_result_complete.html"
+          echo "  - otc_analysis_result_complete.html"
           echo "Time: $(TZ='Asia/Taipei' date +'%Y-%m-%d %H:%M:%S') (Taipei)"
           echo "================================"
