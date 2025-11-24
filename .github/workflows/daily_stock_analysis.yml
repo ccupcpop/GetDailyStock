@@ -215,7 +215,8 @@ jobs:
                   'i07250717@gmail.com',
                   'hospital691202@yahoo.com.tw',
                   'miacomtw@yahoo.com.tw',
-                  'a0932973234@gmail.com'
+                  'a0932973234@gmail.com',
+                  'energy8916@hotmail.com'
               ]
               recipients_str = ', '.join(recipients)
               
