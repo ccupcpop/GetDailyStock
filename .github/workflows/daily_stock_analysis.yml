@@ -44,10 +44,10 @@ jobs:
         run: |
           if [ "$DEBUG_MODE" = "true" ]; then
             echo "⚡ 除錯模式：跳過爬蟲和 History 生成"
-            python 上市上櫃全流程.py --debug-skip-data-processing --copy-to-repo
+            python stock_workflow.py --debug-skip-data-processing --copy-to-repo
           else
             echo "🚀 完整流程模式"
-            python 上市上櫃全流程.py --copy-to-repo
+            python stock_workflow.py --copy-to-repo
           fi
       
       - name: Verify files in StockInfo directory
