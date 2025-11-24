@@ -3152,30 +3152,23 @@ class ChartPlotly:
 
         print(f"  圖表數據範圍: {df_chart['日期'].min().strftime('%Y-%m-%d')} ~ {df_chart['日期'].max().strftime('%Y-%m-%d')} (共 {len(df_chart)} 筆)")
 
-        # 計算移動平均線
-        df_chart['MA5'] = df_chart['收盤價'].rolling(window=5).mean()
-        df_chart['MA20'] = df_chart['收盤價'].rolling(window=20).mean()
-        df_chart['MA60'] = df_chart['收盤價'].rolling(window=60).mean()
-
         latest_date_str = df_chart['日期'].max().strftime('%Y-%m-%d')
 
         # 計算統計數據
         stats = ChartPlotly._calculate_statistics(df_chart)
 
-        # 創建子圖
+        # 創建子圖（3層：K線、當日買賣超、累積買賣超）
         fig = make_subplots(
-            rows=4, cols=1,
+            rows=3, cols=1,
             shared_xaxes=True,
             vertical_spacing=0.05,
             subplot_titles=(
                 '',  # 第一層標題留空,稍後在 update_layout 中設定
-                '成交張數 & 成交筆數',
                 '三大法人當日買賣超 (張)',
                 '三大法人累積買賣超 (張)'
             ),
-            row_heights=[0.4, 0.2, 0.2, 0.2],
+            row_heights=[0.4, 0.3, 0.3],
             specs=[[{"secondary_y": False}],
-                   [{"secondary_y": True}],
                    [{"secondary_y": False}],
                    [{"secondary_y": False}]]
         )
@@ -3183,16 +3176,10 @@ class ChartPlotly:
         # 第一層: K線圖
         ChartPlotly._add_candlestick(fig, df_chart)
 
-        # 第一層: 移動平均線
-        ChartPlotly._add_moving_averages(fig, df_chart)
-
-        # 第二層: 成交量
-        ChartPlotly._add_volume_traces(fig, df_chart)
-
-        # 第三層: 三大法人當日買賣超
+        # 第二層: 三大法人當日買賣超
         has_institutional = ChartPlotly._add_institutional_daily(fig, df_chart)
 
-        # 第四層: 三大法人累積買賣超
+        # 第三層: 三大法人累積買賣超
         if has_institutional:
             ChartPlotly._add_institutional_cumulative(fig, df_chart)
 
@@ -3336,9 +3323,6 @@ class ChartPlotly:
         latest = df_chart.iloc[-1]
 
         stats = {
-            'MA5': latest['MA5'] if pd.notna(latest['MA5']) else 0,
-            'MA20': latest['MA20'] if pd.notna(latest['MA20']) else 0,
-            'MA60': latest['MA60'] if pd.notna(latest['MA60']) else 0,
             '成交量': latest['成交張數'] if '成交張數' in latest and pd.notna(latest['成交張數']) else 0,
         }
 
@@ -3402,41 +3386,41 @@ class ChartPlotly:
 
     @staticmethod
     def _add_volume_traces(fig, df_chart):
-        """新增成交量圖表"""
+        """新增成交量圖表（美化長條圖樣式）"""
         if '成交張數' in df_chart.columns:
             volume_lots = pd.to_numeric(df_chart['成交張數'], errors='coerce')
+            
+            # 根據漲跌決定顏色（紅漲綠跌）
+            colors = []
+            for i in range(len(df_chart)):
+                if i == 0:
+                    # 第一天用開盤收盤比較
+                    if df_chart['收盤價'].iloc[i] >= df_chart['開盤價'].iloc[i]:
+                        colors.append('rgba(255, 82, 82, 0.85)')  # 漲 - 紅色
+                    else:
+                        colors.append('rgba(0, 200, 83, 0.85)')   # 跌 - 綠色
+                else:
+                    # 其他天與前一天收盤價比較
+                    if df_chart['收盤價'].iloc[i] >= df_chart['收盤價'].iloc[i-1]:
+                        colors.append('rgba(255, 82, 82, 0.85)')  # 漲 - 紅色
+                    else:
+                        colors.append('rgba(0, 200, 83, 0.85)')   # 跌 - 綠色
+            
+            # 成交量長條圖
             fig.add_trace(
-                go.Scatter(
+                go.Bar(
                     x=df_chart['日期'],
                     y=volume_lots,
-                    name='成交張數',
-                    line=dict(color='steelblue', width=2.5),
-                    mode='lines',
-                    hovertemplate='成交張數: %{y:,.0f}張<extra></extra>',
-                    yaxis='y2'
-                ),
-                row=2, col=1,
-                secondary_y=False
-            )
-
-        if '成交筆數' in df_chart.columns:
-            if df_chart['成交筆數'].dtype == 'object':
-                df_chart['成交筆數'] = df_chart['成交筆數'].astype(str).str.replace(',', '').str.replace('--', '0')
-            trades_count = pd.to_numeric(df_chart['成交筆數'], errors='coerce')
-            if trades_count.notna().sum() > 0:
-                fig.add_trace(
-                    go.Scatter(
-                        x=df_chart['日期'],
-                        y=trades_count,
-                        name='成交筆數',
-                        line=dict(color='darkorange', width=2.5, dash='dot'),
-                        mode='lines',
-                        hovertemplate='成交筆數: %{y:,.0f}筆<extra></extra>',
-                        yaxis='y3'
+                    name='成交量',
+                    marker=dict(
+                        color=colors,
+                        line=dict(width=0)  # 無邊框更簡潔
                     ),
-                    row=2, col=1,
-                    secondary_y=True
-                )
+                    hovertemplate='成交量: %{y:,.0f}張<extra></extra>',
+                    showlegend=True
+                ),
+                row=2, col=1
+            )
 
     @staticmethod
     def _add_institutional_daily(fig, df_chart):
@@ -3466,43 +3450,43 @@ class ChartPlotly:
                             legendgroup=name,  # 將上下圖表的同類型分組
                             showlegend=True
                         ),
-                        row=3, col=1
+                        row=2, col=1
                     )
 
         return has_institutional_data
 
     @staticmethod
     def _add_institutional_cumulative(fig, df_chart):
-        """新增三大法人累積買賣超"""
+        """新增三大法人累積買賣超（平滑曲線）"""
         if '外陸資買賣超張數' in df_chart.columns:
             foreign_cumsum = pd.to_numeric(df_chart['外陸資買賣超張數'], errors='coerce').fillna(0).cumsum()
             trust_cumsum = pd.to_numeric(df_chart.get('投信買賣超張數', 0), errors='coerce').fillna(0).cumsum()
             dealer_cumsum = pd.to_numeric(df_chart.get('自營商買賣超張數', 0), errors='coerce').fillna(0).cumsum()
 
-            # 統一顏色配置與圖例名稱
-            for name, data, color, dash_style in [
-                ('外資', foreign_cumsum, 'rgb(255, 99, 71)', 'solid'),      # 紅色實線
-                ('投信', trust_cumsum, 'rgb(46, 204, 113)', 'solid'),       # 綠色實線
-                ('自營商', dealer_cumsum, 'rgb(52, 152, 219)', 'solid')     # 藍色實線
+            # 統一顏色配置與圖例名稱（使用spline平滑曲線）
+            for name, data, color in [
+                ('外資', foreign_cumsum, 'rgb(255, 99, 71)'),      # 紅色
+                ('投信', trust_cumsum, 'rgb(46, 204, 113)'),       # 綠色
+                ('自營商', dealer_cumsum, 'rgb(52, 152, 219)')     # 藍色
             ]:
                 fig.add_trace(
                     go.Scatter(
                         x=df_chart['日期'],
                         y=data,
                         name=f'{name}累積',  # 圖例顯示: 外資累積/投信累積/自營商累積
-                        line=dict(color=color, width=2.5, dash=dash_style),
+                        line=dict(color=color, width=2.5, shape='spline', smoothing=0.8),
                         mode='lines',
                         hovertemplate=f'{name}累積: %{{y:,.0f}}張<extra></extra>',
                         legendgroup=name,  # 與上層的外資/投信/自營商同組
                         showlegend=True
                     ),
-                    row=4, col=1
+                    row=3, col=1
                 )
 
     @staticmethod
     def _update_layout(fig, stock_code, stock_name, latest_date_str, df_chart, stats):
         """更新圖表佈局"""
-        # 建立統計資訊文字 (多行顯示)
+        # 建立統計資訊文字 (簡化版，移除MA)
         stats_line1 = (
             f"最新資料日期: {latest_date_str} | "
             f"外資累積: {stats['外資累積']:,.0f}張 | "
@@ -3511,9 +3495,6 @@ class ChartPlotly:
         )
         stats_line2 = (
             f"股價K線圖 | "
-            f"MA5: {stats['MA5']:.2f} | "
-            f"MA20: {stats['MA20']:.2f} | "
-            f"MA60: {stats['MA60']:.2f} | "
             f"成交量: {stats['成交量']:,.0f}張"
         )
 
@@ -3525,7 +3506,7 @@ class ChartPlotly:
                 font=dict(size=16, family='Microsoft JhengHei, Arial, sans-serif')
             ),
             xaxis_rangeslider_visible=False,
-            height=1950,
+            height=1300,  # 3層圖表高度
             showlegend=True,
             hovermode='x unified',
             template='plotly_white',
@@ -3557,8 +3538,8 @@ class ChartPlotly:
                 font=dict(family='Microsoft JhengHei, Arial, sans-serif')
             )
 
-        # 計算股價範圍
-        price_cols = ['開盤價', '最高價', '最低價', '收盤價', 'MA5', 'MA20', 'MA60']
+        # 計算股價範圍（只使用OHLC）
+        price_cols = ['開盤價', '最高價', '最低價', '收盤價']
         price_min = df_chart[price_cols].min().min()
         price_max = df_chart[price_cols].max().max()
         price_margin = (price_max - price_min) * 0.05
@@ -3566,10 +3547,8 @@ class ChartPlotly:
 
         # 更新Y軸 - 禁用縮放
         fig.update_yaxes(title_text="股價 (元)", row=1, col=1, range=price_range, fixedrange=True)
-        fig.update_yaxes(title_text="成交張數", row=2, col=1, secondary_y=False, tickformat=",", fixedrange=True)
-        fig.update_yaxes(title_text="成交筆數", row=2, col=1, secondary_y=True, tickformat=",", side='right', fixedrange=True)
-        fig.update_yaxes(title_text="當日買賣超 (張)", row=3, col=1, tickformat=",", fixedrange=True)
-        fig.update_yaxes(title_text="累積買賣超 (張)", row=4, col=1, tickformat=",", fixedrange=True)
+        fig.update_yaxes(title_text="當日買賣超 (張)", row=2, col=1, tickformat=",", fixedrange=True)
+        fig.update_yaxes(title_text="累積買賣超 (張)", row=3, col=1, tickformat=",", fixedrange=True)
 
         # 更新X軸 - 禁用縮放
         date_range = [df_chart['日期'].min(), df_chart['日期'].max()]
@@ -3591,7 +3570,7 @@ class ChartPlotly:
             else:
                 current = current.replace(month=current.month + 1)
 
-        for i in range(1, 5):
+        for i in range(1, 4):
             fig.update_xaxes(
                 tickformat="%m-%d",
                 tickangle=-45,
