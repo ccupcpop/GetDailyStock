@@ -282,8 +282,8 @@ jobs:
                 <ul style="margin: 10px 0;">
                   <li style="margin: 8px 0;">✅ <strong>tse_analysis_result.xlsx</strong> - 上市股票分析報表（完整資料）</li>
                   <li style="margin: 8px 0;">✅ <strong>otc_analysis_result.xlsx</strong> - 上櫃股票分析報表（完整資料）</li>
-                  <li style="margin: 8px 0;">✅ <strong>tse_analysis_result_complete.html</strong> - 上市完整分析報告（互動式）</li>
-                  <li style="margin: 8px 0;">✅ <strong>otc_analysis_result_complete.html</strong> - 上櫃完整分析報告（互動式）</li>
+                  <li style="margin: 8px 0;">✅ <strong>ALL_TSE.html</strong> - 上市完整分析報告（互動式）</li>
+                  <li style="margin: 8px 0;">✅ <strong>ALL_OTC.html</strong> - 上櫃完整分析報告（互動式）</li>
                 </ul>
                 <p style="color: #666; font-size: 14px; margin-top: 15px;">
                   💡 Excel 使用 Excel 開啟，HTML 使用瀏覽器開啟查看互動圖表
@@ -315,8 +315,8 @@ jobs:
               files_to_attach = [
                   'StockInfo/tse_analysis_result.xlsx',
                   'StockInfo/otc_analysis_result.xlsx',
-                  'StockInfo/tse_analysis_result_complete.html',
-                  'StockInfo/otc_analysis_result_complete.html'
+                  'StockInfo/ALL_TSE.html',
+                  'StockInfo/ALL_OTC.html'
               ]
               
               for filename in files_to_attach:
