@@ -2547,7 +2547,7 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
                         </thead>
                         <tbody>
 """
-            for idx, stock in enumerate(buy_data[:50], 1):
+            for idx, stock in enumerate(buy_data[:100], 1):
                 code = stock.get('證券代號', '')
                 name = stock.get('證券名稱', '')
                 close_price = stock.get('收盤價', 0)
@@ -2604,7 +2604,7 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
                         </thead>
                         <tbody>
 """
-            for idx, stock in enumerate(sell_data[:10], 1):
+            for idx, stock in enumerate(sell_data[:50], 1):
                 code = stock.get('證券代號', '')
                 name = stock.get('證券名稱', '')
                 close_price = stock.get('收盤價', 0)
@@ -3118,7 +3118,7 @@ class Utils:
         df_chart = df_chart[df_chart['日期'].notna()]
 
         df_chart = df_chart.sort_values('日期')
-        df_chart = df_chart.tail(90).copy()
+        df_chart = df_chart.tail(60).copy()
 
         # 確保數值欄位是數字類型
         numeric_cols = ['開盤價', '最高價', '最低價', '收盤價', '成交張數',
@@ -3500,7 +3500,7 @@ class ChartPlotly:
 
         fig.update_layout(
             title=dict(
-                text=f'{stock_code} {stock_name} 技術分析圖表 (最近90筆)<br><sub>{stats_line1}</sub><br><sub>{stats_line2}</sub>',
+                text=f'{stock_code} {stock_name} 技術分析圖表 (最近60筆)<br><sub>{stats_line1}</sub><br><sub>{stats_line2}</sub>',
                 x=0.5,
                 xanchor='center',
                 font=dict(size=16, family='Microsoft JhengHei, Arial, sans-serif')
