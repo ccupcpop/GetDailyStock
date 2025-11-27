@@ -859,10 +859,10 @@ def setup_config(market_type='TSE'):
             'market_list_filename': 'tse_company_list.csv',
             'output_filename': 'tse_analysis_result.xlsx',
             'sigma_threshold': 2.5,
-            'aggregate_threshold': 10000,
-            'show_top_n': None,
-            'top_buy_count': 50,   # 買超前50名
-            'top_sell_count': 20   # 賣超前20名
+            'aggregate_threshold': None,
+            'show_top_n': 100,
+            'top_buy_count': 100,   # 買超前n名
+            'top_sell_count': 50   # 賣超前n名
         }
     else:  # OTC
         config = {
@@ -875,9 +875,9 @@ def setup_config(market_type='TSE'):
             'output_filename': 'otc_analysis_result.xlsx',
             'sigma_threshold': 2.5,
             'aggregate_threshold': None,
-            'show_top_n': 50,
-            'top_buy_count': 50,   # 買超前50名
-            'top_sell_count': 20   # 賣超前20名
+            'show_top_n': 100,
+            'top_buy_count': 100,   # 買超前n名
+            'top_sell_count': 50   # 賣超前n名
         }
 
     # 建立完整路徑
