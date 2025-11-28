@@ -6,6 +6,12 @@ on:
     - cron: '0 8 * * *'
   
   workflow_dispatch:
+    inputs:
+      send_email:
+        description: '是否發送 Email 通知'
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   stock-analysis:
@@ -185,6 +191,7 @@ jobs:
           fi
       
       - name: Send Email with Attachments
+        if: ${{ github.event_name == 'schedule' || inputs.send_email == true }}
         env:
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
           GMAIL_PASSWORD: ${{ secrets.GMAIL_PASSWORD }}
