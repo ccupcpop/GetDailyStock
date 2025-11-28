@@ -3137,16 +3137,11 @@ class Utils:
 # ============================================================================
 
 class ChartPlotly:
-    """Plotly 圖表生成類別"""
+    """Plotly 圖表生成類別 (修改版：加入 RWD 響應式縮放)"""
 
     @staticmethod
     def generate_chart(df, stock_code, stock_name, html_output_path=None):
-        """
-        使用 Plotly 生成互動式技術分析圖表 (HTML)
-
-        Args:
-            html_output_path: 如果為 None, 則只返回 HTML 字串不儲存檔案
-        """
+        """使用 Plotly 生成互動式技術分析圖表 (HTML)"""
 
         df_chart = Utils.prepare_chart_data(df)
 
@@ -3163,7 +3158,7 @@ class ChartPlotly:
             shared_xaxes=True,
             vertical_spacing=0.05,
             subplot_titles=(
-                '',  # 第一層標題留空,稍後在 update_layout 中設定
+                '',  
                 '三大法人當日買賣超 (張)',
                 '三大法人累積買賣超 (張)'
             ),
@@ -3187,22 +3182,30 @@ class ChartPlotly:
         ChartPlotly._update_layout(fig, stock_code, stock_name, latest_date_str, df_chart, stats)
 
         # 生成 HTML 字串
-        html_string = fig.to_html(include_plotlyjs='cdn', div_id=f'chart_{stock_code}')
+        # include_plotlyjs='cdn' 表示不將龐大的 js 檔案塞進去，而是用網路加載
+        raw_html = fig.to_html(include_plotlyjs='cdn', div_id=f'chart_{stock_code}', full_html=False)
+
+        # 【關鍵修改 1】將 Plotly 產生的 div 包在我們自定義的容器 .chart-container 裡面
+        # 這樣才能用 CSS 強制控制它的長寬比例
+        wrapped_html = f'<div class="chart-container">{raw_html}</div>'
 
         # 如果指定了輸出路徑,則儲存完整的 HTML 檔案
         if html_output_path:
-            full_html = ChartPlotly._wrap_html(html_string, f"{stock_code} {stock_name}")
+            full_html = ChartPlotly._wrap_html(wrapped_html, f"{stock_code} {stock_name}")
             with open(html_output_path, 'w', encoding='utf-8') as f:
                 f.write(full_html)
             print(f"  ✓ HTML圖表已儲存: {html_output_path}")
 
-        return html_string
+        return wrapped_html
 
     @staticmethod
     def _wrap_html(chart_html, title="股票圖表"):
-        """包裝完整的 HTML 結構"""
+        """包裝完整的 HTML 結構 (含 CSS)"""
         viewport_meta = '<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no">'
 
+        # 【關鍵修改 2】新增 CSS 樣式
+        # .chart-container: 設定 aspect-ratio (長寬比)
+        # .plotly-graph-div: 強制 height: 100% !important 覆蓋掉 Plotly 原本寫死的 1300px
         touch_action_css = '''
     <style>
         html {
@@ -3216,19 +3219,43 @@ class ChartPlotly:
             overflow-y: auto;
             overflow-x: hidden;
             -webkit-overflow-scrolling: touch;
-            -webkit-user-select: none;
-            -moz-user-select: none;
-            -ms-user-select: none;
-            user-select: none;
+            background-color: #f5f5f5;
+            font-family: "Microsoft JhengHei", sans-serif;
+        }
+
+        /* === 核心修改：響應式容器 === */
+        .chart-container {
+            width: 100%;
+            position: relative;
+            background: #fff;
+            margin-bottom: 20px;
+            
+            /* 設定比例：0.75 大約是 3:4 的比例，適合手機直立觀看 3 層圖表 */
+            /* 如果覺得太長或太短，可以調整這個數字 (0.6 ~ 0.8 之間) */
+            aspect-ratio: 0.75; 
+        }
+
+        /* 強制覆蓋 Plotly 寫死的高度，讓圖表跟隨容器大小 */
+        .chart-container .plotly-graph-div {
+            width: 100% !important;
+            height: 100% !important;
+            position: absolute !important;
+            top: 0;
+            left: 0;
+        }
+
+        /* 電腦版可以讓比例稍微寬一點 */
+        @media (min-width: 768px) {
+            .chart-container {
+                aspect-ratio: 1.2; /* 電腦版接近方形或寬螢幕 */
+                max-width: 1200px; /* 限制最大寬度 */
+                margin: 0 auto 30px auto; /* 置中 */
+            }
         }
 
         .plotly {
             touch-action: pan-y;
             -ms-touch-action: pan-y;
-        }
-
-        * {
-            -webkit-tap-highlight-color: transparent;
         }
 
         .stock-separator {
@@ -3243,61 +3270,12 @@ class ChartPlotly:
         disable_gestures_script = '''
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // 禁止雙指縮放
+            // 禁止雙指縮放，避免誤觸
             document.addEventListener('touchstart', function(e) {
                 if (e.touches.length > 1) {
                     e.preventDefault();
                 }
             }, { passive: false });
-
-            // 禁止手勢縮放
-            document.addEventListener('gesturestart', function(e) {
-                e.preventDefault();
-            });
-
-            document.addEventListener('gesturechange', function(e) {
-                e.preventDefault();
-            });
-
-            document.addEventListener('gestureend', function(e) {
-                e.preventDefault();
-            });
-
-            // 禁止雙擊縮放
-            let lastTouchEnd = 0;
-            document.addEventListener('touchend', function(e) {
-                const now = Date.now();
-                if (now - lastTouchEnd <= 300) {
-                    e.preventDefault();
-                }
-                lastTouchEnd = now;
-            }, false);
-
-            // 禁止滾輪縮放(Ctrl+滾輪)
-            document.addEventListener('wheel', function(e) {
-                if (e.ctrlKey) {
-                    e.preventDefault();
-                }
-            }, { passive: false });
-
-            // 禁止橫向滾動
-            document.addEventListener('touchmove', function(e) {
-                if (!e.target.closest('.plotly')) {
-                    const touch = e.touches[0];
-                    const deltaX = Math.abs(touch.clientX - (touch.startX || touch.clientX));
-                    const deltaY = Math.abs(touch.clientY - (touch.startY || touch.clientY));
-
-                    if (deltaX > deltaY) {
-                        e.preventDefault();
-                    }
-                }
-            }, { passive: false });
-
-            document.addEventListener('touchstart', function(e) {
-                const touch = e.touches[0];
-                touch.startX = touch.clientX;
-                touch.startY = touch.clientY;
-            }, { passive: true });
         });
     </script>'''
 
@@ -3367,62 +3345,6 @@ class ChartPlotly:
         )
 
     @staticmethod
-    def _add_moving_averages(fig, df_chart):
-        """新增移動平均線"""
-        for ma_name, ma_col, color in [('MA5', 'MA5', 'blue'),
-                                         ('MA20', 'MA20', 'orange'),
-                                         ('MA60', 'MA60', 'purple')]:
-            fig.add_trace(
-                go.Scatter(
-                    x=df_chart['日期'],
-                    y=df_chart[ma_col],
-                    name=ma_name,
-                    line=dict(color=color, width=1.5),
-                    mode='lines',
-                    hovertemplate=f'{ma_name}: %{{y:.2f}}<extra></extra>'
-                ),
-                row=1, col=1
-            )
-
-    @staticmethod
-    def _add_volume_traces(fig, df_chart):
-        """新增成交量圖表（美化長條圖樣式）"""
-        if '成交張數' in df_chart.columns:
-            volume_lots = pd.to_numeric(df_chart['成交張數'], errors='coerce')
-            
-            # 根據漲跌決定顏色（紅漲綠跌）
-            colors = []
-            for i in range(len(df_chart)):
-                if i == 0:
-                    # 第一天用開盤收盤比較
-                    if df_chart['收盤價'].iloc[i] >= df_chart['開盤價'].iloc[i]:
-                        colors.append('rgba(255, 82, 82, 0.85)')  # 漲 - 紅色
-                    else:
-                        colors.append('rgba(0, 200, 83, 0.85)')   # 跌 - 綠色
-                else:
-                    # 其他天與前一天收盤價比較
-                    if df_chart['收盤價'].iloc[i] >= df_chart['收盤價'].iloc[i-1]:
-                        colors.append('rgba(255, 82, 82, 0.85)')  # 漲 - 紅色
-                    else:
-                        colors.append('rgba(0, 200, 83, 0.85)')   # 跌 - 綠色
-            
-            # 成交量長條圖
-            fig.add_trace(
-                go.Bar(
-                    x=df_chart['日期'],
-                    y=volume_lots,
-                    name='成交量',
-                    marker=dict(
-                        color=colors,
-                        line=dict(width=0)  # 無邊框更簡潔
-                    ),
-                    hovertemplate='成交量: %{y:,.0f}張<extra></extra>',
-                    showlegend=True
-                ),
-                row=2, col=1
-            )
-
-    @staticmethod
     def _add_institutional_daily(fig, df_chart):
         """新增三大法人當日買賣超"""
         has_institutional_data = False
@@ -3434,7 +3356,6 @@ class ChartPlotly:
             if foreign.notna().sum() > 0 or trust.notna().sum() > 0 or dealer.notna().sum() > 0:
                 has_institutional_data = True
 
-                # 統一顏色配置與圖例名稱
                 for name, data, color in [
                     ('外資', foreign, 'rgba(255, 99, 71, 0.7)'),      # 紅色
                     ('投信', trust, 'rgba(46, 204, 113, 0.7)'),       # 綠色
@@ -3444,10 +3365,10 @@ class ChartPlotly:
                         go.Bar(
                             x=df_chart['日期'],
                             y=data,
-                            name=name,  # 圖例顯示: 外資/投信/自營商
+                            name=name,
                             marker_color=color,
                             hovertemplate=f'{name}: %{{y:,.0f}}張<extra></extra>',
-                            legendgroup=name,  # 將上下圖表的同類型分組
+                            legendgroup=name,
                             showlegend=True
                         ),
                         row=2, col=1
@@ -3463,7 +3384,6 @@ class ChartPlotly:
             trust_cumsum = pd.to_numeric(df_chart.get('投信買賣超張數', 0), errors='coerce').fillna(0).cumsum()
             dealer_cumsum = pd.to_numeric(df_chart.get('自營商買賣超張數', 0), errors='coerce').fillna(0).cumsum()
 
-            # 統一顏色配置與圖例名稱（使用spline平滑曲線）
             for name, data, color in [
                 ('外資', foreign_cumsum, 'rgb(255, 99, 71)'),      # 紅色
                 ('投信', trust_cumsum, 'rgb(46, 204, 113)'),       # 綠色
@@ -3473,11 +3393,11 @@ class ChartPlotly:
                     go.Scatter(
                         x=df_chart['日期'],
                         y=data,
-                        name=f'{name}累積',  # 圖例顯示: 外資累積/投信累積/自營商累積
+                        name=f'{name}累積',
                         line=dict(color=color, width=2.5, shape='spline', smoothing=0.8),
                         mode='lines',
                         hovertemplate=f'{name}累積: %{{y:,.0f}}張<extra></extra>',
-                        legendgroup=name,  # 與上層的外資/投信/自營商同組
+                        legendgroup=name,
                         showlegend=True
                     ),
                     row=3, col=1
@@ -3486,27 +3406,25 @@ class ChartPlotly:
     @staticmethod
     def _update_layout(fig, stock_code, stock_name, latest_date_str, df_chart, stats):
         """更新圖表佈局"""
-        # 建立統計資訊文字 (簡化版，移除MA)
         stats_line1 = (
-            f"最新資料日期: {latest_date_str} | "
-            f"外資累積: {stats['外資累積']:,.0f}張 | "
-            f"投信累積: {stats['投信累積']:,.0f}張 | "
-            f"自營累積: {stats['自營累積']:,.0f}張"
+            f"最新: {latest_date_str} | "
+            f"外資累積: {stats['外資累積']:,.0f} | "
+            f"投信累積: {stats['投信累積']:,.0f} | "
+            f"自營累積: {stats['自營累積']:,.0f}"
         )
-        stats_line2 = (
-            f"股價K線圖 | "
-            f"成交量: {stats['成交量']:,.0f}張"
-        )
+        stats_line2 = f"成交量: {stats['成交量']:,.0f}張"
 
+        # 注意：雖然這裡設定了 height=1300，但會被上面的 CSS !important 覆蓋
+        # 保留這個設定是為了在不支援 CSS 的環境下（極少見）有個預設值
         fig.update_layout(
             title=dict(
-                text=f'{stock_code} {stock_name} 技術分析圖表 (最近60筆)<br><sub>{stats_line1}</sub><br><sub>{stats_line2}</sub>',
+                text=f'{stock_code} {stock_name}<br><sub>{stats_line1}</sub>',
                 x=0.5,
                 xanchor='center',
                 font=dict(size=16, family='Microsoft JhengHei, Arial, sans-serif')
             ),
             xaxis_rangeslider_visible=False,
-            height=1300,  # 3層圖表高度
+            height=1300,  
             showlegend=True,
             hovermode='x unified',
             template='plotly_white',
@@ -3522,63 +3440,30 @@ class ChartPlotly:
                 borderwidth=1,
                 font=dict(family='Microsoft JhengHei, Arial, sans-serif')
             ),
-            font=dict(family='Microsoft JhengHei, Arial, sans-serif'),  # 全域字體設定
-            dragmode='pan'  # 允許拖曳,但由 fixedrange 限制軸範圍
+            font=dict(family='Microsoft JhengHei, Arial, sans-serif'),
+            dragmode='pan'
         )
 
-        # 手動設定第一層子圖標題 (包含統計資訊)
-        fig.layout.annotations[0].update(
-            text=stats_line2,
-            font=dict(size=12, family='Microsoft JhengHei, Arial, sans-serif')
-        )
-
-        # 更新其他子圖標題的字體
-        for i in range(1, len(fig.layout.annotations)):
-            fig.layout.annotations[i].update(
-                font=dict(family='Microsoft JhengHei, Arial, sans-serif')
-            )
-
-        # 計算股價範圍（只使用OHLC）
+        # 計算股價範圍
         price_cols = ['開盤價', '最高價', '最低價', '收盤價']
         price_min = df_chart[price_cols].min().min()
         price_max = df_chart[price_cols].max().max()
         price_margin = (price_max - price_min) * 0.05
         price_range = [price_min - price_margin, price_max + price_margin]
 
-        # 更新Y軸 - 禁用縮放
-        fig.update_yaxes(title_text="股價 (元)", row=1, col=1, range=price_range, fixedrange=True)
-        fig.update_yaxes(title_text="當日買賣超 (張)", row=2, col=1, tickformat=",", fixedrange=True)
-        fig.update_yaxes(title_text="累積買賣超 (張)", row=3, col=1, tickformat=",", fixedrange=True)
+        # 設定固定範圍 (Fixed Range)，防止使用者誤觸縮放導致跑版
+        fig.update_yaxes(title_text="股價", row=1, col=1, range=price_range, fixedrange=True)
+        fig.update_yaxes(title_text="當日", row=2, col=1, tickformat=",", fixedrange=True)
+        fig.update_yaxes(title_text="累積", row=3, col=1, tickformat=",", fixedrange=True)
 
-        # 更新X軸 - 禁用縮放
         date_range = [df_chart['日期'].min(), df_chart['日期'].max()]
-        start_date = df_chart['日期'].min()
-        end_date = df_chart['日期'].max()
-
-        tickvals = []
-        current = start_date.replace(day=1)
-        while current <= end_date:
-            for day in [1, 6, 11, 16, 21, 26]:
-                try:
-                    tick_date = current.replace(day=day)
-                    if start_date <= tick_date <= end_date:
-                        tickvals.append(tick_date)
-                except:
-                    pass
-            if current.month == 12:
-                current = current.replace(year=current.year + 1, month=1)
-            else:
-                current = current.replace(month=current.month + 1)
-
+        
+        # 簡單的 X 軸刻度設定
         for i in range(1, 4):
             fig.update_xaxes(
                 tickformat="%m-%d",
                 tickangle=-45,
-                tickmode='array',
-                tickvals=tickvals,
-                showticklabels=True,
                 range=date_range,
-                hoverformat="%m-%d",
                 fixedrange=True,  # 禁用 X 軸縮放
                 row=i, col=1
             )
