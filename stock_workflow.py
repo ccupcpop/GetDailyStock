@@ -861,8 +861,8 @@ def setup_config(market_type='TSE'):
             'sigma_threshold': 2.5,
             'aggregate_threshold': None,
             'show_top_n': 100,
-            'top_buy_count': 100,   # 買超前n名
-            'top_sell_count': 50   # 賣超前n名
+            'top_buy_count': 500,   # 買超前n名
+            'top_sell_count': 200   # 賣超前n名
         }
     else:  # OTC
         config = {
@@ -876,8 +876,8 @@ def setup_config(market_type='TSE'):
             'sigma_threshold': 2.5,
             'aggregate_threshold': None,
             'show_top_n': 100,
-            'top_buy_count': 100,   # 買超前n名
-            'top_sell_count': 50   # 賣超前n名
+            'top_buy_count': 500,   # 買超前n名
+            'top_sell_count': 200   # 賣超前n名
         }
 
     # 建立完整路徑
