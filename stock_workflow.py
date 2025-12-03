@@ -2158,7 +2158,7 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
         body {{
             font-family: "Microsoft JhengHei", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 5px;
+            padding: 2px;
             min-height: 100vh;
             font-size: 14px; /* 基礎字體縮小 */
         }}
@@ -2171,21 +2171,21 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
         .tabs {{
             background: white;
             border-radius: 15px;
-            padding: 8px 8px 0 8px; /* 縮小間距 */
-            margin-bottom: 10px;
+            padding: 4px 4px 0 4px; /* 縮小間距 */
+            margin-bottom: 5px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.2);
         }}
         
         .tab-buttons {{
             display: flex;
-            gap: 5px; /* 縮小間距 */
+            gap: 2px; /* 縮小間距 */
             flex-wrap: wrap;
             border-bottom: 2px solid #e2e8f0;
             padding-bottom: 10px;
         }}
         
         .tab-button {{
-            padding: 4px 8px; /* 縮小按鈕 */
+            padding: 2px 4px; /* 縮小按鈕 */
             border: none;
             background: #f7fafc;
             color: #4a5568;
@@ -2208,7 +2208,7 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
         
         .tab-content {{
             display: none;
-            padding: 8px 0; /* 縮小間距 */
+            padding: 4px 0; /* 縮小間距 */
         }}
         
         .tab-content.active {{
@@ -2217,16 +2217,16 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
         
         .section {{
             background: white;
-            padding: 8px; /* 縮小間距 */
+            padding: 4px; /* 縮小間距 */
             border-radius: 15px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            margin-bottom: 10px;
+            margin-bottom: 5px;
         }}
         
         .section-title {{
             font-size: 1.1em; /* 縮小標題 */
-            margin-bottom: 8px;
-            padding-bottom: 4px;
+            margin-bottom: 4px;
+            padding-bottom: 2px;
             border-bottom: 3px solid #667eea;
             color: #2d3748;
         }}
@@ -2252,7 +2252,7 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
             width: 100%;
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
-            margin-bottom: 8px;
+            margin-bottom: 4px;
         }}
         
         table {{
@@ -2288,7 +2288,7 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
         }}
         
         th {{
-            padding: 4px 8px; /* 縮小間距 */
+            padding: 2px 4px; /* 縮小間距 */
             text-align: left;
             font-weight: 600;
             font-size: 1.0em;
@@ -2296,7 +2296,7 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
         }}
         
         td {{
-            padding: 3px 8px; /* 縮小間距 */
+            padding: 2px 4px; /* 縮小間距 */
             border-bottom: 1px solid #e2e8f0;
             font-size: 1.0em;
         }}
@@ -2385,13 +2385,13 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
         /* 手機專用樣式 */
         @media (max-width: 768px) {{
             body {{
-                padding: 5px;
+                padding: 2px;
                 font-size: 13px;
             }}
             
             .section {{
-                padding: 5px;
-                margin-bottom: 8px;
+                padding: 2px;
+                margin-bottom: 4px;
             }}
             
             .section-title {{
@@ -2405,7 +2405,7 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
             }}
             
             th, td {{
-                padding: 3px 2px; /* 手機更緊湊 */
+                padding: 1px 2px; /* 手機更緊湊 */
             }}
             
             .tab-button {{
@@ -2426,7 +2426,7 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
             }}
             
             th, td {{
-                padding: 2px 2px;
+                padding: 1px 1px;
             }}
             
             .stock-name {{
@@ -2457,7 +2457,7 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
         html_content += """
                 <div class="section">
                     <h2 class="section-title buy">📈 彙整買超分析</h2>
-                    <p style="color: #718096; margin-bottom: 10px; font-size: 1.0em;">最近5天買賣超淨值 >= 10000張</p>
+                    <p style="color: #718096; margin-bottom: 5px; font-size: 1.0em;">最近5天買賣超淨值 >= 10000張</p>
                     <div class="table-container">
                         <table>
                             <thead class="buy">
@@ -2500,7 +2500,7 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
         html_content += """
                 <div class="section">
                     <h2 class="section-title sell">📉 彙整賣超分析</h2>
-                    <p style="color: #718096; margin-bottom: 10px; font-size: 1.0em;">最近5天買賣超淨值 <= -10000張</p>
+                    <p style="color: #718096; margin-bottom: 5px; font-size: 1.0em;">最近5天買賣超淨值 <= -10000張</p>
                     <div class="table-container">
                         <table>
                             <thead class="sell">
@@ -2543,7 +2543,7 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
         html_content += """
                 <div class="section">
                     <h2 class="section-title attention">⚠️ 特別注意</h2>
-                    <p style="color: #718096; margin-bottom: 10px; font-size: 1.0em;">同時出現在買超與賣超前20</p>
+                    <p style="color: #718096; margin-bottom: 5px; font-size: 1.0em;">同時出現在買超與賣超前20</p>
                     <div class="table-container">
                         <table>
                             <thead class="attention">
