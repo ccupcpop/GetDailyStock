@@ -2116,32 +2116,37 @@ def export_to_excel(output_path, buy_stocks, sell_stocks, both_stocks_set, both_
 
 # 【第二步-beautify_excel】
 # 從第二步程式複製 beautify_excel 函數
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+修正版 HTML 生成函數 - 加強手機響應式支援
+"""
+
 def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set, both_stocks_df,
                           daily_buy_sell_data, etf_daily_data, latest_date, new_buy_stocks,
                           new_sell_stocks, observable_buy_stocks, observable_sell_stocks,
                           stock_sector_map, etf_stock_codes, market_type='TSE'):
-    """生成完整的 HTML 分析報告 - 按照標準格式"""
+    """生成完整的 HTML 分析報告 - 手機優化版"""
     
     market_name = '上市' if market_type == 'TSE' else '上櫃'
     
     # 準備日期標籤
     date_tabs = []
     if daily_buy_sell_data and len(daily_buy_sell_data) > 0:
-        for i, day_data in enumerate(daily_buy_sell_data[:5]):  # 最多5天
+        for i, day_data in enumerate(daily_buy_sell_data[:5]):
             date = day_data['日期']
-            # 將 20251121 轉換為 2025/11/21
             if len(date) == 8:
                 formatted_date = f"{date[0:4]}/{date[4:6]}/{date[6:8]}"
             else:
                 formatted_date = date
             date_tabs.append((i + 1, formatted_date, day_data))
     
-    # HTML 開始
+    # HTML 開始 - 加強手機響應式設計
     html_content = f"""<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>{market_name}三大法人分析報告</title>
     <style>
         * {{
@@ -2153,8 +2158,9 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
         body {{
             font-family: "Microsoft JhengHei", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 20px;
+            padding: 10px;
             min-height: 100vh;
+            font-size: 14px; /* 基礎字體縮小 */
         }}
         
         .container {{
@@ -2165,27 +2171,27 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
         .tabs {{
             background: white;
             border-radius: 15px;
-            padding: 20px 20px 0 20px;
-            margin-bottom: 30px;
+            padding: 15px 10px 0 10px; /* 縮小間距 */
+            margin-bottom: 20px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.2);
         }}
         
         .tab-buttons {{
             display: flex;
-            gap: 10px;
+            gap: 5px; /* 縮小間距 */
             flex-wrap: wrap;
             border-bottom: 2px solid #e2e8f0;
             padding-bottom: 10px;
         }}
         
         .tab-button {{
-            padding: 12px 24px;
+            padding: 8px 12px; /* 縮小按鈕 */
             border: none;
             background: #f7fafc;
             color: #4a5568;
             cursor: pointer;
             border-radius: 8px 8px 0 0;
-            font-size: 1em;
+            font-size: 0.9em; /* 縮小字體 */
             font-weight: 600;
             transition: all 0.3s ease;
             font-family: "Microsoft JhengHei", sans-serif;
@@ -2202,7 +2208,7 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
         
         .tab-content {{
             display: none;
-            padding: 20px 0;
+            padding: 15px 0; /* 縮小間距 */
         }}
         
         .tab-content.active {{
@@ -2211,16 +2217,16 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
         
         .section {{
             background: white;
-            padding: 30px;
+            padding: 15px; /* 縮小間距 */
             border-radius: 15px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            margin-bottom: 30px;
+            margin-bottom: 20px;
         }}
         
         .section-title {{
-            font-size: 1.8em;
-            margin-bottom: 20px;
-            padding-bottom: 10px;
+            font-size: 1.3em; /* 縮小標題 */
+            margin-bottom: 15px;
+            padding-bottom: 8px;
             border-bottom: 3px solid #667eea;
             color: #2d3748;
         }}
@@ -2241,15 +2247,28 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
             border-bottom-color: #ecc94b;
         }}
         
+        /* 表格容器 - 允許水平滾動 */
+        .table-container {{
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin-bottom: 15px;
+        }}
+        
         table {{
             width: 100%;
+            min-width: 500px; /* 最小寬度 */
             border-collapse: collapse;
             background: white;
+            font-size: 0.85em; /* 縮小表格字體 */
         }}
         
         thead {{
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
+            position: sticky;
+            top: 0;
+            z-index: 10;
         }}
         
         thead.buy {{
@@ -2269,14 +2288,15 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
         }}
         
         th {{
-            padding: 15px 10px;
+            padding: 10px 6px; /* 縮小間距 */
             text-align: left;
             font-weight: 600;
-            font-size: 0.95em;
+            font-size: 0.9em;
+            white-space: nowrap; /* 標題不換行 */
         }}
         
         td {{
-            padding: 12px 10px;
+            padding: 8px 6px; /* 縮小間距 */
             border-bottom: 1px solid #e2e8f0;
             font-size: 0.9em;
         }}
@@ -2288,27 +2308,34 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
         .rank {{
             font-weight: bold;
             color: #667eea;
-            font-size: 1.1em;
+            font-size: 1em;
         }}
         
         .stock-code {{
             font-weight: 600;
             color: #2d3748;
+            white-space: nowrap;
         }}
         
         .stock-name {{
             font-weight: 600;
             color: #4a5568;
+            max-width: 100px; /* 限制名稱寬度 */
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }}
         
         .volume-positive {{
             color: #e53e3e;
             font-weight: 600;
+            white-space: nowrap;
         }}
         
         .volume-negative {{
             color: #38a169;
             font-weight: 600;
+            white-space: nowrap;
         }}
         
         .price-up {{
@@ -2323,11 +2350,11 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
         
         .badge {{
             display: inline-block;
-            padding: 3px 8px;
-            border-radius: 12px;
-            font-size: 0.85em;
+            padding: 2px 6px; /* 縮小徽章 */
+            border-radius: 10px;
+            font-size: 0.75em;
             font-weight: 600;
-            margin-left: 5px;
+            margin-left: 3px;
         }}
         
         .badge-new {{
@@ -2347,28 +2374,63 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
         
         .footer {{
             background: white;
-            padding: 20px;
+            padding: 15px;
             border-radius: 15px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.2);
             text-align: center;
             color: #718096;
+            font-size: 0.9em;
         }}
         
+        /* 手機專用樣式 */
         @media (max-width: 768px) {{
             body {{
-                padding: 10px;
+                padding: 5px;
+                font-size: 13px;
             }}
             
             .section {{
-                padding: 15px;
+                padding: 10px;
+                margin-bottom: 15px;
+            }}
+            
+            .section-title {{
+                font-size: 1.1em;
+                margin-bottom: 10px;
             }}
             
             table {{
-                font-size: 0.85em;
+                font-size: 0.75em; /* 手機進一步縮小 */
+                min-width: 450px;
             }}
             
             th, td {{
-                padding: 8px 5px;
+                padding: 6px 4px; /* 手機更緊湊 */
+            }}
+            
+            .tab-button {{
+                padding: 6px 10px;
+                font-size: 0.85em;
+            }}
+            
+            .stock-name {{
+                max-width: 80px; /* 手機縮短名稱 */
+            }}
+        }}
+        
+        /* 極小螢幕 */
+        @media (max-width: 480px) {{
+            table {{
+                font-size: 0.7em;
+                min-width: 400px;
+            }}
+            
+            th, td {{
+                padding: 5px 3px;
+            }}
+            
+            .stock-name {{
+                max-width: 60px;
             }}
         }}
     </style>
@@ -2395,18 +2457,19 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
         html_content += """
                 <div class="section">
                     <h2 class="section-title buy">📈 彙整買超分析</h2>
-                    <p style="color: #718096; margin-bottom: 15px;">最近5天買賣超淨值 >= 10000張 (淨值 = 5天買賣超總和)</p>
-                    <table>
-                        <thead class="buy">
-                            <tr>
-                                <th>證券代號</th>
-                                <th>證券領域</th>
-                                <th>證券名稱</th>
-                                <th>買超總和</th>
-                                <th>注意事項</th>
-                            </tr>
-                        </thead>
-                        <tbody>
+                    <p style="color: #718096; margin-bottom: 10px; font-size: 0.9em;">最近5天買賣超淨值 >= 10000張</p>
+                    <div class="table-container">
+                        <table>
+                            <thead class="buy">
+                                <tr>
+                                    <th>代號</th>
+                                    <th>領域</th>
+                                    <th>名稱</th>
+                                    <th>買超總和</th>
+                                    <th>注意</th>
+                                </tr>
+                            </thead>
+                            <tbody>
 """
         for _, row in buy_stocks.iterrows():
             code = row["證券代號"]
@@ -2414,20 +2477,21 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
             name = row["證券名稱"]
             total = row["買超總和"]
             note = row.get("注意事項", "")
-            note_html = f'<span class="badge badge-alert">{note}</span>' if note else ''
+            note_html = f'<span class="badge badge-alert">⚠️</span>' if note else ''
             
             html_content += f"""
-                            <tr>
-                                <td class="stock-code">{code}</td>
-                                <td>{sector}</td>
-                                <td class="stock-name">{name}</td>
-                                <td class="volume-positive">{total:,}</td>
-                                <td>{note_html}</td>
-                            </tr>
+                                <tr>
+                                    <td class="stock-code">{code}</td>
+                                    <td>{sector}</td>
+                                    <td class="stock-name" title="{name}">{name}</td>
+                                    <td class="volume-positive">{total:,}</td>
+                                    <td>{note_html}</td>
+                                </tr>
 """
         html_content += """
-                        </tbody>
-                    </table>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
                 """
     
@@ -2436,18 +2500,19 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
         html_content += """
                 <div class="section">
                     <h2 class="section-title sell">📉 彙整賣超分析</h2>
-                    <p style="color: #718096; margin-bottom: 15px;">最近5天買賣超淨值 <= -10000張 (淨值 = 5天買賣超總和)</p>
-                    <table>
-                        <thead class="sell">
-                            <tr>
-                                <th>證券代號</th>
-                                <th>證券領域</th>
-                                <th>證券名稱</th>
-                                <th>賣超總和</th>
-                                <th>注意事項</th>
-                            </tr>
-                        </thead>
-                        <tbody>
+                    <p style="color: #718096; margin-bottom: 10px; font-size: 0.9em;">最近5天買賣超淨值 <= -10000張</p>
+                    <div class="table-container">
+                        <table>
+                            <thead class="sell">
+                                <tr>
+                                    <th>代號</th>
+                                    <th>領域</th>
+                                    <th>名稱</th>
+                                    <th>賣超總和</th>
+                                    <th>注意</th>
+                                </tr>
+                            </thead>
+                            <tbody>
 """
         for _, row in sell_stocks.iterrows():
             code = row["證券代號"]
@@ -2455,20 +2520,21 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
             name = row["證券名稱"]
             total = row["賣超總和"]
             note = row.get("注意事項", "")
-            note_html = f'<span class="badge badge-alert">{note}</span>' if note else ''
+            note_html = f'<span class="badge badge-alert">⚠️</span>' if note else ''
             
             html_content += f"""
-                            <tr>
-                                <td class="stock-code">{code}</td>
-                                <td>{sector}</td>
-                                <td class="stock-name">{name}</td>
-                                <td class="volume-negative">{total:,}</td>
-                                <td>{note_html}</td>
-                            </tr>
+                                <tr>
+                                    <td class="stock-code">{code}</td>
+                                    <td>{sector}</td>
+                                    <td class="stock-name" title="{name}">{name}</td>
+                                    <td class="volume-negative">{total:,}</td>
+                                    <td>{note_html}</td>
+                                </tr>
 """
         html_content += """
-                        </tbody>
-                    </table>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
                 """
     
@@ -2477,23 +2543,24 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
         html_content += """
                 <div class="section">
                     <h2 class="section-title attention">⚠️ 特別注意</h2>
-                    <p style="color: #718096; margin-bottom: 15px;">同時出現在買超前20和賣超前20的證券 (含日期明細)</p>
-                    <table>
-                        <thead class="attention">
-                            <tr>
-                                <th>代號</th>
-                                <th>名稱</th>
-                                <th>領域</th>
-                                <th>買超次數</th>
-                                <th>買超日期</th>
-                                <th>買超總和</th>
-                                <th>賣超次數</th>
-                                <th>賣超日期</th>
-                                <th>賣超總和</th>
-                                <th>淨買賣超</th>
-                            </tr>
-                        </thead>
-                        <tbody>
+                    <p style="color: #718096; margin-bottom: 10px; font-size: 0.9em;">同時出現在買超與賣超前20</p>
+                    <div class="table-container">
+                        <table>
+                            <thead class="attention">
+                                <tr>
+                                    <th>代號</th>
+                                    <th>名稱</th>
+                                    <th>領域</th>
+                                    <th>買超次</th>
+                                    <th>買超日期</th>
+                                    <th>買超和</th>
+                                    <th>賣超次</th>
+                                    <th>賣超日期</th>
+                                    <th>賣超和</th>
+                                    <th>淨值</th>
+                                </tr>
+                            </thead>
+                            <tbody>
 """
         for _, row in both_stocks_df.iterrows():
             code = row["證券代號"]
@@ -2509,22 +2576,23 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
             net_class = 'volume-positive' if net > 0 else 'volume-negative'
             
             html_content += f"""
-                            <tr>
-                                <td class="stock-code">{code}</td>
-                                <td class="stock-name">{name}</td>
-                                <td>{sector}</td>
-                                <td>{buy_count}</td>
-                                <td>{buy_dates}</td>
-                                <td class="volume-positive">{buy_total:,}</td>
-                                <td>{sell_count}</td>
-                                <td>{sell_dates}</td>
-                                <td class="volume-negative">{sell_total:,}</td>
-                                <td class="{net_class}">{net:,}</td>
-                            </tr>
+                                <tr>
+                                    <td class="stock-code">{code}</td>
+                                    <td class="stock-name" title="{name}">{name}</td>
+                                    <td>{sector}</td>
+                                    <td>{buy_count}</td>
+                                    <td style="font-size: 0.8em;">{buy_dates}</td>
+                                    <td class="volume-positive">{buy_total:,}</td>
+                                    <td>{sell_count}</td>
+                                    <td style="font-size: 0.8em;">{sell_dates}</td>
+                                    <td class="volume-negative">{sell_total:,}</td>
+                                    <td class="{net_class}">{net:,}</td>
+                                </tr>
 """
         html_content += """
-                        </tbody>
-                    </table>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 """
     
@@ -2537,34 +2605,34 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
         html_content += f"""
             <div id="tab-{tab_idx}" class="tab-content">"""
         
-        # 買超 TOP（動態顯示實際數量）
+        # 買超 TOP
         buy_data = day_data.get('買超', [])
         if buy_data:
-            buy_count = len(buy_data)  # 實際的買超數量
+            buy_count = len(buy_data)
             html_content += f"""
                 <div class="section">
                     <h2 class="section-title buy">📈 買超 TOP {buy_count} ({formatted_date})</h2>
-                    <table>
-                        <thead class="buy">
-                            <tr>
-                                <th>排名</th>
-                                <th>代號</th>
-                                <th>證券名稱</th>
-                                <th>收盤價</th>
-                                <th>漲跌</th>
-                                <th>買賣超(張)</th>
-                            </tr>
-                        </thead>
-                        <tbody>
+                    <div class="table-container">
+                        <table>
+                            <thead class="buy">
+                                <tr>
+                                    <th>排名</th>
+                                    <th>代號</th>
+                                    <th>名稱</th>
+                                    <th>收盤價</th>
+                                    <th>漲跌</th>
+                                    <th>買賣超</th>
+                                </tr>
+                            </thead>
+                            <tbody>
 """
-            for idx, stock in enumerate(buy_data, 1):  # 顯示全部買超資料
+            for idx, stock in enumerate(buy_data, 1):
                 code = stock.get('證券代號', '')
                 name = stock.get('證券名稱', '')
                 close_price = stock.get('收盤價', 0)
                 price_change = stock.get('漲跌', 0)
                 volume = stock.get('買賣超張數', 0)
                 
-                # 判斷漲跌樣式
                 if isinstance(price_change, (int, float)):
                     if price_change > 0:
                         price_class = 'price-up'
@@ -2580,49 +2648,50 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
                     price_str = str(price_change)
                 
                 html_content += f"""
-                            <tr>
-                                <td class="rank">{idx}</td>
-                                <td class="stock-code">{code}</td>
-                                <td class="stock-name">{name}</td>
-                                <td>{close_price}</td>
-                                <td class="{price_class}">{price_str}</td>
-                                <td class="volume-positive">{volume:,}</td>
-                            </tr>
+                                <tr>
+                                    <td class="rank">{idx}</td>
+                                    <td class="stock-code">{code}</td>
+                                    <td class="stock-name" title="{name}">{name}</td>
+                                    <td>{close_price}</td>
+                                    <td class="{price_class}">{price_str}</td>
+                                    <td class="volume-positive">{volume:,}</td>
+                                </tr>
 """
             html_content += """
-                        </tbody>
-                    </table>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 """
         
-        # 賣超 TOP（動態顯示實際數量）
+        # 賣超 TOP
         sell_data = day_data.get('賣超', [])
         if sell_data:
-            sell_count = len(sell_data)  # 實際的賣超數量
+            sell_count = len(sell_data)
             html_content += f"""
                 <div class="section">
                     <h2 class="section-title sell">📉 賣超 TOP {sell_count} ({formatted_date})</h2>
-                    <table>
-                        <thead class="sell">
-                            <tr>
-                                <th>排名</th>
-                                <th>代號</th>
-                                <th>證券名稱</th>
-                                <th>收盤價</th>
-                                <th>漲跌</th>
-                                <th>買賣超(張)</th>
-                            </tr>
-                        </thead>
-                        <tbody>
+                    <div class="table-container">
+                        <table>
+                            <thead class="sell">
+                                <tr>
+                                    <th>排名</th>
+                                    <th>代號</th>
+                                    <th>名稱</th>
+                                    <th>收盤價</th>
+                                    <th>漲跌</th>
+                                    <th>買賣超</th>
+                                </tr>
+                            </thead>
+                            <tbody>
 """
-            for idx, stock in enumerate(sell_data, 1):  # 顯示全部賣超資料
+            for idx, stock in enumerate(sell_data, 1):
                 code = stock.get('證券代號', '')
                 name = stock.get('證券名稱', '')
                 close_price = stock.get('收盤價', 0)
                 price_change = stock.get('漲跌', 0)
                 volume = stock.get('買賣超張數', 0)
                 
-                # 判斷漲跌樣式
                 if isinstance(price_change, (int, float)):
                     if price_change > 0:
                         price_class = 'price-up'
@@ -2638,18 +2707,19 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
                     price_str = str(price_change)
                 
                 html_content += f"""
-                            <tr>
-                                <td class="rank">{idx}</td>
-                                <td class="stock-code">{code}</td>
-                                <td class="stock-name">{name}</td>
-                                <td>{close_price}</td>
-                                <td class="{price_class}">{price_str}</td>
-                                <td class="volume-negative">{volume:,}</td>
-                            </tr>
+                                <tr>
+                                    <td class="rank">{idx}</td>
+                                    <td class="stock-code">{code}</td>
+                                    <td class="stock-name" title="{name}">{name}</td>
+                                    <td>{close_price}</td>
+                                    <td class="{price_class}">{price_str}</td>
+                                    <td class="volume-negative">{volume:,}</td>
+                                </tr>
 """
             html_content += """
-                        </tbody>
-                    </table>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 """
         
@@ -2684,6 +2754,18 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
             document.getElementById('tab-' + tabIndex).classList.add('active');
             allButtons[tabIndex].classList.add('active');
         }}
+        
+        // 禁止雙指縮放
+        document.addEventListener('touchstart', function(e) {{
+            if (e.touches.length > 1) {{
+                e.preventDefault();
+            }}
+        }}, {{ passive: false }});
+        
+        // 禁止手勢縮放
+        document.addEventListener('gesturestart', function(e) {{
+            e.preventDefault();
+        }});
     </script>
 </body>
 </html>"""
@@ -2691,7 +2773,7 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
     with open(output_path, 'w', encoding='utf-8') as f:
         f.write(html_content)
     
-    print(f"✓ HTML 已儲存: {output_path}")
+    print(f"✓ 手機優化版 HTML 已儲存: {output_path}")
 
 def beautify_excel(output_path):
     """美化 Excel 格式"""
