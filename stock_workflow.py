@@ -2537,12 +2537,13 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
         html_content += f"""
             <div id="tab-{tab_idx}" class="tab-content">"""
         
-        # 買超 TOP 50
+        # 買超 TOP（動態顯示實際數量）
         buy_data = day_data.get('買超', [])
         if buy_data:
+            buy_count = len(buy_data)  # 實際的買超數量
             html_content += f"""
                 <div class="section">
-                    <h2 class="section-title buy">📈 買超 TOP 50 ({formatted_date})</h2>
+                    <h2 class="section-title buy">📈 買超 TOP {buy_count} ({formatted_date})</h2>
                     <table>
                         <thead class="buy">
                             <tr>
@@ -2556,7 +2557,7 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
                         </thead>
                         <tbody>
 """
-            for idx, stock in enumerate(buy_data[:100], 1):
+            for idx, stock in enumerate(buy_data, 1):  # 顯示全部買超資料
                 code = stock.get('證券代號', '')
                 name = stock.get('證券名稱', '')
                 close_price = stock.get('收盤價', 0)
@@ -2594,12 +2595,13 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
                 </div>
 """
         
-        # 賣超 TOP 10
+        # 賣超 TOP（動態顯示實際數量）
         sell_data = day_data.get('賣超', [])
         if sell_data:
+            sell_count = len(sell_data)  # 實際的賣超數量
             html_content += f"""
                 <div class="section">
-                    <h2 class="section-title sell">📉 賣超 TOP 10 ({formatted_date})</h2>
+                    <h2 class="section-title sell">📉 賣超 TOP {sell_count} ({formatted_date})</h2>
                     <table>
                         <thead class="sell">
                             <tr>
@@ -2613,7 +2615,7 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
                         </thead>
                         <tbody>
 """
-            for idx, stock in enumerate(sell_data[:50], 1):
+            for idx, stock in enumerate(sell_data, 1):  # 顯示全部賣超資料
                 code = stock.get('證券代號', '')
                 name = stock.get('證券名稱', '')
                 close_price = stock.get('收盤價', 0)
