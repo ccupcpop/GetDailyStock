@@ -2405,7 +2405,7 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
             }}
             
             th, td {{
-                padding: 6px 4px; /* 手機更緊湊 */
+                padding: 3px 2px; /* 手機更緊湊 */
             }}
             
             .tab-button {{
@@ -2426,7 +2426,7 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
             }}
             
             th, td {{
-                padding: 5px 3px;
+                padding: 2px 2px;
             }}
             
             .stock-name {{
