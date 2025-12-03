@@ -2158,7 +2158,7 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
         body {{
             font-family: "Microsoft JhengHei", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 10px;
+            padding: 5px;
             min-height: 100vh;
             font-size: 14px; /* 基礎字體縮小 */
         }}
@@ -2171,8 +2171,8 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
         .tabs {{
             background: white;
             border-radius: 15px;
-            padding: 15px 10px 0 10px; /* 縮小間距 */
-            margin-bottom: 20px;
+            padding: 8px 8px 0 8px; /* 縮小間距 */
+            margin-bottom: 10px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.2);
         }}
         
@@ -2185,7 +2185,7 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
         }}
         
         .tab-button {{
-            padding: 8px 12px; /* 縮小按鈕 */
+            padding: 4px 8px; /* 縮小按鈕 */
             border: none;
             background: #f7fafc;
             color: #4a5568;
@@ -2208,7 +2208,7 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
         
         .tab-content {{
             display: none;
-            padding: 15px 0; /* 縮小間距 */
+            padding: 8px 0; /* 縮小間距 */
         }}
         
         .tab-content.active {{
@@ -2217,16 +2217,16 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
         
         .section {{
             background: white;
-            padding: 15px; /* 縮小間距 */
+            padding: 8px; /* 縮小間距 */
             border-radius: 15px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            margin-bottom: 20px;
+            margin-bottom: 10px;
         }}
         
         .section-title {{
-            font-size: 1.3em; /* 縮小標題 */
-            margin-bottom: 15px;
-            padding-bottom: 8px;
+            font-size: 1.1em; /* 縮小標題 */
+            margin-bottom: 8px;
+            padding-bottom: 4px;
             border-bottom: 3px solid #667eea;
             color: #2d3748;
         }}
@@ -2252,7 +2252,7 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
             width: 100%;
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
-            margin-bottom: 15px;
+            margin-bottom: 8px;
         }}
         
         table {{
@@ -2390,13 +2390,13 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
             }}
             
             .section {{
-                padding: 10px;
-                margin-bottom: 15px;
+                padding: 5px;
+                margin-bottom: 8px;
             }}
             
             .section-title {{
-                font-size: 1.1em;
-                margin-bottom: 10px;
+                font-size: 1.0em;
+                margin-bottom: 5px;
             }}
             
             table {{
@@ -2409,7 +2409,7 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
             }}
             
             .tab-button {{
-                padding: 6px 10px;
+                padding: 3px 6px;
                 font-size: 0.85em;
             }}
             
