@@ -834,11 +834,11 @@ def shares_to_lots(value):
 # 【第二步-format_date_short】
 # 從第二步程式複製 format_date_short 函數
 def format_date_short(date_str):
-    """將 YYYY-MM-DD 格式轉換為 MM/DD"""
+    """將 YYYY-MM-DD 格式轉換為 DD (只顯示日)"""
     try:
         parts = date_str.split('-')
         if len(parts) == 3:
-            return f"{parts[1]}/{parts[2]}"
+            return f"{parts[2]}"
         return date_str
     except:
         return date_str
@@ -2160,7 +2160,7 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             padding: 2px;
             min-height: 100vh;
-            font-size: 14px; /* 基礎字體縮小 */
+            font-size: 15px; /* 基礎字體縮小 */
         }}
         
         .container {{
@@ -2191,7 +2191,7 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
             color: #4a5568;
             cursor: pointer;
             border-radius: 8px 8px 0 0;
-            font-size: 1.0em; /* 縮小字體 */
+            font-size: 1.1em; /* 縮小字體 */
             font-weight: 600;
             transition: all 0.3s ease;
             font-family: "Microsoft JhengHei", sans-serif;
@@ -2260,7 +2260,7 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
             min-width: 400px; /* 最小寬度 */
             border-collapse: collapse;
             background: white;
-            font-size: 0.85em; /* 縮小表格字體 */
+            font-size: 0.95em; /* 縮小表格字體 */
         }}
         
         thead {{
@@ -2291,14 +2291,14 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
             padding: 2px 4px; /* 縮小間距 */
             text-align: left;
             font-weight: 600;
-            font-size: 1.0em;
+            font-size: 1.1em;
             white-space: nowrap; /* 標題不換行 */
         }}
         
         td {{
             padding: 2px 4px; /* 縮小間距 */
             border-bottom: 1px solid #e2e8f0;
-            font-size: 1.0em;
+            font-size: 1.1em;
         }}
         
         tr:hover {{
@@ -2379,7 +2379,7 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
             box-shadow: 0 10px 30px rgba(0,0,0,0.2);
             text-align: center;
             color: #718096;
-            font-size: 1.0em;
+            font-size: 1.1em;
         }}
         
         /* 手機專用樣式 */
@@ -2395,7 +2395,7 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
             }}
             
             .section-title {{
-                font-size: 1.0em;
+                font-size: 1.1em;
                 margin-bottom: 5px;
             }}
             
@@ -2457,7 +2457,7 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
         html_content += """
                 <div class="section">
                     <h2 class="section-title buy">📈 彙整買超分析</h2>
-                    <p style="color: #718096; margin-bottom: 5px; font-size: 1.0em;">最近5天買賣超淨值 >= 10000張</p>
+                    <p style="color: #718096; margin-bottom: 5px; font-size: 1.1em;">最近5天買賣超淨值 >= 10000張</p>
                     <div class="table-container">
                         <table>
                             <thead class="buy">
@@ -2500,7 +2500,7 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
         html_content += """
                 <div class="section">
                     <h2 class="section-title sell">📉 彙整賣超分析</h2>
-                    <p style="color: #718096; margin-bottom: 5px; font-size: 1.0em;">最近5天買賣超淨值 <= -10000張</p>
+                    <p style="color: #718096; margin-bottom: 5px; font-size: 1.1em;">最近5天買賣超淨值 <= -10000張</p>
                     <div class="table-container">
                         <table>
                             <thead class="sell">
@@ -2543,7 +2543,7 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
         html_content += """
                 <div class="section">
                     <h2 class="section-title attention">⚠️ 特別注意</h2>
-                    <p style="color: #718096; margin-bottom: 5px; font-size: 1.0em;">同時出現在買超與賣超前20</p>
+                    <p style="color: #718096; margin-bottom: 5px; font-size: 1.1em;">同時出現在買超與賣超前20</p>
                     <div class="table-container">
                         <table>
                             <thead class="attention">
@@ -2551,10 +2551,8 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
                                     <th>代號</th>
                                     <th>名稱</th>
                                     <th>領域</th>
-                                    <th>買超次</th>
                                     <th>買超日期</th>
                                     <th>買超和</th>
-                                    <th>賣超次</th>
                                     <th>賣超日期</th>
                                     <th>賣超和</th>
                                     <th>淨值</th>
@@ -2580,10 +2578,8 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
                                     <td class="stock-code">{code}</td>
                                     <td class="stock-name" title="{name}">{name}</td>
                                     <td>{sector}</td>
-                                    <td>{buy_count}</td>
                                     <td style="font-size: 0.8em;">{buy_dates}</td>
                                     <td class="volume-positive">{buy_total:,}</td>
-                                    <td>{sell_count}</td>
                                     <td style="font-size: 0.8em;">{sell_dates}</td>
                                     <td class="volume-negative">{sell_total:,}</td>
                                     <td class="{net_class}">{net:,}</td>
