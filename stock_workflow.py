@@ -31,6 +31,15 @@ from plotly.subplots import make_subplots
 import argparse
 
 # ============================================================================
+# 全域設定
+# ============================================================================
+
+# 控制是否只分析熱門股票 (買超前150 + 賣超前50)
+# True:  只分析買超前150 + 賣超前50
+# False: 分析所有 CSV 內的股票
+TOP_STOCKS_ONLY = True
+
+# ============================================================================
 # 共用工具函數
 # ============================================================================
 
@@ -861,8 +870,8 @@ def setup_config(market_type='TSE'):
             'sigma_threshold': 2.5,
             'aggregate_threshold': None,
             'show_top_n': 100,
-            'top_buy_count': 500,   # 買超前n名
-            'top_sell_count': 200   # 賣超前n名
+            'top_buy_count': 100,   # 買超前n名
+            'top_sell_count': 50   # 賣超前n名
         }
     else:  # OTC
         config = {
@@ -876,8 +885,8 @@ def setup_config(market_type='TSE'):
             'sigma_threshold': 2.5,
             'aggregate_threshold': None,
             'show_top_n': 100,
-            'top_buy_count': 500,   # 買超前n名
-            'top_sell_count': 200   # 賣超前n名
+            'top_buy_count': 100,   # 買超前n名
+            'top_sell_count': 50   # 賣超前n名
         }
 
     # 建立完整路徑
@@ -2860,8 +2869,29 @@ def run_step2_analysis(base_dir, market_type):
         top_sell_count=config['top_sell_count']
     )
 
+    # ========== 根據 TOP_STOCKS_ONLY flag 決定要收集歷史的股票 ==========
+    if TOP_STOCKS_ONLY:
+        # 只收集買超前150 + 賣超前50 的歷史
+        print(f"\n{'='*80}")
+        print(f"TOP_STOCKS_ONLY = True: 只收集買超前150 + 賣超前50 的歷史數據")
+        print(f"{'='*80}")
+        collect_buy_stocks = latest_buy_stocks_n
+        collect_sell_stocks = latest_sell_stocks_n
+    else:
+        # 收集所有 CSV 內股票的歷史
+        print(f"\n{'='*80}")
+        print(f"TOP_STOCKS_ONLY = False: 收集所有 CSV 內股票的歷史數據")
+        print(f"{'='*80}")
+        
+        # 從所有歷史數據中取得所有股票代碼
+        all_stocks_in_csv = set(all_historical_data.keys())
+        print(f"從 CSV 檔案中找到 {len(all_stocks_in_csv)} 支股票")
+        
+        collect_buy_stocks = all_stocks_in_csv
+        collect_sell_stocks = set()  # 已經包含在 collect_buy_stocks 中
+
     # 收集歷史數據
-    collect_stock_history(latest_buy_stocks_n, latest_sell_stocks_n, config['folder_path'],
+    collect_stock_history(collect_buy_stocks, collect_sell_stocks, config['folder_path'],
                       config['stock_daily_folder'], config['history_folder'],
                       allowed_stock_codes)
 
@@ -3129,6 +3159,11 @@ class Utils:
                     df_chart[col] = df_chart[col].astype(str).str.replace(',', '').str.replace('--', '0')
                 df_chart[col] = pd.to_numeric(df_chart[col], errors='coerce')
 
+        # 計算 MA5 和 MA10（移動平均線）
+        if '收盤價' in df_chart.columns:
+            df_chart['MA5'] = df_chart['收盤價'].rolling(window=5, min_periods=1).mean()
+            df_chart['MA10'] = df_chart['收盤價'].rolling(window=10, min_periods=1).mean()
+
         return df_chart
 
 
@@ -3157,29 +3192,37 @@ class ChartPlotly:
         # 計算統計數據
         stats = ChartPlotly._calculate_statistics(df_chart)
 
-        # 創建子圖（3層：K線、當日買賣超、累積買賣超）
+        # 創建子圖（4層：K線、成交量、當日買賣超、累積買賣超）
         fig = make_subplots(
-            rows=3, cols=1,
+            rows=4, cols=1,
             shared_xaxes=True,
-            vertical_spacing=0.05,
+            vertical_spacing=0.03,
             subplot_titles=(
-                '',  # 第一層標題留空,稍後在 update_layout 中設定
-                '三大法人當日買賣超 (張)',
-                '三大法人累積買賣超 (張)'
+                '',  # 第一層標題留空
+                '',  # 第二層標題留空
+                '',  # 第三層標題留空
+                ''   # 第四層標題留空
             ),
-            row_heights=[0.4, 0.3, 0.3],
+            row_heights=[0.35, 0.15, 0.25, 0.25],
             specs=[[{"secondary_y": False}],
+                   [{"secondary_y": False}],
                    [{"secondary_y": False}],
                    [{"secondary_y": False}]]
         )
 
         # 第一層: K線圖
         ChartPlotly._add_candlestick(fig, df_chart)
+        
+        # 第一層: 移動平均線 (MA5 和 MA10)
+        ChartPlotly._add_moving_averages(fig, df_chart)
 
-        # 第二層: 三大法人當日買賣超
+        # 第二層: 成交量
+        ChartPlotly._add_volume_traces(fig, df_chart)
+
+        # 第三層: 三大法人當日買賣超
         has_institutional = ChartPlotly._add_institutional_daily(fig, df_chart)
 
-        # 第三層: 三大法人累積買賣超
+        # 第四層: 三大法人累積買賣超
         if has_institutional:
             ChartPlotly._add_institutional_cumulative(fig, df_chart)
 
@@ -3368,21 +3411,24 @@ class ChartPlotly:
 
     @staticmethod
     def _add_moving_averages(fig, df_chart):
-        """新增移動平均線"""
+        """新增移動平均線（只加 MA5 和 MA10）"""
+        # 只加 MA5 和 MA10，並檢查欄位是否存在
         for ma_name, ma_col, color in [('MA5', 'MA5', 'blue'),
-                                         ('MA20', 'MA20', 'orange'),
-                                         ('MA60', 'MA60', 'purple')]:
-            fig.add_trace(
-                go.Scatter(
-                    x=df_chart['日期'],
-                    y=df_chart[ma_col],
-                    name=ma_name,
-                    line=dict(color=color, width=1.5),
-                    mode='lines',
-                    hovertemplate=f'{ma_name}: %{{y:.2f}}<extra></extra>'
-                ),
-                row=1, col=1
-            )
+                                         ('MA10', 'MA10', 'orange')]:
+            if ma_col in df_chart.columns:
+                # 確保資料不全是 NaN
+                if df_chart[ma_col].notna().sum() > 0:
+                    fig.add_trace(
+                        go.Scatter(
+                            x=df_chart['日期'],
+                            y=df_chart[ma_col],
+                            name=ma_name,
+                            line=dict(color=color, width=1.5),
+                            mode='lines',
+                            hovertemplate=f'{ma_name}: %{{y:.2f}}<extra></extra>'
+                        ),
+                        row=1, col=1
+                    )
 
     @staticmethod
     def _add_volume_traces(fig, df_chart):
@@ -3450,7 +3496,7 @@ class ChartPlotly:
                             legendgroup=name,  # 將上下圖表的同類型分組
                             showlegend=True
                         ),
-                        row=2, col=1
+                        row=3, col=1
                     )
 
         return has_institutional_data
@@ -3480,7 +3526,7 @@ class ChartPlotly:
                         legendgroup=name,  # 與上層的外資/投信/自營商同組
                         showlegend=True
                     ),
-                    row=3, col=1
+                    row=4, col=1
                 )
 
     @staticmethod
@@ -3506,7 +3552,7 @@ class ChartPlotly:
                 font=dict(size=16, family='Microsoft JhengHei, Arial, sans-serif')
             ),
             xaxis_rangeslider_visible=False,
-            height=1300,  # 3層圖表高度
+            height=1500,  # 4層圖表高度
             showlegend=True,
             hovermode='x unified',
             template='plotly_white',
@@ -3526,17 +3572,8 @@ class ChartPlotly:
             dragmode='pan'  # 允許拖曳,但由 fixedrange 限制軸範圍
         )
 
-        # 手動設定第一層子圖標題 (包含統計資訊)
-        fig.layout.annotations[0].update(
-            text=stats_line2,
-            font=dict(size=12, family='Microsoft JhengHei, Arial, sans-serif')
-        )
-
-        # 更新其他子圖標題的字體
-        for i in range(1, len(fig.layout.annotations)):
-            fig.layout.annotations[i].update(
-                font=dict(family='Microsoft JhengHei, Arial, sans-serif')
-            )
+        # 移除所有子圖標題（已在 make_subplots 中設為空字串）
+        # 不需要額外的 annotations 設定
 
         # 計算股價範圍（只使用OHLC）
         price_cols = ['開盤價', '最高價', '最低價', '收盤價']
@@ -3547,13 +3584,17 @@ class ChartPlotly:
 
         # 更新Y軸 - 禁用縮放
         fig.update_yaxes(title_text="股價 (元)", row=1, col=1, range=price_range, fixedrange=True)
-        fig.update_yaxes(title_text="當日買賣超 (張)", row=2, col=1, tickformat=",", fixedrange=True)
-        fig.update_yaxes(title_text="累積買賣超 (張)", row=3, col=1, tickformat=",", fixedrange=True)
+        fig.update_yaxes(title_text="成交量 (張)", row=2, col=1, tickformat=",", fixedrange=True)
+        fig.update_yaxes(title_text="當日買賣超 (張)", row=3, col=1, tickformat=",", fixedrange=True)
+        fig.update_yaxes(title_text="累積買賣超 (張)", row=4, col=1, tickformat=",", fixedrange=True)
 
         # 更新X軸 - 禁用縮放
-        date_range = [df_chart['日期'].min(), df_chart['日期'].max()]
+        # 更新X軸 - 移除非交易日空隙，讓 K 線顯示完整
         start_date = df_chart['日期'].min()
         end_date = df_chart['日期'].max()
+        
+        # 獲取實際交易日期列表
+        trading_dates = df_chart['日期'].tolist()
 
         tickvals = []
         current = start_date.replace(day=1)
@@ -3570,16 +3611,20 @@ class ChartPlotly:
             else:
                 current = current.replace(month=current.month + 1)
 
-        for i in range(1, 4):
+        for i in range(1, 5):
             fig.update_xaxes(
                 tickformat="%m-%d",
                 tickangle=-45,
                 tickmode='array',
                 tickvals=tickvals,
                 showticklabels=True,
-                range=date_range,
+                autorange=True,  # 自動調整範圍以顯示完整資料
                 hoverformat="%m-%d",
                 fixedrange=True,  # 禁用 X 軸縮放
+                rangebreaks=[
+                    dict(values=pd.date_range(start=start_date, end=end_date, freq='D')
+                         .difference(pd.DatetimeIndex(trading_dates)).tolist())  # 移除所有非交易日
+                ],
                 row=i, col=1
             )
 
