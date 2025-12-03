@@ -2257,7 +2257,7 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
         
         table {{
             width: 100%;
-            min-width: 500px; /* 最小寬度 */
+            min-width: 400px; /* 最小寬度 */
             border-collapse: collapse;
             background: white;
             font-size: 0.85em; /* 縮小表格字體 */
@@ -2320,7 +2320,7 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
         .stock-name {{
             font-weight: 600;
             color: #4a5568;
-            max-width: 100px; /* 限制名稱寬度 */
+            max-width: 60px; /* 限制名稱寬度 */
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -2401,7 +2401,7 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
             
             table {{
                 font-size: 0.75em; /* 手機進一步縮小 */
-                min-width: 450px;
+                min-width: 350px;
             }}
             
             th, td {{
@@ -2414,7 +2414,7 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
             }}
             
             .stock-name {{
-                max-width: 80px; /* 手機縮短名稱 */
+                max-width: 50px; /* 手機縮短名稱 */
             }}
         }}
         
@@ -2422,7 +2422,7 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
         @media (max-width: 480px) {{
             table {{
                 font-size: 0.7em;
-                min-width: 400px;
+                min-width: 320px;
             }}
             
             th, td {{
@@ -2430,7 +2430,7 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
             }}
             
             .stock-name {{
-                max-width: 60px;
+                max-width: 40px;
             }}
         }}
     </style>
