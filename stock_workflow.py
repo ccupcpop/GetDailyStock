@@ -2288,7 +2288,7 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
         }}
         
         th {{
-            padding: 10px 6px; /* 縮小間距 */
+            padding: 6px 6px; /* 縮小間距 */
             text-align: left;
             font-weight: 600;
             font-size: 0.9em;
@@ -2296,7 +2296,7 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
         }}
         
         td {{
-            padding: 8px 6px; /* 縮小間距 */
+            padding: 5px 6px; /* 縮小間距 */
             border-bottom: 1px solid #e2e8f0;
             font-size: 0.9em;
         }}
