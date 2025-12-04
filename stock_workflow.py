@@ -2571,7 +2571,6 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
                                     <th>買超和</th>
                                     <th>賣超日期</th>
                                     <th>賣超和</th>
-                                    <th>淨值</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -2598,7 +2597,6 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
                                     <td class="volume-positive">{buy_total:,}</td>
                                     <td style="font-size: 0.8em;">{sell_dates}</td>
                                     <td class="volume-negative">{sell_total:,}</td>
-                                    <td class="{net_class}">{net:,}</td>
                                 </tr>
 """
         html_content += """
