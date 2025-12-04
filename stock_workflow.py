@@ -1907,17 +1907,20 @@ def aggregate_analysis(buy_top20_tracker, sell_top20_tracker, stock_sector_map, 
         print("(在5天內,有些天進買超榜、有些天進賣超榜)")
         print(f"{'='*80}\n")
 
+        # 取得所有日期並排序（最新在前）
+        all_available_dates = sorted(list(set([item['日期'] for item in all_tracker])), reverse=True)
+        
         both_stocks_detail = []
         for stock_code in both_stocks_set:
             stock_all_data = all_df[all_df['證券代號'] == stock_code]
             stock_name = stock_all_data.iloc[0]['證券名稱']
             total_sum = int(stock_all_data['買賣超張數'].sum())
 
-            buy_dates = sorted(buy_dates_by_stock.get(stock_code, []))
-            sell_dates = sorted(sell_dates_by_stock.get(stock_code, []))
+            buy_dates = buy_dates_by_stock.get(stock_code, [])
+            sell_dates = sell_dates_by_stock.get(stock_code, [])
 
-            buy_dates_short = [format_date_short(d) for d in buy_dates]
-            sell_dates_short = [format_date_short(d) for d in sell_dates]
+            buy_dates_short = [format_date_short(d) for d in sorted(buy_dates)]
+            sell_dates_short = [format_date_short(d) for d in sorted(sell_dates)]
 
             buy_dates_str = ', '.join(buy_dates_short)
             sell_dates_str = ', '.join(sell_dates_short)
@@ -1925,6 +1928,17 @@ def aggregate_analysis(buy_top20_tracker, sell_top20_tracker, stock_sector_map, 
             buy_sum = int(all_df[(all_df['證券代號'] == stock_code) & (all_df['買賣超張數'] > 0)]['買賣超張數'].sum())
             sell_sum = int(all_df[(all_df['證券代號'] == stock_code) & (all_df['買賣超張數'] < 0)]['買賣超張數'].sum())
 
+            # 建立過去5天的買賣超狀態 (最新在左，確保顯示所有5個日期)
+            date_status = []
+            for date in all_available_dates[:5]:  # 只取前5個日期
+                day_short = format_date_short(date)
+                if date in buy_dates:
+                    date_status.append(('buy', day_short))
+                elif date in sell_dates:
+                    date_status.append(('sell', day_short))
+                else:
+                    date_status.append(('neutral', day_short))
+            
             both_stocks_detail.append({
                 '證券代號': stock_code,
                 '證券名稱': stock_name,
@@ -1935,7 +1949,8 @@ def aggregate_analysis(buy_top20_tracker, sell_top20_tracker, stock_sector_map, 
                 '賣超次數': len(sell_dates),
                 '賣超日期': sell_dates_str,
                 '賣超總和': sell_sum,
-                '淨買賣超': total_sum
+                '淨買賣超': total_sum,
+                '日期狀態': date_status  # 新增：包含 (狀態, 日期) 的列表
             })
 
         both_stocks_df = pd.DataFrame(both_stocks_detail)
@@ -2567,10 +2582,9 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
                                     <th>代號</th>
                                     <th>名稱</th>
                                     <th>領域</th>
-                                    <th>買超日期</th>
                                     <th>買超和</th>
-                                    <th>賣超日期</th>
                                     <th>賣超和</th>
+                                    <th>買賣超日期</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -2579,24 +2593,30 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
             code = row["證券代號"]
             name = row["證券名稱"]
             sector = row.get("證券領域", "")
-            buy_count = row.get("買超次數", 0)
-            buy_dates = row.get("買超日期", "")
             buy_total = row.get("買超總和", 0)
-            sell_count = row.get("賣超次數", 0)
-            sell_dates = row.get("賣超日期", "")
             sell_total = row.get("賣超總和", 0)
-            net = row.get("淨買賣超", 0)
-            net_class = 'volume-positive' if net > 0 else 'volume-negative'
+            date_status = row.get("日期狀態", [])
+            
+            # 生成帶顏色的日期列表
+            date_html_parts = []
+            for status, day in date_status:
+                if status == 'buy':
+                    date_html_parts.append(f'<span style="color: #e53e3e; font-weight: 600;">{day}</span>')
+                elif status == 'sell':
+                    date_html_parts.append(f'<span style="color: #38a169; font-weight: 600;">{day}</span>')
+                else:
+                    date_html_parts.append(f'<span style="color: #4a5568;">{day}</span>')
+            
+            dates_display = ', '.join(date_html_parts)
             
             html_content += f"""
                                 <tr>
                                     <td class="stock-code">{code}</td>
                                     <td class="stock-name" title="{name}">{name}</td>
                                     <td>{sector}</td>
-                                    <td style="font-size: 0.8em;">{buy_dates}</td>
                                     <td class="volume-positive">{buy_total:,}</td>
-                                    <td style="font-size: 0.8em;">{sell_dates}</td>
                                     <td class="volume-negative">{sell_total:,}</td>
+                                    <td style="font-size: 0.9em;">{dates_display}</td>
                                 </tr>
 """
         html_content += """
