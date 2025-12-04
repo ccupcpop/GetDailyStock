@@ -2315,12 +2315,14 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
             font-weight: 600;
             color: #2d3748;
             white-space: nowrap;
+            width: 50px; /* 縮小代號欄寬 */
+            max-width: 50px;
         }}
         
         .stock-name {{
             font-weight: 600;
             color: #4a5568;
-            max-width: 60px; /* 限制名稱寬度 */
+            max-width: 120px; /* 增加名稱寬度 */
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -2341,11 +2343,15 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
         .price-up {{
             color: #e53e3e;
             font-weight: 600;
+            width: 60px; /* 縮小收盤價欄寬 */
+            max-width: 60px;
         }}
         
         .price-down {{
             color: #38a169;
             font-weight: 600;
+            width: 60px; /* 縮小收盤價欄寬 */
+            max-width: 60px;
         }}
         
         .badge {{
@@ -2414,7 +2420,17 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
             }}
             
             .stock-name {{
-                max-width: 50px; /* 手機縮短名稱 */
+                max-width: 90px; /* 手機縮短名稱 */
+            }}
+            
+            .stock-code {{
+                width: 45px;
+                max-width: 45px;
+            }}
+            
+            .price-up, .price-down {{
+                width: 55px;
+                max-width: 55px;
             }}
         }}
         
@@ -2430,7 +2446,7 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
             }}
             
             .stock-name {{
-                max-width: 40px;
+                max-width: 70px;
             }}
         }}
     </style>
