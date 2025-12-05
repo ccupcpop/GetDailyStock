@@ -3515,8 +3515,11 @@ class ChartPlotly:
                 low=df_chart['最低價'],
                 close=df_chart['收盤價'],
                 name='K線',
-                increasing_line_color='red',
-                decreasing_line_color='green',
+                increasing_line_color='#FF5252',  # 玩股網風格的紅色
+                increasing_fillcolor='#FF5252',
+                decreasing_line_color='#00C851',  # 玩股網風格的綠色
+                decreasing_fillcolor='#00C851',
+                line=dict(width=0.8),  # 影線加粗
                 xhoverformat="%m-%d",
                 yhoverformat=".2f"
             ),
@@ -3556,15 +3559,15 @@ class ChartPlotly:
                 if i == 0:
                     # 第一天用開盤收盤比較
                     if df_chart['收盤價'].iloc[i] >= df_chart['開盤價'].iloc[i]:
-                        colors.append('rgba(255, 82, 82, 0.85)')  # 漲 - 紅色
+                        colors.append('rgba(255, 82, 82, 0.8)')  # 玩股網風格紅色
                     else:
-                        colors.append('rgba(0, 200, 83, 0.85)')   # 跌 - 綠色
+                        colors.append('rgba(0, 200, 81, 0.8)')   # 玩股網風格綠色
                 else:
                     # 其他天與前一天收盤價比較
                     if df_chart['收盤價'].iloc[i] >= df_chart['收盤價'].iloc[i-1]:
-                        colors.append('rgba(255, 82, 82, 0.85)')  # 漲 - 紅色
+                        colors.append('rgba(255, 82, 82, 0.8)')  # 玩股網風格紅色
                     else:
-                        colors.append('rgba(0, 200, 83, 0.85)')   # 跌 - 綠色
+                        colors.append('rgba(0, 200, 81, 0.8)')   # 玩股網風格綠色
             
             # 成交量長條圖
             fig.add_trace(
@@ -3596,9 +3599,9 @@ class ChartPlotly:
 
                 # 統一顏色配置與圖例名稱
                 for name, data, color in [
-                    ('外資', foreign, 'rgba(255, 99, 71, 0.7)'),      # 紅色
-                    ('投信', trust, 'rgba(46, 204, 113, 0.7)'),       # 綠色
-                    ('自營商', dealer, 'rgba(52, 152, 219, 0.7)')     # 藍色
+                    ('外資', foreign, 'rgba(255, 82, 82, 0.75)'),    # 鮮明紅色
+                    ('投信', trust, 'rgba(0, 200, 81, 0.75)'),       # 鮮明綠色
+                    ('自營商', dealer, 'rgba(0, 191, 255, 0.75)')    # 天空藍
                 ]:
                     fig.add_trace(
                         go.Bar(
@@ -3625,9 +3628,9 @@ class ChartPlotly:
 
             # 統一顏色配置與圖例名稱（使用spline平滑曲線）
             for name, data, color in [
-                ('外資', foreign_cumsum, 'rgb(255, 99, 71)'),      # 紅色
-                ('投信', trust_cumsum, 'rgb(46, 204, 113)'),       # 綠色
-                ('自營商', dealer_cumsum, 'rgb(52, 152, 219)')     # 藍色
+                ('外資', foreign_cumsum, 'rgb(255, 82, 82)'),    # 鮮明紅色
+                ('投信', trust_cumsum, 'rgb(0, 200, 81)'),       # 鮮明綠色
+                ('自營商', dealer_cumsum, 'rgb(0, 191, 255)')    # 天空藍
             ]:
                 fig.add_trace(
                     go.Scatter(
