@@ -37,7 +37,7 @@ import argparse
 # 控制是否只分析熱門股票 (買超前150 + 賣超前50)
 # True:  只分析買超前150 + 賣超前50
 # False: 分析所有 CSV 內的股票
-TOP_STOCKS_ONLY = False
+TOP_STOCKS_ONLY = True
 
 # ============================================================================
 # 共用工具函數
@@ -208,7 +208,11 @@ def create_required_directories(base_dir):
         'StockTSEHistory',
         'StockOTCHistory',
         'StockTSEHTML',
-        'StockOTCHTML'
+        'StockOTCHTML',
+        'local_StockTSEHistory',  # 新增 local 資料夾
+        'local_StockOTCHistory',
+        'local_StockTSEHTML',
+        'local_StockOTCHTML'
     ]
     
     print(f"\n{'='*80}")
@@ -2939,6 +2943,18 @@ def run_step2_analysis(base_dir, market_type):
 
     # 設定配置 (使用當前目錄，不使用 Google Drive)
     config = setup_config(market_type=market_type)
+    
+    # 根據 TOP_STOCKS_ONLY 決定 history_folder 路徑
+    if not TOP_STOCKS_ONLY:
+        # 使用 local_ 開頭的資料夾
+        if market_type == 'TSE':
+            config['history_folder'] = os.path.join(base_dir, 'local_StockTSEHistory')
+        else:
+            config['history_folder'] = os.path.join(base_dir, 'local_StockOTCHistory')
+        
+        # 確保資料夾存在
+        os.makedirs(config['history_folder'], exist_ok=True)
+        print(f"📁 History 資料夾: {config['history_folder']}\n")
 
     # 讀取股票清單
     allowed_stock_codes, stock_sector_map, etf_stock_codes = load_stock_list(config['market_list_path'])
@@ -3966,6 +3982,21 @@ def run_step3_chart_generation(base_dir, market_type):
     # 設定配置
     config = Config.setup_config(base_path=base_dir, market_type=market_type)
     
+    # 根據 TOP_STOCKS_ONLY 決定資料夾路徑
+    if not TOP_STOCKS_ONLY:
+        # 使用 local_ 開頭的資料夾
+        if market_type == 'TSE':
+            config['history_folder'] = os.path.join(base_dir, 'local_StockTSEHistory')
+            config['html_output_folder'] = os.path.join(base_dir, 'local_StockTSEHTML')
+        else:
+            config['history_folder'] = os.path.join(base_dir, 'local_StockOTCHistory')
+            config['html_output_folder'] = os.path.join(base_dir, 'local_StockOTCHTML')
+        
+        # 確保資料夾存在
+        os.makedirs(config['history_folder'], exist_ok=True)
+        os.makedirs(config['html_output_folder'], exist_ok=True)
+        print(f"📁 History 資料夾: {config['history_folder']}")
+        print(f"📁 HTML 資料夾: {config['html_output_folder']}\n")
     # 設定字體 (GitHub Actions 環境)
     Utils.setup_chinese_font(base_dir)
     
@@ -4102,7 +4133,11 @@ def main():
             print("\n" + "🔥"*40)
             print("步驟 2：清理 History 資料夾")
             print("🔥"*40)
-            delete_folders(base_dir, ['StockTSEHistory', 'StockOTCHistory'])
+            # 根據 TOP_STOCKS_ONLY 決定要清理的資料夾
+            if TOP_STOCKS_ONLY:
+                delete_folders(base_dir, ['StockTSEHistory', 'StockOTCHistory'])
+            else:
+                delete_folders(base_dir, ['local_StockTSEHistory', 'local_StockOTCHistory'])
             
             # 執行分析
             if args.market in ['TSE', 'BOTH']:
@@ -4117,7 +4152,11 @@ def main():
         print("\n" + "🔥"*40)
         print("步驟 5：清理圖表資料夾")
         print("🔥"*40)
-        delete_folders(base_dir, ['StockTSEHTML', 'StockOTCHTML'])
+        # 根據 TOP_STOCKS_ONLY 決定要清理的資料夾
+        if TOP_STOCKS_ONLY:
+            delete_folders(base_dir, ['StockTSEHTML', 'StockOTCHTML'])
+        else:
+            delete_folders(base_dir, ['local_StockTSEHTML', 'local_StockOTCHTML'])
         
         # 執行圖表生成
         if args.market in ['TSE', 'BOTH']:
