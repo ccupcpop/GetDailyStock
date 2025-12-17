@@ -9,27 +9,28 @@
         html {
             -webkit-text-size-adjust: 100%;
             -ms-text-size-adjust: 100%;
+            height: 100%;
+            touch-action: manipulation;
         }
 
         body {
             margin: 0;
             padding: 0;
-            overflow-y: auto;
+            height: 100%;
+            overflow-y: scroll;
             overflow-x: hidden;
             -webkit-overflow-scrolling: touch;
-            -webkit-user-select: none;
-            -moz-user-select: none;
-            -ms-user-select: none;
-            user-select: none;
+            overscroll-behavior-y: contain;
+            /* 移除 user-select: none，允許選擇文字 */
         }
 
         .plotly {
-            touch-action: pan-y;
-            -ms-touch-action: pan-y;
+            touch-action: pan-y pinch-zoom;
+            -ms-touch-action: pan-y pinch-zoom;
         }
 
         * {
-            -webkit-tap-highlight-color: transparent;
+            -webkit-tap-highlight-color: rgba(0,0,0,0.1);
         }
 
         .stock-separator {
@@ -52,35 +53,46 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // 禁止雙指縮放
+            let touchStartTime = 0;
+            let touchCount = 0;
+            
+            // 優化：只在雙指時才處理，使用 passive: true 提升性能
             document.addEventListener('touchstart', function(e) {
+                touchStartTime = Date.now();
+                
+                // 只處理雙指以上的觸控
                 if (e.touches.length > 1) {
                     e.preventDefault();
                 }
-            }, { passive: false });
+            }, { passive: false }); // 必須是 false 才能 preventDefault
 
-            // 禁止手勢縮放
+            // 禁止手勢縮放 (iOS Safari)
             document.addEventListener('gesturestart', function(e) {
                 e.preventDefault();
-            });
+            }, { passive: false });
 
             document.addEventListener('gesturechange', function(e) {
                 e.preventDefault();
-            });
+            }, { passive: false });
 
             document.addEventListener('gestureend', function(e) {
                 e.preventDefault();
-            });
+            }, { passive: false });
 
-            // 禁止雙擊縮放
+            // 優化雙擊縮放檢測 - 只在短時間內處理
             let lastTouchEnd = 0;
             document.addEventListener('touchend', function(e) {
                 const now = Date.now();
-                if (now - lastTouchEnd <= 300) {
-                    e.preventDefault();
+                const touchDuration = now - touchStartTime;
+                
+                // 只在快速點擊時才檢測雙擊（<200ms）
+                if (touchDuration < 200) {
+                    if (now - lastTouchEnd <= 300) {
+                        e.preventDefault();
+                    }
+                    lastTouchEnd = now;
                 }
-                lastTouchEnd = now;
-            }, false);
+            }, { passive: false });
 
             // 禁止滾輪縮放(Ctrl+滾輪)
             document.addEventListener('wheel', function(e) {
@@ -88,8 +100,6 @@
                     e.preventDefault();
                 }
             }, { passive: false });
-
-
         });
     </script>
 </body>
