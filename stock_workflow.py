@@ -3359,7 +3359,23 @@ class ChartPlotly:
         ChartPlotly._update_layout(fig, stock_code, stock_name, latest_date_str, df_chart, stats)
 
         # 生成 HTML 字串
-        html_string = fig.to_html(include_plotlyjs='cdn', div_id=f'chart_{stock_code}')
+        # 配置 Plotly - 禁用所有會干擾滾動的互動功能
+        plotly_config = {
+            'displayModeBar': False,  # 隱藏工具列
+            'staticPlot': False,  # 保持為互動圖表（但下面的設定會限制互動）
+            'scrollZoom': False,  # 禁用滾輪縮放
+            'doubleClick': False,  # 禁用雙擊
+            'showTips': False,  # 隱藏提示
+            'displaylogo': False,  # 隱藏 Plotly logo
+            'modeBarButtonsToRemove': ['pan2d', 'select2d', 'lasso2d', 'resetScale2d', 'toggleSpikelines'],
+            'doubleClickDelay': 1000  # 增加雙擊延遲，避免誤觸
+        }
+        
+        html_string = fig.to_html(
+            include_plotlyjs='cdn', 
+            div_id=f'chart_{stock_code}',
+            config=plotly_config
+        )
 
         # 如果指定了輸出路徑,則儲存完整的 HTML 檔案
         if html_output_path:
@@ -3396,8 +3412,19 @@ class ChartPlotly:
         }
 
         .plotly {
-            touch-action: pan-y pinch-zoom;
-            -ms-touch-action: pan-y pinch-zoom;
+            touch-action: auto;
+            -ms-touch-action: auto;
+            pointer-events: auto;
+        }
+        
+        /* 確保 Plotly 的 SVG 不會阻擋滾動 */
+        .plotly .svg-container {
+            pointer-events: none !important;
+        }
+        
+        /* 但 hover 提示要能顯示 */
+        .plotly .hoverlayer {
+            pointer-events: auto !important;
         }
 
         * {
@@ -3694,7 +3721,7 @@ class ChartPlotly:
                 font=dict(family='Microsoft JhengHei, Arial, sans-serif')
             ),
             font=dict(family='Microsoft JhengHei, Arial, sans-serif'),  # 全域字體設定
-            dragmode='pan'  # 允許拖曳,但由 fixedrange 限制軸範圍
+            dragmode=False  # 禁用拖曳，避免干擾頁面滾動
         )
 
         # 移除所有子圖標題（已在 make_subplots 中設為空字串）
