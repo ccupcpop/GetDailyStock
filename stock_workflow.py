@@ -3452,24 +3452,7 @@ class ChartPlotly:
                 }
             }, { passive: false });
 
-            // 禁止橫向滾動
-            document.addEventListener('touchmove', function(e) {
-                if (!e.target.closest('.plotly')) {
-                    const touch = e.touches[0];
-                    const deltaX = Math.abs(touch.clientX - (touch.startX || touch.clientX));
-                    const deltaY = Math.abs(touch.clientY - (touch.startY || touch.clientY));
 
-                    if (deltaX > deltaY) {
-                        e.preventDefault();
-                    }
-                }
-            }, { passive: false });
-
-            document.addEventListener('touchstart', function(e) {
-                const touch = e.touches[0];
-                touch.startX = touch.clientX;
-                touch.startY = touch.clientY;
-            }, { passive: true });
         });
     </script>'''
 
