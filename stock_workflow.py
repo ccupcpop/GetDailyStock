@@ -3237,6 +3237,46 @@ class Utils:
             return ''
 
     @staticmethod
+    def load_company_info(base_path):
+        """
+        從 StockInfo 下的 tse_company_list.csv 和 otc_company_list.csv 讀取公司資訊
+        返回 {股票代碼: {'名稱': xxx, '產業': xxx}} 的字典
+        """
+        company_dict = {}
+        
+        info_dir = os.path.join(base_path, 'StockInfo')
+        
+        # 讀取上市公司列表
+        tse_file = os.path.join(info_dir, 'tse_company_list.csv')
+        if os.path.exists(tse_file):
+            try:
+                df_tse = Utils.read_csv_auto_encoding(tse_file)
+                # 假設 CSV 格式: 公司代號, 公司名稱, 產業別
+                for _, row in df_tse.iterrows():
+                    code = str(row.iloc[0]).strip()  # 第一欄是代號
+                    name = str(row.iloc[1]).strip()  # 第二欄是名稱
+                    industry = str(row.iloc[2]).strip() if len(row) > 2 else ''  # 第三欄是產業
+                    company_dict[code] = {'名稱': name, '產業': industry}
+            except Exception as e:
+                print(f"⚠️  讀取 tse_company_list.csv 失敗: {e}")
+        
+        # 讀取上櫃公司列表
+        otc_file = os.path.join(info_dir, 'otc_company_list.csv')
+        if os.path.exists(otc_file):
+            try:
+                df_otc = Utils.read_csv_auto_encoding(otc_file)
+                # 假設 CSV 格式: 公司代號, 公司名稱, 產業別
+                for _, row in df_otc.iterrows():
+                    code = str(row.iloc[0]).strip()  # 第一欄是代號
+                    name = str(row.iloc[1]).strip()  # 第二欄是名稱
+                    industry = str(row.iloc[2]).strip() if len(row) > 2 else ''  # 第三欄是產業
+                    company_dict[code] = {'名稱': name, '產業': industry}
+            except Exception as e:
+                print(f"⚠️  讀取 otc_company_list.csv 失敗: {e}")
+        
+        return company_dict
+
+    @staticmethod
     def get_all_stock_codes_from_history(history_folder):
         """從 History 資料夾取得所有股票代碼"""
         try:
@@ -3304,12 +3344,13 @@ class ChartPlotly:
     """Plotly 圖表生成類別"""
 
     @staticmethod
-    def generate_chart(df, stock_code, stock_name, html_output_path=None):
+    def generate_chart(df, stock_code, stock_name, html_output_path=None, company_info=None):
         """
         使用 Plotly 生成互動式技術分析圖表 (HTML)
 
         Args:
             html_output_path: 如果為 None, 則只返回 HTML 字串不儲存檔案
+            company_info: 公司資訊字典 {股票代碼: {'名稱': xxx, '產業': xxx}}
         """
 
         df_chart = Utils.prepare_chart_data(df)
@@ -3356,7 +3397,7 @@ class ChartPlotly:
             ChartPlotly._add_institutional_cumulative(fig, df_chart)
 
         # 更新佈局
-        ChartPlotly._update_layout(fig, stock_code, stock_name, latest_date_str, df_chart, stats)
+        ChartPlotly._update_layout(fig, stock_code, stock_name, latest_date_str, df_chart, stats, company_info)
 
         # 生成 HTML 字串
         # 配置 Plotly - 禁用所有會干擾滾動的互動功能
@@ -3682,7 +3723,18 @@ class ChartPlotly:
                 )
 
     @staticmethod
-    def _update_layout(fig, stock_code, stock_name, latest_date_str, df_chart, stats):
+    def _get_title_with_industry(stock_code, stock_name, stats_line1, stats_line2, company_info=None):
+        """生成包含產業資訊的標題"""
+        industry_text = ''
+        if company_info and stock_code in company_info:
+            industry = company_info[stock_code].get('產業', '')
+            if industry:
+                industry_text = f' ({industry})'
+        
+        return f'{stock_code} {stock_name}{industry_text} 技術分析圖表 (最近60筆)<br><sub>{stats_line1}</sub><br><sub>{stats_line2}</sub>'
+
+    @staticmethod
+    def _update_layout(fig, stock_code, stock_name, latest_date_str, df_chart, stats, company_info=None):
         """更新圖表佈局"""
         # 建立統計資訊文字 (簡化版，移除MA)
         stats_line1 = (
@@ -3698,7 +3750,7 @@ class ChartPlotly:
 
         fig.update_layout(
             title=dict(
-                text=f'{stock_code} {stock_name} 技術分析圖表 (最近60筆)<br><sub>{stats_line1}</sub><br><sub>{stats_line2}</sub>',
+                text=ChartPlotly._get_title_with_industry(stock_code, stock_name, stats_line1, stats_line2, company_info),
                 x=0.5,
                 xanchor='center',
                 font=dict(size=16, family='Microsoft JhengHei, Arial, sans-serif')
@@ -3837,7 +3889,8 @@ class Processor:
                 result,
                 stock_code,
                 stock_name,
-                html_output_path=None
+                html_output_path=None,
+                company_info=config.get('company_info')
             )
             
             # 如果需要,同時儲存個別檔案
@@ -3851,7 +3904,8 @@ class Processor:
                         result,
                         stock_code,
                         stock_name,
-                        html_output_path=html_output_file
+                        html_output_path=html_output_file,
+                        company_info=config.get('company_info')
                     )
                     print(f"✅ 個別圖表: {os.path.basename(config['html_output_folder'])}/{stock_code}.html")
             
@@ -3872,6 +3926,12 @@ class Processor:
         print(f"批次處理模式 - {config['market_name']}")
         print(f"輸出方式: 個別HTML + 合併HTML (按買超排名排序)")
         print(f"覆蓋模式: {'覆蓋已存在檔案' if Config.OVERWRITE_EXISTING else '跳過已存在檔案'}")
+        # 載入公司資訊（名稱和產業）
+        print("\n⏳ 載入公司資訊...")
+        company_info = Utils.load_company_info(base_dir)
+        config['company_info'] = company_info
+        print(f"✓ 已載入 {len(company_info)} 支股票資訊\n")
+        
         print("="*70)
 
         # 讀取買超排名順序
