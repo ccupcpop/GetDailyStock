@@ -118,8 +118,10 @@ def create_required_directories(base_dir):
         'StockInfo',       # 分析報告
         'StockTSEHistory',
         'StockOTCHistory',
+        'ConceptHistory',  # 概念股歷史資料
         'StockTSEHTML',
         'StockOTCHTML',
+        'ConceptHTML',     # 概念股圖表
         'local_StockTSEHistory',  # 新增 local 資料夾
         'local_StockOTCHistory',
         'local_StockTSEHTML',
@@ -3152,7 +3154,7 @@ class Utils:
     def load_company_info(base_path):
         """
         從 StockInfo 下的 tse_company_list.csv 和 otc_company_list.csv 讀取公司資訊
-        返回 {股票代碼: {'名稱': xxx, '產業': xxx}} 的字典
+        返回 {股票代碼: {'名稱': xxx, '產業': xxx, '概念股': xxx}} 的字典
         """
         company_dict = {}
         
@@ -3168,7 +3170,8 @@ class Utils:
                     code = str(row.iloc[0]).strip()  # 第一欄是代號
                     name = str(row.iloc[1]).strip()  # 第二欄是名稱
                     industry = str(row.iloc[2]).strip() if len(row) > 2 else ''  # 第三欄是產業
-                    company_dict[code] = {'名稱': name, '產業': industry}
+                    concept = str(row.iloc[3]).strip() if len(row) > 3 else ''  # 第四欄是概念股領域
+                    company_dict[code] = {'名稱': name, '產業': industry, '概念股': concept}
             except Exception as e:
                 print(f"⚠️  讀取 tse_company_list.csv 失敗: {e}")
         
@@ -3182,7 +3185,8 @@ class Utils:
                     code = str(row.iloc[0]).strip()  # 第一欄是代號
                     name = str(row.iloc[1]).strip()  # 第二欄是名稱
                     industry = str(row.iloc[2]).strip() if len(row) > 2 else ''  # 第三欄是產業
-                    company_dict[code] = {'名稱': name, '產業': industry}
+                    concept = str(row.iloc[3]).strip() if len(row) > 3 else ''  # 第四欄是概念股領域
+                    company_dict[code] = {'名稱': name, '產業': industry, '概念股': concept}
             except Exception as e:
                 print(f"⚠️  讀取 otc_company_list.csv 失敗: {e}")
         
@@ -3636,14 +3640,23 @@ class ChartPlotly:
 
     @staticmethod
     def _get_title_with_industry(stock_code, stock_name, stats_line1, stats_line2, company_info=None):
-        """生成包含產業資訊的標題"""
+        """生成包含產業資訊和概念股的標題"""
         industry_text = ''
         if company_info and stock_code in company_info:
             industry = company_info[stock_code].get('產業', '')
+            concept = company_info[stock_code].get('概念股', '')
+            
+            # 組合產業和概念股資訊
+            info_parts = []
             if industry:
-                industry_text = f' ({industry})'
+                info_parts.append(industry)
+            if concept and concept != '無':
+                info_parts.append(concept)
+            
+            if info_parts:
+                industry_text = f' ({" | ".join(info_parts)})'
         
-        return f'{stock_code} {stock_name}{industry_text} 技術分析圖表 (最近60筆)<br><sub>{stats_line1}</sub><br><sub>{stats_line2}</sub>'
+        return f'{stock_code} {stock_name}{industry_text}<br><sub>{stats_line1}</sub><br><sub>{stats_line2}</sub>'
 
     @staticmethod
     def _update_layout(fig, stock_code, stock_name, latest_date_str, df_chart, stats, company_info=None):
@@ -3831,7 +3844,7 @@ class Processor:
             return None
 
     @staticmethod
-    def batch_process_all_stocks(base_dir, config):
+    def batch_process_all_stocks(base_dir, config, merged_filename=None):
         """批次處理所有股票 - 按照買超排名順序生成"""
 
         print("\n" + "="*70)
@@ -3938,7 +3951,9 @@ class Processor:
             )
 
             # 儲存合併後的 HTML 到 StockInfo 資料夾
-            merged_filename = f"ALL_{config['market_type']}.html"
+            # 如果有指定 merged_filename 就用指定的，否則用預設格式
+            if merged_filename is None:
+                merged_filename = f"ALL_{config['market_type']}.html"
             merged_output_path = os.path.join(config['merged_output_folder'], merged_filename)
 
             with open(merged_output_path, 'w', encoding='utf-8') as f:
@@ -3963,6 +3978,114 @@ class Processor:
         print(f"個別HTML位置: {config['html_output_folder']}")
         print(f"合併HTML位置: {config['merged_output_folder']}")
         print("="*70)
+
+
+def run_step2_concept_analysis(base_dir):
+    """執行第二步：概念股分析 (不分上市上櫃)"""
+    print(f"\n{'🔥'*40}")
+    print(f"第二步分析：概念股 (所有概念股領域不為'無'的股票)")
+    print(f"{'🔥'*40}\n")
+    
+    try:
+        # 讀取公司列表，找出所有有概念股的股票
+        info_dir = os.path.join(base_dir, 'StockInfo')
+        concept_stock_codes = set()
+        
+        # 讀取上市
+        tse_file = os.path.join(info_dir, 'tse_company_list.csv')
+        if os.path.exists(tse_file):
+            try:
+                df_tse = pd.read_csv(tse_file, encoding='utf-8-sig')
+                if len(df_tse.columns) > 3:
+                    # 過濾出概念股領域不是"無"的股票
+                    concept_tse = df_tse[df_tse.iloc[:, 3].astype(str).str.strip() != '無']
+                    for _, row in concept_tse.iterrows():
+                        stock_code = str(row.iloc[0]).strip()
+                        concept_stock_codes.add(stock_code)
+                    print(f"✓ 從上市找到 {len(concept_tse)} 檔概念股")
+            except Exception as e:
+                print(f"⚠️ 讀取 tse_company_list.csv 失敗: {e}")
+        
+        # 讀取上櫃
+        otc_file = os.path.join(info_dir, 'otc_company_list.csv')
+        if os.path.exists(otc_file):
+            try:
+                df_otc = pd.read_csv(otc_file, encoding='utf-8-sig')
+                if len(df_otc.columns) > 3:
+                    # 過濾出概念股領域不是"無"的股票
+                    concept_otc = df_otc[df_otc.iloc[:, 3].astype(str).str.strip() != '無']
+                    for _, row in concept_otc.iterrows():
+                        stock_code = str(row.iloc[0]).strip()
+                        concept_stock_codes.add(stock_code)
+                    print(f"✓ 從上櫃找到 {len(concept_otc)} 檔概念股")
+            except Exception as e:
+                print(f"⚠️ 讀取 otc_company_list.csv 失敗: {e}")
+        
+        print(f"\n總共找到 {len(concept_stock_codes)} 檔概念股（不重複）")
+        
+        if not concept_stock_codes:
+            print("⚠️ 沒有找到概念股，跳過分析")
+            return
+        
+        # 建立輸出資料夾
+        concept_history_dir = os.path.join(base_dir, 'ConceptHistory')
+        os.makedirs(concept_history_dir, exist_ok=True)
+        
+        # 讀取股票清單 (合併上市和上櫃)
+        allowed_stock_codes = set()
+        stock_sector_map = {}
+        
+        # 上市清單
+        tse_config = setup_config(market_type='TSE')
+        tse_allowed, tse_sector_map, _ = load_stock_list(tse_config['market_list_path'])
+        allowed_stock_codes.update(tse_allowed)
+        stock_sector_map.update(tse_sector_map)
+        
+        # 上櫃清單
+        otc_config = setup_config(market_type='OTC')
+        otc_allowed, otc_sector_map, _ = load_stock_list(otc_config['market_list_path'])
+        allowed_stock_codes.update(otc_allowed)
+        stock_sector_map.update(otc_sector_map)
+        
+        # 只保留在清單中且是概念股的股票
+        valid_concept_stocks = concept_stock_codes & allowed_stock_codes
+        print(f"✓ 在清單中的有效概念股: {len(valid_concept_stocks)}")
+        
+        # 讀取價格資料 (合併上市和上櫃)
+        stock_daily_prices = {}
+        tse_daily_folder = os.path.join(base_dir, 'StockTSEDaily')
+        otc_daily_folder = os.path.join(base_dir, 'StockOTCDaily')
+        
+        tse_prices = load_stock_daily_prices(tse_daily_folder, valid_concept_stocks)
+        otc_prices = load_stock_daily_prices(otc_daily_folder, valid_concept_stocks)
+        stock_daily_prices.update(tse_prices)
+        stock_daily_prices.update(otc_prices)
+        
+        # 收集歷史數據 (從上市和上櫃資料夾)
+        print(f"\n開始收集概念股歷史數據...")
+        tse_shares_folder = os.path.join(base_dir, 'StockTSEShares')
+        otc_shares_folder = os.path.join(base_dir, 'StockOTCShares')
+        
+        # 使用上市的函數來收集，但會同時處理兩個資料夾
+        collect_stock_history(valid_concept_stocks, set(), tse_shares_folder,
+                              tse_daily_folder, concept_history_dir,
+                              allowed_stock_codes)
+        
+        # 再收集上櫃的
+        collect_stock_history(valid_concept_stocks, set(), otc_shares_folder,
+                              otc_daily_folder, concept_history_dir,
+                              allowed_stock_codes)
+        
+        # 統計結果
+        csv_files = glob.glob(os.path.join(concept_history_dir, "*.csv"))
+        print(f"\n✓ 概念股歷史數據收集完成")
+        print(f"  生成了 {len(csv_files)} 個 CSV 檔案")
+        print(f"  輸出資料夾: {concept_history_dir}")
+        
+    except Exception as e:
+        print(f"❌ 概念股分析失敗: {e}")
+        import traceback
+        traceback.print_exc()
 
 def run_step3_chart_generation(base_dir, market_type):
     """執行第三步：圖表生成"""
@@ -3996,6 +4119,43 @@ def run_step3_chart_generation(base_dir, market_type):
     
     print(f"\n✓ {market_type} 圖表生成完成")
 
+
+def run_step3_concept_chart_generation(base_dir):
+    """執行第三步：概念股圖表生成"""
+    print(f"\n{'🔥'*40}")
+    print(f"第三步圖表生成：概念股")
+    print(f"{'🔥'*40}\n")
+    
+    # 設定配置 (使用 TSE 的配置但修改資料夾)
+    config = {
+        'market_type': 'CONCEPT',
+        'market_name': '概念股',
+        'history_folder': os.path.join(base_dir, 'ConceptHistory'),
+        'html_output_folder': os.path.join(base_dir, 'ConceptHTML'),
+        'merged_output_folder': os.path.join(base_dir, 'StockInfo'),
+        'stocklist_folder': os.path.join(base_dir, 'StockList'),
+    }
+    
+    # 建立輸出資料夾
+    os.makedirs(config['html_output_folder'], exist_ok=True)
+    os.makedirs(config['merged_output_folder'], exist_ok=True)
+    
+    print(f"{'='*80}")
+    print(f"市場類型: 概念股 (TSE + OTC)")
+    print(f"輸出模式: 個別HTML + 合併HTML")
+    print(f"歷史數據資料夾: {config['history_folder']}")
+    print(f"個別HTML輸出: {config['html_output_folder']}")
+    print(f"合併HTML輸出: {config['merged_output_folder']}")
+    print(f"{'='*80}\n")
+    
+    # 設定字體
+    Utils.setup_chinese_font(base_dir)
+    
+    # 批次處理所有概念股
+    Processor.batch_process_all_stocks(base_dir, config, merged_filename='Concept_ALL.html')
+    
+    print(f"\n✓ 概念股圖表生成完成")
+
 # ============================================================================
 # 主程式流程
 # ============================================================================
@@ -4023,9 +4183,11 @@ def copy_data_to_repo(base_dir, repo_data_dir='data'):
         'StockOTCShares',  # 上櫃三大法人
         'StockTSEHistory',    # 上市歷史資料
         'StockOTCHistory', # 上櫃歷史資料
+        'ConceptHistory',  # 概念股歷史資料
         'StockInfo',       # 分析報告
         'StockTSEHTML',       # 上市圖表 HTML
-        'StockOTCHTML'    # 上櫃圖表 HTML
+        'StockOTCHTML',    # 上櫃圖表 HTML
+        'ConceptHTML'      # 概念股圖表 HTML
     ]
     
     copied_count = 0
@@ -4094,10 +4256,12 @@ def main():
         print("  2. 清理舊的 History 資料夾")
         print("  3. 執行分析程式 - TSE (上市)" if args.market in ['TSE', 'BOTH'] else "")
         print("  4. 執行分析程式 - OTC (上櫃)" if args.market in ['OTC', 'BOTH'] else "")
+        print("  5. 執行分析程式 - 概念股 (所有概念股)")
     if not args.skip_charts:
-        print("  5. 清理舊的圖表資料夾")
-        print("  6. 執行圖表生成 - TSE (上市)" if args.market in ['TSE', 'BOTH'] else "")
-        print("  7. 執行圖表生成 - OTC (上櫃)" if args.market in ['OTC', 'BOTH'] else "")
+        print("  6. 清理舊的圖表資料夾")
+        print("  7. 執行圖表生成 - TSE (上市)" if args.market in ['TSE', 'BOTH'] else "")
+        print("  8. 執行圖表生成 - OTC (上櫃)" if args.market in ['OTC', 'BOTH'] else "")
+        print("  9. 執行圖表生成 - 概念股 (所有概念股)")
     print("="*80 + "\n")
     
     # 設定基礎目錄
@@ -4126,7 +4290,7 @@ def main():
             print("🔥"*40)
             # 根據 TOP_STOCKS_ONLY 決定要清理的資料夾
             if TOP_STOCKS_ONLY:
-                delete_folders(base_dir, ['StockTSEHistory', 'StockOTCHistory'])
+                delete_folders(base_dir, ['StockTSEHistory', 'StockOTCHistory', 'ConceptHistory'])
             else:
                 delete_folders(base_dir, ['local_StockTSEHistory', 'local_StockOTCHistory'])
             
@@ -4136,6 +4300,9 @@ def main():
             
             if args.market in ['OTC', 'BOTH']:
                 run_step2_analysis(base_dir, 'OTC')
+            
+            # 概念股分析 (不分上市上櫃)
+            run_step2_concept_analysis(base_dir)
     
     # ========== 步驟 5-7：圖表生成 ==========
     if not args.skip_charts:
@@ -4145,7 +4312,7 @@ def main():
         print("🔥"*40)
         # 根據 TOP_STOCKS_ONLY 決定要清理的資料夾
         if TOP_STOCKS_ONLY:
-            delete_folders(base_dir, ['StockTSEHTML', 'StockOTCHTML'])
+            delete_folders(base_dir, ['StockTSEHTML', 'StockOTCHTML', 'ConceptHTML'])
         else:
             delete_folders(base_dir, ['local_StockTSEHTML', 'local_StockOTCHTML'])
         
@@ -4155,6 +4322,9 @@ def main():
         
         if args.market in ['OTC', 'BOTH']:
             run_step3_chart_generation(base_dir, 'OTC')
+        
+        # 概念股圖表生成 (不分上市上櫃)
+        run_step3_concept_chart_generation(base_dir)
     
     
     # ========== 步驟 8：複製到 Repository ==========
@@ -4180,6 +4350,7 @@ def main():
             print("  ✓ TSE 技術分析圖表 (HTML) 已生成")
         if args.market in ['OTC', 'BOTH']:
             print("  ✓ OTC 技術分析圖表 (HTML) 已生成")
+        print("  ✓ 概念股技術分析圖表 (HTML) 已生成")
     print("\n" + "="*80)
 
 if __name__ == "__main__":

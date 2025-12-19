@@ -11,6 +11,7 @@ on:
       - 'StockInfo/OTC_buy_ranking.txt'
       - 'StockInfo/ALL_TSE.html'
       - 'StockInfo/ALL_OTC.html'
+      - 'StockInfo/Concept_ALL.html'
       - 'StockInfo/tse_analysis_result_complete.html'
       - 'StockInfo/otc_analysis_result_complete.html'
 
@@ -48,6 +49,11 @@ jobs:
           else
             echo "❌ ALL_OTC.html not found"
           fi
+          if [ -f "StockInfo/Concept_ALL.html" ]; then
+            echo "✅ Concept_ALL.html found"
+          else
+            echo "❌ Concept_ALL.html not found"
+          fi
           if [ -f "StockInfo/tse_analysis_result_complete.html" ]; then
             echo "✅ tse_analysis_result_complete.html found"
           else
@@ -79,6 +85,7 @@ jobs:
           rm -f stocktracker/StockInfo/OTC_buy_ranking.txt
           rm -f stocktracker/StockInfo/ALL_TSE.html
           rm -f stocktracker/StockInfo/ALL_OTC.html
+          rm -f stocktracker/StockInfo/Concept_ALL.html
           rm -f stocktracker/StockInfo/tse_analysis_result_complete.html
           rm -f stocktracker/StockInfo/otc_analysis_result_complete.html
           echo "✅ Old files removed"
@@ -101,6 +108,10 @@ jobs:
           if [ -f "StockInfo/ALL_OTC.html" ]; then
             cp StockInfo/ALL_OTC.html stocktracker/StockInfo/
             echo "✅ Copied ALL_OTC.html"
+          fi
+          if [ -f "StockInfo/Concept_ALL.html" ]; then
+            cp StockInfo/Concept_ALL.html stocktracker/StockInfo/
+            echo "✅ Copied Concept_ALL.html"
           fi
           if [ -f "StockInfo/tse_analysis_result_complete.html" ]; then
             cp StockInfo/tse_analysis_result_complete.html stocktracker/StockInfo/
@@ -146,6 +157,7 @@ jobs:
           echo "  - OTC_buy_ranking.txt"
           echo "  - ALL_TSE.html"
           echo "  - ALL_OTC.html"
+          echo "  - Concept_ALL.html"
           echo "  - tse_analysis_result_complete.html"
           echo "  - otc_analysis_result_complete.html"
           echo "Time: $(TZ='Asia/Taipei' date +'%Y-%m-%d %H:%M:%S') (Taipei)"
