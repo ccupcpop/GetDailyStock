@@ -4263,13 +4263,6 @@ def merge_stock_htmls_for_concept(concept_name, stock_htmls, concept_desc=''):
             margin-bottom: 15px;
         }}
         
-        .header .description {{
-            color: #5a6c7d;
-            font-size: 1em;
-            line-height: 1.8;
-            margin-bottom: 20px;
-        }}
-        
         .selector-container {{
             margin-bottom: 20px;
         }}
@@ -4329,7 +4322,6 @@ def merge_stock_htmls_for_concept(concept_name, stock_htmls, concept_desc=''):
     <div class="container">
         <div class="header">
             <h1>📊 {concept_name}</h1>
-            <div class="description">{concept_desc}</div>
             
             <div class="selector-container">
                 <label class="selector-label">選擇個股:</label>
@@ -4557,8 +4549,8 @@ def generate_concept_merged_html(base_dir, config):
 
 def generate_concept_all_html(base_dir, config):
     """
-    生成 Concept_ALL.html - 合併所有概念股 HTML 的總覽頁面
-    使用下拉選單切換，iframe 加載對應的概念股 HTML
+    生成 Concept_ALL.html - 简单合并所有概念股HTML
+    上方下拉选单，下方直接显示对应概念股内容
     """
     import json
     
@@ -4569,7 +4561,7 @@ def generate_concept_all_html(base_dir, config):
     stockinfo_folder = config['merged_output_folder']
     concept_html_folder = config['html_output_folder']
     
-    # 1. 讀取 top.json
+    # 1. 读取 top.json
     top_json_path = os.path.join(stockinfo_folder, 'top.json')
     if not os.path.exists(top_json_path):
         print(f"⚠️  未找到 {top_json_path}")
@@ -4579,69 +4571,83 @@ def generate_concept_all_html(base_dir, config):
         with open(top_json_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
     except Exception as e:
-        print(f"✗ 讀取 top.json 失敗: {e}")
+        print(f"✗ 读取 top.json 失败: {e}")
         return
     
     concepts = data.get('concepts', [])
     if not concepts:
-        print("⚠️  top.json 中沒有概念股資料")
+        print("⚠️  top.json 中没有概念股资料")
         return
     
-    print(f"找到 {len(concepts)} 個概念股\n")
+    print(f"找到 {len(concepts)} 个概念股\n")
     
-    # 2. 收集概念股資訊和對應的 HTML 文件
-    concept_files = []
+    # 2. 读取每个概念股的HTML内容
+    concept_contents = []
     for concept in concepts:
         concept_name = concept.get('name', '')
         if not concept_name:
             continue
         
-        # 清理檔名中的特殊字元
+        # 清理档名
         safe_name = concept_name.replace('/', '_').replace('\\', '_').replace(':', '_')
         html_filename = f"{safe_name}.html"
         html_path = os.path.join(concept_html_folder, html_filename)
         
         if os.path.exists(html_path):
-            concept_files.append({
-                'name': concept_name,
-                'filename': html_filename,
-                'stock_count': concept.get('stock_count', len(concept.get('stocks', [])))
-            })
-            print(f"✓ {concept_name}: {html_filename}")
+            try:
+                with open(html_path, 'r', encoding='utf-8') as f:
+                    full_html = f.read()
+                
+                # 提取完整的body内容（包括所有嵌套的style和script）
+                body_start = full_html.find('<body')
+                body_end = full_html.rfind('</body>')
+                
+                if body_start != -1 and body_end != -1:
+                    # 找到body标签的结束位置
+                    body_tag_end = full_html.find('>', body_start)
+                    body_content = full_html[body_tag_end + 1:body_end]
+                    
+                    concept_contents.append({
+                        'name': concept_name,
+                        'content': body_content
+                    })
+                    print(f"✓ {concept_name}")
+                else:
+                    print(f"⚠️  无法找到body标签: {html_filename}")
+                    
+            except Exception as e:
+                print(f"✗ 读取失败 {html_filename}: {e}")
         else:
             print(f"⚠️  找不到: {html_filename}")
     
-    if not concept_files:
-        print("\n⚠️  沒有找到任何概念股HTML檔案")
+    if not concept_contents:
+        print("\n⚠️  没有读取到任何概念股HTML内容")
         return
     
-    print(f"\n共找到 {len(concept_files)} 個概念股HTML檔案")
+    print(f"\n共读取 {len(concept_contents)} 个概念股HTML")
     
-    # 3. 生成 Concept_ALL.html
-    html_content = generate_concept_all_html_template(concept_files)
+    # 3. 生成合并HTML
+    html_content = generate_merged_html_content(concept_contents)
     
-    # 4. 儲存
+    # 4. 储存
     output_path = os.path.join(stockinfo_folder, 'Concept_ALL.html')
     try:
         with open(output_path, 'w', encoding='utf-8') as f:
             f.write(html_content)
         
         print(f"\n✓ 成功生成: {output_path}")
-        print(f"  - {len(concept_files)} 個概念股")
+        print(f"  - {len(concept_contents)} 个概念股")
         
     except Exception as e:
-        print(f"\n✗ 儲存失敗: {e}")
+        print(f"\n✗ 储存失败: {e}")
     
     print(f"{'='*80}\n")
 
 
-def generate_concept_all_html_template(concept_files):
-    """生成 Concept_ALL.html 的模板"""
+def generate_merged_html_content(concept_contents):
+    """完全按照concept_stocks.html的样式生成"""
     
-    html_parts = []
-    
-    # HTML head
-    html_parts.append("""<!DOCTYPE html>
+    html = """<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
@@ -4702,17 +4708,12 @@ def generate_concept_all_html_template(concept_files):
             box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
         }
 
-        .concept-frame-container {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-            overflow: hidden;
+        .concept-detail {
+            display: none;
         }
 
-        .concept-frame {
-            width: 100%;
-            min-height: 800px;
-            border: none;
+        .concept-detail.active {
+            display: block;
         }
 
         @media (max-width: 768px) {
@@ -4728,10 +4729,6 @@ def generate_concept_all_html_template(concept_files):
                 font-size: 1em;
                 padding: 12px 35px 12px 14px;
             }
-
-            .concept-frame {
-                min-height: 600px;
-            }
         }
     </style>
 </head>
@@ -4739,312 +4736,136 @@ def generate_concept_all_html_template(concept_files):
     <div class="container">
         <div class="selector-section">
             <label class="selector-label">選擇產業概念:</label>
-            <select id="conceptSelector" class="concept-selector">
-""")
+            <select class="concept-selector" id="conceptSelector" onchange="loadConcept(this.value)">
+"""
     
-    # 添加下拉選單選項
-    for i, concept in enumerate(concept_files):
-        selected = ' selected' if i == 0 else ''
-        html_parts.append(f'                <option value="{i}"{selected}>{concept["name"]} (共{concept["stock_count"]}檔)</option>\n')
+    # 选项
+    for i, concept in enumerate(concept_contents):
+        html += f'                <option value="{i}">{concept["name"]}</option>\n'
     
-    html_parts.append("""            </select>
+    html += """            </select>
         </div>
-
-        <div class="concept-frame-container">
-            <iframe id="conceptFrame" class="concept-frame" src=""></iframe>
-        </div>
-    </div>
+"""
+    
+    # 每个概念股内容
+    for i, concept in enumerate(concept_contents):
+        active = ' active' if i == 0 else ''
+        html += f'        <div id="concept-{i}" class="concept-detail{active}">\n'
+        html += concept['content']
+        html += '\n        </div>\n'
+    
+    html += """    </div>
 
     <script>
-        const concepts = [
-""")
-    
-    # 添加概念股數據
-    for i, concept in enumerate(concept_files):
-        comma = ',' if i < len(concept_files) - 1 else ''
-        html_parts.append(f'            {{ name: "{concept["name"]}",filename: "../ConceptHTML/{concept["filename"]}" }}{comma}\n')
-    
-    html_parts.append("""        ];
-
-        const selector = document.getElementById('conceptSelector');
-        const frame = document.getElementById('conceptFrame');
-
         function loadConcept(index) {
-            const concept = concepts[index];
-            frame.src = concept.filename;
-        }
-
-        selector.addEventListener('change', function() {
-            loadConcept(parseInt(this.value));
-        });
-
-        // 初始載入第一個概念股
-        if (concepts.length > 0) {
-            loadConcept(0);
+            document.querySelectorAll('.concept-detail').forEach(el => el.classList.remove('active'));
+            document.getElementById('concept-' + index).classList.add('active');
         }
     </script>
 </body>
-</html>""")
+</html>"""
     
-    return ''.join(html_parts)
+    return html
+
 
 
 def generate_single_concept_html(concept_name, fund_descriptions, stocks, stock_html_map):
     """
-    生成單一概念股的HTML檔案
-    
-    Args:
-        concept_name: 概念股名稱
-        fund_descriptions: 概念股說明
-        stocks: 股票列表
-        stock_html_map: {股票代碼: {'html': HTML內容, 'name': 股票名稱, 'market': 市場類型}}
-    
-    Returns:
-        str: HTML內容
+    生成單一概念股的HTML檔案 - 合併個股HTML並加入分隔線
     """
     html_parts = []
+    valid_stocks = []
     
-    # 計算有效股票數
-    valid_stocks = [s for s in stocks if s.get('code', '') in stock_html_map]
-    valid_count = len(valid_stocks)
+    # 收集有效的股票
+    for stock in stocks:
+        code = stock.get('code', '')
+        if code in stock_html_map:
+            valid_stocks.append(stock)
     
-    # HTML head
-    html_parts.append(f"""<!DOCTYPE html>
+    # 直接合併每個股票的HTML，中間加入分隔線
+    for idx, stock in enumerate(valid_stocks):
+        code = stock.get('code', '')
+        stock_data = stock_html_map[code]
+        stock_html = stock_data['html']
+        
+        # 提取股票HTML的body內容（因為stock_html是完整的HTML文檔）
+        import re
+        body_match = re.search(r'<body[^>]*>(.*?)</body>', stock_html, re.DOTALL)
+        if body_match:
+            stock_body_content = body_match.group(1)
+        else:
+            # 如果找不到body標籤，就使用完整內容
+            stock_body_content = stock_html
+        
+        # 添加股票body內容
+        html_parts.append(stock_body_content)
+        
+        # 在每個股票之間加入分隔線（最後一個不加）
+        if idx < len(valid_stocks) - 1:
+            html_parts.append('<div class="stock-separator"></div>')
+    
+    # 合併所有內容
+    all_charts_html = '\n'.join(html_parts)
+    
+    # 包裝成完整的HTML（使用與ALL_TSE.html相同的樣式）
+    full_html = f'''<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{concept_name} - 技術分析圖表</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <title>{concept_name} - 概念股技術分析圖表</title>
     <style>
-        * {{
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }}
-
         body {{
-            font-family: 'Microsoft JhengHei', 'PingFang TC', 'Noto Sans TC', sans-serif;
-            background: #f5f7fa;
+            font-family: 'Microsoft JhengHei', 'PingFang TC', 'Noto Sans TC', Arial, sans-serif;
+            margin: 0;
             padding: 20px;
-            line-height: 1.6;
+            background: #f5f5f5;
+        }}
+        
+        * {{
+            -webkit-tap-highlight-color: rgba(0,0,0,0.1);
         }}
 
-        .container {{
-            max-width: 1600px;
-            margin: 0 auto;
-        }}
-
-        .header {{
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px;
-            border-radius: 12px;
-            margin-bottom: 30px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        }}
-
-        .header h1 {{
-            font-size: 2em;
-            margin-bottom: 10px;
-        }}
-
-        .header .subtitle {{
-            opacity: 0.9;
-            font-size: 1.1em;
-        }}
-
-        .concept-info {{
-            background: white;
-            padding: 35px;
-            border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-            margin-bottom: 30px;
-        }}
-
-        .concept-title {{
-            font-size: 1.8em;
-            color: #2c3e50;
-            margin-bottom: 8px;
-            font-weight: 600;
-        }}
-
-        .concept-count {{
-            color: #7f8c8d;
-            font-size: 0.95em;
-            margin-bottom: 20px;
-        }}
-
-        .concept-description {{
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 8px;
-            color: #495057;
-            line-height: 1.8;
-            border-left: 4px solid #667eea;
-        }}
-
-        .stocks-container {{
-            display: flex;
-            flex-direction: column;
-            gap: 30px;
-        }}
-
-        .stock-item {{
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-            overflow: hidden;
-        }}
-
-        .stock-header {{
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 15px 25px;
-            font-size: 1.2em;
-            font-weight: 500;
-        }}
-
-        .stock-header .code {{
-            font-weight: 700;
-            margin-right: 10px;
-        }}
-
-        .stock-header .badge {{
-            background: rgba(255,255,255,0.2);
-            padding: 3px 10px;
-            border-radius: 4px;
-            font-size: 0.8em;
-            margin-left: 10px;
-        }}
-
-        .stock-item iframe {{
-            width: 100%;
-            min-height: 800px;
-            border: none;
-        }}
-
-        .back-to-top {{
-            position: fixed;
-            bottom: 30px;
-            right: 30px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            transition: transform 0.3s ease;
-            text-decoration: none;
-            font-size: 1.5em;
-        }}
-
-        .back-to-top:hover {{
-            transform: translateY(-5px);
-        }}
-
-        @media (max-width: 1200px) {{
-            .container {{
-                padding: 10px;
-            }}
-            
-            .header h1 {{
-                font-size: 1.5em;
-            }}
-            
-            .concept-title {{
-                font-size: 1.4em;
-            }}
+        .stock-separator {{
+            height: 30px;
+            background: linear-gradient(to bottom, #f0f0f0, #ffffff);
+            margin: 20px 0;
+            border-top: 2px solid #ddd;
+            border-bottom: 2px solid #ddd;
         }}
     </style>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {{
+            let touchStartTime = 0;
+            let touchCount = 0;
+            
+            document.addEventListener('touchstart', function(e) {{
+                if (e.touches.length === 2) {{
+                    touchStartTime = Date.now();
+                    touchCount++;
+                }}
+            }}, {{ passive: true }});
+            
+            document.addEventListener('touchend', function(e) {{
+                if (touchCount > 0) {{
+                    const duration = Date.now() - touchStartTime;
+                    if (duration < 500) {{
+                        e.preventDefault();
+                    }}
+                    touchCount = 0;
+                }}
+            }});
+        }});
+    </script>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>🎯 {concept_name}</h1>
-            <div class="subtitle">概念股技術分析圖表</div>
-        </div>
-
-        <div class="concept-info">
-            <div class="concept-title">{concept_name}</div>
-            <div class="concept-count">共 {valid_count} 檔個股</div>
-""")
-    
-    # 添加概念股說明
-    if fund_descriptions:
-        html_parts.append('            <div class="concept-description">\n')
-        html_parts.append(f'                {fund_descriptions}\n')
-        html_parts.append('            </div>\n')
-    
-    html_parts.append('        </div>\n\n')
-    html_parts.append('        <div class="stocks-container">\n')
-    
-    # 為每個股票添加圖表
-    for stock in stocks:
-        code = stock.get('code', '')
-        name = stock.get('name', '')
-        
-        if code not in stock_html_map:
-            continue
-        
-        stock_data = stock_html_map[code]
-        stock_html = stock_data['html']
-        market = stock_data.get('market', 'TSE')
-        market_name = '上市' if market == 'TSE' else '上櫃'
-        
-        # 轉義HTML以用於srcdoc屬性
-        stock_html_escaped = (stock_html
-                             .replace('&', '&amp;')
-                             .replace('<', '&lt;')
-                             .replace('>', '&gt;')
-                             .replace('"', '&quot;'))
-        
-        html_parts.append('            <div class="stock-item">\n')
-        html_parts.append(f'                <div class="stock-header">\n')
-        html_parts.append(f'                    <span class="code">{code}</span>\n')
-        html_parts.append(f'                    <span>{name}</span>\n')
-        html_parts.append(f'                    <span class="badge">{market_name}</span>\n')
-        html_parts.append('                </div>\n')
-        html_parts.append(f'                <iframe srcdoc="{stock_html_escaped}" title="{code} {name}"></iframe>\n')
-        html_parts.append('            </div>\n')
-    
-    html_parts.append('        </div>\n')
-    html_parts.append('    </div>\n\n')
-    
-    # 返回頂部按鈕
-    html_parts.append('    <a href="#" class="back-to-top" title="返回頂部">↑</a>\n\n')
-    
-    # JavaScript
-    html_parts.append("""    <script>
-        // 返回頂部功能
-        document.querySelector('.back-to-top').addEventListener('click', function(e) {
-            e.preventDefault();
-            window.scrollTo({
-                top: 0,
-                behavior: 'smooth'
-            });
-        });
-        
-        // 顯示/隱藏返回頂部按鈕
-        window.addEventListener('scroll', function() {
-            const backToTop = document.querySelector('.back-to-top');
-            if (window.pageYOffset > 300) {
-                backToTop.style.display = 'flex';
-            } else {
-                backToTop.style.display = 'none';
-            }
-        });
-        
-        // 初始隱藏返回頂部按鈕
-        document.querySelector('.back-to-top').style.display = 'none';
-    </script>
+{all_charts_html}
 </body>
-</html>""")
+</html>'''
     
-    return ''.join(html_parts)
+    return full_html
+
+
 
 
 def run_step3_concept_chart_generation(base_dir):
