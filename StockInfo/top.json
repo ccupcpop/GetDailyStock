@@ -1,0 +1,2029 @@
+{
+  "scraped_at": "2025-12-01 01:18:33",
+  "source": "top10_from_concept_stocks",
+  "description": "從concept_stocks.html提取10個概念股領域，整理出在top15中出現的個股",
+  "concepts": [
+    {
+      "name": "特殊應用積體電路ASIC",
+      "fund_descriptions": "ASIC（特殊應用積體電路）是AI、HPC與高效能運算的核心載體，客製化設計可大幅提升能效比。隨著生成式AI爆發，高階ASIC需求激增，台灣在設計服務、IP授權與晶片實現環節具全球領導地位，創意、世芯-KY、聯發科等廠主導NVIDIA、AMD及新創公司AI晶片開發。",
+      "stocks": [
+        {
+          "code": "2363",
+          "name": "矽統",
+          "market": "TSE",
+          "chain": "ASIC設計",
+          "fun": "專注於車用與工業控制ASIC設計，提供低功耗SoC解決方案，支援CAN FD與Ethernet通訊協定，導入Tier 1車電供應鏈。",
+          "is_leader": false
+        },
+        {
+          "code": "2388",
+          "name": "威盛",
+          "market": "TSE",
+          "chain": "ASIC設計",
+          "fun": "開發AIoT邊緣運算ASIC，整合NPU與影像處理引擎，應用於智慧零售與交通監控，具備完整軟硬體開發平台。",
+          "is_leader": false
+        },
+        {
+          "code": "2401",
+          "name": "凌陽",
+          "market": "TSE",
+          "chain": "車用IC",
+          "fun": "開發車用音訊與語音處理晶片，支援V2X語音警示功能，應用於商用車與巴士。",
+          "is_leader": false
+        },
+        {
+          "code": "2454",
+          "name": "聯發科",
+          "market": "TSE",
+          "chain": "控制晶片",
+          "fun": "評估開發量子控制SoC，整合高速DAC/ADC與數位邏輯，技術預研階段。",
+          "is_leader": false
+        },
+        {
+          "code": "3034",
+          "name": "聯詠",
+          "market": "TSE",
+          "chain": "ASIC設計",
+          "fun": "顯示驅動IC與視覺處理ASIC龍頭，TDDI與OLED驅動晶片整合AI影像增強演算法，應用於智慧手機與車用顯示器。",
+          "is_leader": true
+        },
+        {
+          "code": "3035",
+          "name": "智原",
+          "market": "TSE",
+          "chain": "ASIC設計服務",
+          "fun": "提供從RTL到GDSII的完整ASIC設計服務，擁有多達500項矽智財（IP），支援台積電3nm製程，客戶涵蓋通訊與AI領域。",
+          "is_leader": false
+        },
+        {
+          "code": "3443",
+          "name": "創意",
+          "market": "TSE",
+          "chain": "量子ASIC設計",
+          "fun": "提供量子控制晶片（Control ASIC）設計服務，整合RF與數位電路，支援多量子位元同步操控，為國際量子新創合作夥伴。",
+          "is_leader": true
+        },
+        {
+          "code": "3661",
+          "name": "世芯-KY",
+          "market": "TSE",
+          "chain": "量子晶片設計",
+          "fun": "開發量子位元控制與讀出電路，支援超導與矽基量子路線，已完成多顆測試晶片tape-out。",
+          "is_leader": false
+        },
+        {
+          "code": "6695",
+          "name": "芯鼎",
+          "market": "TSE",
+          "chain": "ASIC設計",
+          "fun": "影像處理ASIC專家，開發4K/8K視訊編解碼晶片，支援AI影像分析，應用於安防與車載鏡頭系統。",
+          "is_leader": false
+        },
+        {
+          "code": "8054",
+          "name": "安國",
+          "market": "OTC",
+          "chain": "ASIC設計",
+          "fun": "儲存控制ASIC設計商，SSD控制器支援PCIe Gen4與LDPC糾錯，瞄準工業與資料中心市場，具備低功耗優勢。",
+          "is_leader": false
+        }
+      ],
+      "stock_count": 10
+    },
+    {
+      "name": "先進封裝CoWoS3DIC",
+      "fund_descriptions": "先進封裝技術(含CoWoS、3D IC、SoIC、FOCoS)是AI晶片與高效能運算的關鍵賦能技術,透過異質整合與垂直堆疊突破摩爾定律限制。台積電主導CoWoS量產並持續擴產,2025年產能達2022年4倍以上,為NVIDIA、AMD獨家供應商。台灣在先進封裝領域居全球領先地位,完整供應鏈涵蓋晶圓製造(台積電)、封測(日月光)、載板(欣興、景碩)、材料(長興、永光)、設備(辛耘、志聖、由田)等環節,掌握全球90%以上產能。",
+      "stocks": [
+        {
+          "code": "1560",
+          "name": "中砂",
+          "market": "TSE",
+          "chain": "CMP材料",
+          "fun": "開發2nm製程用高選擇比CMP漿料，支援GAA電晶體通道平坦化，已送樣台積電驗證。",
+          "is_leader": false
+        },
+        {
+          "code": "2308",
+          "name": "台達電",
+          "market": "TSE",
+          "chain": "高功率電源",
+          "fun": "提供AI伺服器48V分散式電源架構，轉換效率達98.5%，符合OCP ORv4規範，為Microsoft與Google合作夥伴。",
+          "is_leader": true
+        },
+        {
+          "code": "2316",
+          "name": "楠梓電",
+          "market": "TSE",
+          "chain": "連接器",
+          "fun": "供應CoWoS測試載板用高頻連接器，支援112Gbps訊號傳輸，為日月光與矽品測試設備指定供應商。",
+          "is_leader": false
+        },
+        {
+          "code": "2330",
+          "name": "台積電",
+          "market": "TSE",
+          "chain": "量子晶片製造",
+          "fun": "與學研單位合作開發超導量子位元（Qubit）製程，利用300mm晶圓平台提升一致性，為亞洲少數具備量子晶片製造能力的晶圓廠。",
+          "is_leader": true
+        },
+        {
+          "code": "2360",
+          "name": "致茂",
+          "market": "TSE",
+          "chain": "測試設備",
+          "fun": "供應雷達與飛彈系統自動測試設備（ATE），支援中科院與漢翔研發驗證，具備高頻訊號模擬能力。",
+          "is_leader": false
+        },
+        {
+          "code": "2449",
+          "name": "京元電子",
+          "market": "TSE",
+          "chain": "測試服務",
+          "fun": "提供CoWoS晶片高頻測試服務，建置專用測試機台支援HBM介面驗證，為台積電合作測試夥伴。",
+          "is_leader": false
+        },
+        {
+          "code": "2467",
+          "name": "志聖",
+          "market": "TSE",
+          "chain": "封裝設備",
+          "fun": "開發量子晶片用低溫封裝設備，支援惰性氣體環境製程，與日月光合作驗證中。",
+          "is_leader": false
+        },
+        {
+          "code": "3037",
+          "name": "欣興",
+          "market": "TSE",
+          "chain": "低溫載板",
+          "fun": "開發量子晶片用低溫ABF載板，確保-273°C下尺寸穩定性，與台積電共同驗證中。",
+          "is_leader": false
+        },
+        {
+          "code": "3131",
+          "name": "弘塑",
+          "market": "OTC",
+          "chain": "清洗設備",
+          "fun": "提供CoWoS製程後段晶圓清洗設備，有效去除微粒子與金屬殘留，提升封裝良率，獲台積電與力積電採用。",
+          "is_leader": false
+        },
+        {
+          "code": "3374",
+          "name": "精材",
+          "market": "OTC",
+          "chain": "記憶體封裝",
+          "fun": "支援HBM3E與2nm SoC異質整合封裝，TSV與微凸塊技術成熟，為美光與南亞科合作夥伴。",
+          "is_leader": false
+        },
+        {
+          "code": "3455",
+          "name": "由田",
+          "market": "OTC",
+          "chain": "AOI檢測",
+          "fun": "開發CoWoS中介層（Interposer）缺陷檢測設備，解析度達0.5μm，用於台積電與日月光封裝產線。",
+          "is_leader": false
+        },
+        {
+          "code": "3563",
+          "name": "牧德",
+          "market": "TSE",
+          "chain": "AOI檢測",
+          "fun": "提供ABF載板與CoWoS模組自動光學檢測設備，支援高密度線路缺陷辨識，客戶包含欣興與景碩。",
+          "is_leader": false
+        },
+        {
+          "code": "3583",
+          "name": "辛耘",
+          "market": "TSE",
+          "chain": "再生設備",
+          "fun": "量子製程用高純度化學品再生設備供應商，確保低雜質環境，為台積電合作夥伴。",
+          "is_leader": false
+        },
+        {
+          "code": "3680",
+          "name": "家登",
+          "market": "OTC",
+          "chain": "FOUP載具",
+          "fun": "EUV與CoWoS製程用高潔淨度FOUP載具供應商，防止微污染，為台積電與三星指定合作夥伴。",
+          "is_leader": true
+        },
+        {
+          "code": "3711",
+          "name": "日月光投控",
+          "market": "TSE",
+          "chain": "量子封裝",
+          "fun": "探索量子晶片異質整合封裝技術，開發低溫環境下可靠互連方案，與台積電合作驗證中。",
+          "is_leader": false
+        },
+        {
+          "code": "5443",
+          "name": "均豪",
+          "market": "OTC",
+          "chain": "檢測設備",
+          "fun": "開發3D IC堆疊對準檢測設備，用於CoWoS與FOCoS製程，提升良率與生產效率。",
+          "is_leader": false
+        },
+        {
+          "code": "6187",
+          "name": "萬潤",
+          "market": "OTC",
+          "chain": "濕製程設備",
+          "fun": "CoWoS前段清洗與蝕刻設備供應商，支援高深寬比TSV製程，獲力積電與世界先進採用。",
+          "is_leader": false
+        },
+        {
+          "code": "6207",
+          "name": "雷科",
+          "market": "OTC",
+          "chain": "散熱元件",
+          "fun": "供應CoWoS測試載板用高導熱界面材料，確保高功耗晶片測試穩定性，為京元電與矽格合作夥伴。",
+          "is_leader": false
+        },
+        {
+          "code": "6223",
+          "name": "旺矽",
+          "market": "OTC",
+          "chain": "探針卡",
+          "fun": "開發CoWoS晶片高頻探針卡，支援HBM介面測試，為愛德萬與泰瑞達設備配套供應商。",
+          "is_leader": false
+        },
+        {
+          "code": "6515",
+          "name": "穎崴",
+          "market": "TSE",
+          "chain": "測試介面",
+          "fun": "提供CoWoS測試載板與Socket解決方案，確保高頻訊號完整性，為日月光與矽品長期合作夥伴。",
+          "is_leader": false
+        },
+        {
+          "code": "6640",
+          "name": "均華",
+          "market": "OTC",
+          "chain": "測試設備",
+          "fun": "CoWoS最終測試用Handler設備供應商，支援高溫高壓測試條件，獲矽格與力成採用。",
+          "is_leader": false
+        },
+        {
+          "code": "6664",
+          "name": "群翊",
+          "market": "OTC",
+          "chain": "烘烤設備",
+          "fun": "提供CoWoS封裝前後烘烤與固化設備，控制翹曲與應力，為日月光與矽品供應鏈成員。",
+          "is_leader": false
+        },
+        {
+          "code": "8027",
+          "name": "鈦昇",
+          "market": "OTC",
+          "chain": "雷射設備",
+          "fun": "開發CoWoS用雷射切割與修整設備，支援晶圓薄化與切割製程，客戶包含台積電與力積電。",
+          "is_leader": false
+        }
+      ],
+      "stock_count": 23
+    },
+    {
+      "name": "AI伺服器與資料中心",
+      "fund_descriptions": "NVIDIA GB200/GB300 超級電腦與AI伺服器為生成式AI與大型語言模型訓練的核心基礎設施,單機功耗達120-150kW,需革命性液冷、高功率電源與高速互連技術。台灣ODM廠(廣達、緯創、鴻海、英業達)主導全球90%雲端伺服器組裝,在液冷散熱、48V電源架構、CoWoS載板、高速連接器等環節具技術領先地位,深度參與Microsoft、Google、Meta等雲端巨頭AI資料中心建設。",
+      "stocks": [
+        {
+          "code": "1815",
+          "name": "富喬",
+          "market": "OTC",
+          "chain": "機構件",
+          "fun": "評估供應GB300伺服器機殼用複合材料，具輕量化與EMI屏蔽特性，與廣達共同開發中。",
+          "is_leader": false
+        },
+        {
+          "code": "2059",
+          "name": "川湖",
+          "market": "TSE",
+          "chain": "機構件",
+          "fun": "供應OCP伺服器滑軌與支架，支援高密度部署與快速維護，為廣達與緯創合作夥伴。",
+          "is_leader": false
+        },
+        {
+          "code": "2301",
+          "name": "光寶科",
+          "market": "TSE",
+          "chain": "伺服器電源",
+          "fun": "供應OCP鈦金級1+1冗餘電源，功率達3.2kW，效率98%，為Meta與Amazon指定供應商。",
+          "is_leader": true
+        },
+        {
+          "code": "2308",
+          "name": "台達電",
+          "market": "TSE",
+          "chain": "高功率電源",
+          "fun": "提供AI伺服器48V分散式電源架構，轉換效率達98.5%，符合OCP ORv4規範，為Microsoft與Google合作夥伴。",
+          "is_leader": true
+        },
+        {
+          "code": "2317",
+          "name": "鴻海",
+          "market": "TSE",
+          "chain": "雲端伺服器ODM",
+          "fun": "Google與AWS主要伺服器供應商，開發OCP 3.0開放機櫃，支援48V分散式電源架構，2025年AI伺服器營收占比達30%。",
+          "is_leader": true
+        },
+        {
+          "code": "2330",
+          "name": "台積電",
+          "market": "TSE",
+          "chain": "量子晶片製造",
+          "fun": "與學研單位合作開發超導量子位元（Qubit）製程，利用300mm晶圓平台提升一致性，為亞洲少數具備量子晶片製造能力的晶圓廠。",
+          "is_leader": true
+        },
+        {
+          "code": "2354",
+          "name": "鴻準",
+          "market": "TSE",
+          "chain": "機器人機構",
+          "fun": "開發3C產業用精密組裝機器人，支援微米級操作，為Apple供應鏈自動化解決方案提供商。",
+          "is_leader": false
+        },
+        {
+          "code": "2356",
+          "name": "英業達",
+          "market": "TSE",
+          "chain": "伺服器ODM",
+          "fun": "供應Azure與Oracle GB200伺服器機櫃，具備高速互連與液冷支援能力，為微軟與甲骨文主力ODM。",
+          "is_leader": false
+        },
+        {
+          "code": "2368",
+          "name": "金像電",
+          "market": "TSE",
+          "chain": "HDI板",
+          "fun": "供應GB200伺服器主板用高頻HDI板，支援112Gbps訊號傳輸，控制阻抗公差±5%，為廣達與緯創合作夥伴。",
+          "is_leader": false
+        },
+        {
+          "code": "2376",
+          "name": "技嘉",
+          "market": "TSE",
+          "chain": "AI伺服器",
+          "fun": "推出G492系列GB200相容伺服器，支援8-GPU配置與液冷散熱，獲Meta與Oracle採用，為NVIDIA認證合作夥伴。",
+          "is_leader": false
+        },
+        {
+          "code": "2382",
+          "name": "廣達",
+          "market": "TSE",
+          "chain": "GB200系統整合",
+          "fun": "全球唯一通過NVIDIA GB200 NVL72系統認證的ODM，自主開發雙相浸沒式液冷架構，2025年獨佔100%組裝訂單。",
+          "is_leader": true
+        },
+        {
+          "code": "2383",
+          "name": "台光電",
+          "market": "TSE",
+          "chain": "高頻基材",
+          "fun": "供應GB300主板用低損耗高頻基材，支援112Gbps以上訊號傳輸，為金像電與瀚荃合作夥伴。",
+          "is_leader": false
+        },
+        {
+          "code": "2392",
+          "name": "正崴",
+          "market": "TSE",
+          "chain": "連接器",
+          "fun": "供應V2X模組用FAKRA與HSD連接器，確保高頻訊號完整性，為Tesla與BMW供應商。",
+          "is_leader": false
+        },
+        {
+          "code": "2421",
+          "name": "建準",
+          "market": "TSE",
+          "chain": "散熱風扇",
+          "fun": "開發GB300輔助散熱用高靜壓風扇，支援液冷失效備援，為技嘉與華碩伺服器合作夥伴。",
+          "is_leader": false
+        },
+        {
+          "code": "3017",
+          "name": "奇鋐",
+          "market": "TSE",
+          "chain": "液冷散熱",
+          "fun": "規劃GB300雙相流液冷系統，整合光學I/O冷卻需求，與NVIDIA共同開發中。",
+          "is_leader": true
+        },
+        {
+          "code": "3037",
+          "name": "欣興",
+          "market": "TSE",
+          "chain": "低溫載板",
+          "fun": "開發量子晶片用低溫ABF載板，確保-273°C下尺寸穩定性，與台積電共同驗證中。",
+          "is_leader": false
+        },
+        {
+          "code": "3081",
+          "name": "聯亞",
+          "market": "OTC",
+          "chain": "光學元件",
+          "fun": "評估供應GB300光學I/O用VCSEL雷射陣列，支援短距高速互連，技術驗證階段。",
+          "is_leader": false
+        },
+        {
+          "code": "3090",
+          "name": "日電貿",
+          "market": "TSE",
+          "chain": "電子零組件",
+          "fun": "代理GB200伺服器用高頻電感與電容，確保電源完整性，為廣達與英業達主要供應商。",
+          "is_leader": false
+        },
+        {
+          "code": "3163",
+          "name": "波若威",
+          "market": "OTC",
+          "chain": "光纖元件",
+          "fun": "開發GB300內部光纖互連模組，支援光學I/O訊號傳輸，與聯亞合作整合方案。",
+          "is_leader": false
+        },
+        {
+          "code": "3211",
+          "name": "順達",
+          "market": "OTC",
+          "chain": "散熱模組",
+          "fun": "供應GB200 CPU/GPU用均熱板（Vapor Chamber），導熱係數達8,000 W/mK，為技嘉與華碩合作夥伴。",
+          "is_leader": false
+        },
+        {
+          "code": "3231",
+          "name": "緯創",
+          "market": "TSE",
+          "chain": "伺服器ODM",
+          "fun": "參與GB300早期設計，瞄準AWS與Google 2026年採購案，具備光學I/O整合能力。",
+          "is_leader": false
+        },
+        {
+          "code": "3324",
+          "name": "雙鴻",
+          "market": "OTC",
+          "chain": "散熱元件",
+          "fun": "供應量子電腦外圍散熱模組，確保制冷機高效運作，為台達電合作夥伴。",
+          "is_leader": false
+        },
+        {
+          "code": "3363",
+          "name": "上詮",
+          "market": "OTC",
+          "chain": "光纖通訊",
+          "fun": "評估供應GB300光學收發模組，支援800G/1.6T速率，技術可行性評估階段。",
+          "is_leader": false
+        },
+        {
+          "code": "3533",
+          "name": "嘉澤",
+          "market": "TSE",
+          "chain": "連接器",
+          "fun": "開發GB300光電混合連接器，整合電力與光訊號傳輸，為NVIDIA早期驗證供應商。",
+          "is_leader": false
+        },
+        {
+          "code": "3625",
+          "name": "西勝",
+          "market": "OTC",
+          "chain": "機構件",
+          "fun": "GB200伺服器機殼與支架供應商，具EMI屏蔽與抗震設計，為廣達與緯創指定合作夥伴。",
+          "is_leader": false
+        },
+        {
+          "code": "3665",
+          "name": "貿聯-KY",
+          "market": "TSE",
+          "chain": "線材",
+          "fun": "供應V2X模組內部高頻線組，確保訊號完整性，為同致與車王電合作夥伴。",
+          "is_leader": false
+        },
+        {
+          "code": "3711",
+          "name": "日月光投控",
+          "market": "TSE",
+          "chain": "量子封裝",
+          "fun": "探索量子晶片異質整合封裝技術，開發低溫環境下可靠互連方案，與台積電合作驗證中。",
+          "is_leader": false
+        },
+        {
+          "code": "4931",
+          "name": "新盛力",
+          "market": "OTC",
+          "chain": "機構件",
+          "fun": "供應GB200機櫃用精密金屬件，支援模組化部署，為英業達與緯創供應鏈成員。",
+          "is_leader": false
+        },
+        {
+          "code": "5309",
+          "name": "系統電",
+          "market": "OTC",
+          "chain": "連接器",
+          "fun": "開發GB200內部高速背板連接器，支援PCIe Gen5訊號，為技嘉與華碩伺服器合作夥伴。",
+          "is_leader": false
+        },
+        {
+          "code": "6121",
+          "name": "新普",
+          "market": "OTC",
+          "chain": "電池模組",
+          "fun": "供應GB200 UPS備援電池系統，確保斷電時安全關機，為廣達與鴻海合作夥伴。",
+          "is_leader": false
+        },
+        {
+          "code": "6197",
+          "name": "佳必琪",
+          "market": "TSE",
+          "chain": "電源元件",
+          "fun": "GB300電源模組用磁性元件供應商，支援高頻開關需求，為台達電與光寶科合作夥伴。",
+          "is_leader": false
+        },
+        {
+          "code": "6274",
+          "name": "台燿",
+          "market": "OTC",
+          "chain": "高頻基材",
+          "fun": "開發GB300用極低損耗基材，Df<0.002，支援光學I/O高頻訊號，與台光電競爭。",
+          "is_leader": false
+        },
+        {
+          "code": "6558",
+          "name": "興能高",
+          "market": "TSE",
+          "chain": "電源元件",
+          "fun": "GB200電源模組用高頻變壓器供應商，支援48V轉1V高效轉換，為台達電與光寶科合作夥伴。",
+          "is_leader": false
+        },
+        {
+          "code": "6584",
+          "name": "南俊國際",
+          "market": "OTC",
+          "chain": "物流與包材",
+          "fun": "GB300伺服器高價值物流與防震包材供應商，為廣達與緯創合作夥伴。",
+          "is_leader": false
+        },
+        {
+          "code": "6669",
+          "name": "緯穎",
+          "market": "TSE",
+          "chain": "AI伺服器",
+          "fun": "積極參與GB300參考設計，瞄準超大規模客戶2026年部署，具備光學I/O整合經驗。",
+          "is_leader": false
+        },
+        {
+          "code": "6781",
+          "name": "AES-KY",
+          "market": "TSE",
+          "chain": "電源管理",
+          "fun": "提供GB200 CPU/GPU專用多相VRM控制器，支援動態電壓調節，提升能效比15%，為技嘉與華碩採用。",
+          "is_leader": false
+        },
+        {
+          "code": "6805",
+          "name": "富世達",
+          "market": "TSE",
+          "chain": "機構件",
+          "fun": "供應GB300機櫃精密金屬件，支援模組化與快速部署，為英業達與緯創供應鏈成員。",
+          "is_leader": false
+        },
+        {
+          "code": "8104",
+          "name": "錸寶",
+          "market": "TSE",
+          "chain": "顯示模組",
+          "fun": "供應GB200伺服器狀態顯示面板，支援遠端監控，為廣達與緯創合作夥伴。",
+          "is_leader": false
+        },
+        {
+          "code": "8210",
+          "name": "勤誠",
+          "market": "TSE",
+          "chain": "伺服器機殼",
+          "fun": "開發GB300相容伺服器機殼，支援液冷與光學I/O模組安裝，為中小型雲端客戶供應商。",
+          "is_leader": false
+        },
+        {
+          "code": "8996",
+          "name": "高力",
+          "market": "TSE",
+          "chain": "機構件",
+          "fun": "GB300結構件供應商，具高剛性與輕量化設計，為英業達與緯創指定合作夥伴。",
+          "is_leader": false
+        }
+      ],
+      "stock_count": 40
+    },
+    {
+      "name": "IC載板",
+      "fund_descriptions": "AI/HPC驅動ABF載板层数與密度升級，2025年高階ABF載板缺貨持續。台灣三雄（欣興、景碩、南電）掌握全球80%產能，在材料與製程技術具領先優勢，並積極擴充高雄與桃園新廠產能以滿足CoWoS與GB200需求。",
+      "stocks": [
+        {
+          "code": "3037",
+          "name": "欣興",
+          "market": "TSE",
+          "chain": "低溫載板",
+          "fun": "開發量子晶片用低溫ABF載板，確保-273°C下尺寸穩定性，與台積電共同驗證中。",
+          "is_leader": false
+        },
+        {
+          "code": "3189",
+          "name": "景碩",
+          "market": "TSE",
+          "chain": "載板",
+          "fun": "評估開發量子晶片用特殊載板，支援低溫與高頻需求，技術可行性研究中。",
+          "is_leader": false
+        },
+        {
+          "code": "4958",
+          "name": "臻鼎-KY",
+          "market": "TSE",
+          "chain": "載板與HDI",
+          "fun": "透過旗下FSD開發ABF載板，瞄準AI晶片與HPC市場，2025年量產16層載板，客戶包含北美半導體廠。",
+          "is_leader": false
+        },
+        {
+          "code": "8046",
+          "name": "南電",
+          "market": "TSE",
+          "chain": "低溫基材",
+          "fun": "評估開發量子應用用特殊基材，控制低溫下介電常數變化，技術可行性研究階段。",
+          "is_leader": false
+        }
+      ],
+      "stock_count": 4
+    },
+    {
+      "name": "功率半導體",
+      "fund_descriptions": "電動車與再生能源推動SiC/GaN功率元件滲透，2025年車用SiC市場年增40%。台灣在6吋SiC晶圓與封裝測試建立完整供應鏈，瞄準Tier 1車廠認證，強茂、朋程、漢磊等廠加速切入主逆變器與OBC應用。",
+      "stocks": [
+        {
+          "code": "2241",
+          "name": "艾姆勒",
+          "market": "TSE",
+          "chain": "散熱模組",
+          "fun": "供應SiC功率模組用液冷散熱板，用於電動車主逆變器，客戶包含Delta與Bosch，通過AEC-Q101認證。",
+          "is_leader": false
+        },
+        {
+          "code": "2303",
+          "name": "聯電",
+          "market": "TSE",
+          "chain": "晶圓代工",
+          "fun": "提供GaN on Si功率元件代工服務，用於快充與伺服器電源，支援650V/150mΩ規格，客戶包含Navitas與GaN Systems。",
+          "is_leader": false
+        },
+        {
+          "code": "2330",
+          "name": "台積電",
+          "market": "TSE",
+          "chain": "量子晶片製造",
+          "fun": "與學研單位合作開發超導量子位元（Qubit）製程，利用300mm晶圓平台提升一致性，為亞洲少數具備量子晶片製造能力的晶圓廠。",
+          "is_leader": true
+        },
+        {
+          "code": "2342",
+          "name": "茂矽",
+          "market": "TSE",
+          "chain": "矽晶圓",
+          "fun": "供應2nm製程用Epi矽晶圓，氧含量與缺陷密度達台積電規格，為本土主要供應商。",
+          "is_leader": false
+        },
+        {
+          "code": "2351",
+          "name": "順德",
+          "market": "TSE",
+          "chain": "被動元件",
+          "fun": "車用高壓MLCC供應商，用於SiC逆變器DC-link電路，耐壓達1,000V，通過AEC-Q200認證。",
+          "is_leader": false
+        },
+        {
+          "code": "2441",
+          "name": "超豐",
+          "market": "TSE",
+          "chain": "封裝測試",
+          "fun": "提供SiC功率元件專用封裝服務，支援TO-247與HPD模組，具備高溫測試能力，客戶包含強茂與國際IDM。",
+          "is_leader": false
+        },
+        {
+          "code": "2481",
+          "name": "強茂",
+          "market": "TSE",
+          "chain": "SiC二極體",
+          "fun": "650V/1200V SiC Schottky二極體通過AEC-Q101認證，用於OBC與DC-DC轉換器，供應Bosch與Delta車用電源模組。",
+          "is_leader": true
+        },
+        {
+          "code": "3016",
+          "name": "嘉晶",
+          "market": "TSE",
+          "chain": "SiC晶圓",
+          "fun": "6吋SiC晶圓用於次世代功率元件，支援800V電動車平台，2025年導入車規認證流程。",
+          "is_leader": false
+        },
+        {
+          "code": "3317",
+          "name": "尼克森",
+          "market": "OTC",
+          "chain": "功率元件",
+          "fun": "開發車用MOSFET與IGBT，用於電動壓縮機與EPS，通過ISO 26262功能安全認證，供應日系車廠。",
+          "is_leader": false
+        },
+        {
+          "code": "3653",
+          "name": "健策",
+          "market": "TSE",
+          "chain": "連接器",
+          "fun": "供應電動車高壓連接器，支援800V平台，用於SiC逆變器與電池包之間，為Tesla與BMW合作夥伴。",
+          "is_leader": false
+        },
+        {
+          "code": "3675",
+          "name": "德微",
+          "market": "OTC",
+          "chain": "測試設備",
+          "fun": "開發SiC功率元件高溫動態測試設備，支援175°C環境下開關特性驗證，獲強茂與漢磊採用。",
+          "is_leader": false
+        },
+        {
+          "code": "3686",
+          "name": "達能",
+          "market": "TSE",
+          "chain": "機構件",
+          "fun": "SiC功率模組散熱基板供應商，採用高導熱絕緣材料，為Delta與台達電合作夥伴。",
+          "is_leader": false
+        },
+        {
+          "code": "3707",
+          "name": "漢磊",
+          "market": "OTC",
+          "chain": "SiC IDM",
+          "fun": "6吋SiC IDM廠，開發1200V SiC MOSFET，瞄準主逆變器應用，2025年目標通過車規認證。",
+          "is_leader": false
+        },
+        {
+          "code": "5222",
+          "name": "全訊",
+          "market": "TSE",
+          "chain": "軍用通訊",
+          "fun": "軍用微波通訊元件供應商，用於戰術通訊與雷達系統，通過MIL-PRF-38534認證。",
+          "is_leader": true
+        },
+        {
+          "code": "5285",
+          "name": "界霖",
+          "market": "TSE",
+          "chain": "散熱元件",
+          "fun": "供應SiC模組用均熱板與熱管，導熱係數達5,000 W/mK，為台達電與Delta合作夥伴。",
+          "is_leader": false
+        },
+        {
+          "code": "5299",
+          "name": "杰力",
+          "market": "OTC",
+          "chain": "功率IC",
+          "fun": "開發GaN驅動IC，用於快充與伺服器電源，支援高頻開關，客戶包含光寶科與台達電。",
+          "is_leader": false
+        },
+        {
+          "code": "5347",
+          "name": "世界",
+          "market": "OTC",
+          "chain": "矽晶圓",
+          "fun": "供應邏輯與記憶體用8吋/12吋矽晶圓，瞄準成熟製程擴產，為茂矽競爭對手。",
+          "is_leader": false
+        },
+        {
+          "code": "5425",
+          "name": "台半",
+          "market": "OTC",
+          "chain": "保護元件",
+          "fun": "V2X天線端TVS保護元件供應商，確保ESD與浪湧防護，通過AEC-Q101認證。",
+          "is_leader": false
+        },
+        {
+          "code": "6138",
+          "name": "茂達",
+          "market": "OTC",
+          "chain": "電源管理IC",
+          "fun": "開發SiC/GaN驅動IC，支援高dv/dt環境，用於電動車OBC與DC-DC，客戶包含台達電與Delta。",
+          "is_leader": false
+        },
+        {
+          "code": "6435",
+          "name": "大中",
+          "market": "OTC",
+          "chain": "功率元件",
+          "fun": "車用MOSFET供應商，產品用於EPS與煞車系統，通過AEC-Q101認證，供應日系Tier 1廠。",
+          "is_leader": false
+        },
+        {
+          "code": "6525",
+          "name": "捷敏-KY",
+          "market": "TSE",
+          "chain": "功率模組",
+          "fun": "開發SiC功率模組，瞄準工業馬達驅動與太陽能逆變器，2025年目標取得車規認證。",
+          "is_leader": false
+        },
+        {
+          "code": "6573",
+          "name": "虹揚-KY",
+          "market": "TSE",
+          "chain": "SiC二極體",
+          "fun": "650V/1200V SiC二極體用於PFC與LLC電路，效率提升3%，客戶包含台達電與光寶科，通過車規認證中。",
+          "is_leader": false
+        },
+        {
+          "code": "6719",
+          "name": "力智",
+          "market": "TSE",
+          "chain": "電源管理IC",
+          "fun": "開發多相VRM控制器，支援CPU/GPU動態電壓調節，用於伺服器與AI PC，客戶包含技嘉與華碩。",
+          "is_leader": false
+        },
+        {
+          "code": "8028",
+          "name": "昇陽半導體",
+          "market": "TSE",
+          "chain": "矽晶圓",
+          "fun": "供應功率元件用重摻雜矽晶圓，用於IGBT與MOSFET，為世界與茂矽競爭對手。",
+          "is_leader": false
+        },
+        {
+          "code": "8255",
+          "name": "朋程",
+          "market": "OTC",
+          "chain": "功率元件",
+          "fun": "車用MOSFET用於V2X電源管理，通過AEC-Q101認證，供應台系車電廠。",
+          "is_leader": false
+        },
+        {
+          "code": "8261",
+          "name": "富鼎",
+          "market": "TSE",
+          "chain": "功率元件",
+          "fun": "車用MOSFET與LDO供應商，產品用於車身控制模組，通過AEC-Q100認證，供應台系車電廠。",
+          "is_leader": false
+        }
+      ],
+      "stock_count": 26
+    },
+    {
+      "name": "次世代半導體GaNSiC",
+      "fund_descriptions": "2nm以下製程、GAA電晶體、背面供電（BSPDN）與Chiplet異質整合成為半導體新賽道。台積電N2/N2P領先全球，日月光FOCoS與台積電CoWoS形成封裝雙引擎。台灣在EDA、IP、先進封裝與材料環節具戰略優勢，瞄準2026年2nm量產里程碑。",
+      "stocks": [
+        {
+          "code": "1560",
+          "name": "中砂",
+          "market": "TSE",
+          "chain": "CMP材料",
+          "fun": "開發2nm製程用高選擇比CMP漿料，支援GAA電晶體通道平坦化，已送樣台積電驗證。",
+          "is_leader": false
+        },
+        {
+          "code": "2330",
+          "name": "台積電",
+          "market": "TSE",
+          "chain": "量子晶片製造",
+          "fun": "與學研單位合作開發超導量子位元（Qubit）製程，利用300mm晶圓平台提升一致性，為亞洲少數具備量子晶片製造能力的晶圓廠。",
+          "is_leader": true
+        },
+        {
+          "code": "2340",
+          "name": "台亞",
+          "market": "TSE",
+          "chain": "化合物半導體",
+          "fun": "開發GaN on SiC外延片，用於5G基地台與衛星通訊，瞄準次世代射頻元件市場。",
+          "is_leader": false
+        },
+        {
+          "code": "2342",
+          "name": "茂矽",
+          "market": "TSE",
+          "chain": "矽晶圓",
+          "fun": "供應2nm製程用Epi矽晶圓，氧含量與缺陷密度達台積電規格，為本土主要供應商。",
+          "is_leader": false
+        },
+        {
+          "code": "2455",
+          "name": "全新",
+          "market": "TSE",
+          "chain": "光電元件",
+          "fun": "開發次世代VCSEL雷射，用於Co-Packaged Optics（CPO），支援AI晶片光學I/O，與台積電合作中。",
+          "is_leader": false
+        },
+        {
+          "code": "3016",
+          "name": "嘉晶",
+          "market": "TSE",
+          "chain": "SiC晶圓",
+          "fun": "6吋SiC晶圓用於次世代功率元件，支援800V電動車平台，2025年導入車規認證流程。",
+          "is_leader": false
+        },
+        {
+          "code": "3105",
+          "name": "穩懋",
+          "market": "OTC",
+          "chain": "射頻代工",
+          "fun": "製造V2X射頻前端PA與LNA，採用GaAs製程，效率達35%，為聯發科與Qualcomm合作夥伴。",
+          "is_leader": false
+        },
+        {
+          "code": "3374",
+          "name": "精材",
+          "market": "OTC",
+          "chain": "記憶體封裝",
+          "fun": "支援HBM3E與2nm SoC異質整合封裝，TSV與微凸塊技術成熟，為美光與南亞科合作夥伴。",
+          "is_leader": false
+        },
+        {
+          "code": "3576",
+          "name": "聯合再生",
+          "market": "TSE",
+          "chain": "矽晶圓再生",
+          "fun": "提供2nm研發用矽晶圓再生服務，潔淨度達Class 1，為台積電與聯電合作夥伴。",
+          "is_leader": false
+        },
+        {
+          "code": "3707",
+          "name": "漢磊",
+          "market": "OTC",
+          "chain": "SiC IDM",
+          "fun": "6吋SiC IDM廠，開發1200V SiC MOSFET，瞄準主逆變器應用，2025年目標通過車規認證。",
+          "is_leader": false
+        },
+        {
+          "code": "3714",
+          "name": "富采",
+          "market": "TSE",
+          "chain": "LED與化合物",
+          "fun": "結合晶電與隆達技術，開發Micro LED與GaN功率元件，瞄準AR與電動車雙引擎。",
+          "is_leader": false
+        },
+        {
+          "code": "4934",
+          "name": "太極",
+          "market": "TSE",
+          "chain": "光學元件",
+          "fun": "供應EUV光罩用石英基板，純度達99.9999%，為台灣唯一供應商，支援台積電2nm研發。",
+          "is_leader": false
+        },
+        {
+          "code": "4971",
+          "name": "IET-KY",
+          "market": "OTC",
+          "chain": "軍工電子",
+          "fun": "開發軍用GaN射頻元件，用於雷達與電子戰系統，通過MIL-STD認證，供應中科院。",
+          "is_leader": false
+        },
+        {
+          "code": "4991",
+          "name": "環宇-KY",
+          "market": "OTC",
+          "chain": "光通訊",
+          "fun": "開發1.6T光收發模組，用於AI資料中心，支援CPO架構，與台積電共同驗證中。",
+          "is_leader": false
+        },
+        {
+          "code": "5347",
+          "name": "世界",
+          "market": "OTC",
+          "chain": "矽晶圓",
+          "fun": "供應邏輯與記憶體用8吋/12吋矽晶圓，瞄準成熟製程擴產，為茂矽競爭對手。",
+          "is_leader": false
+        },
+        {
+          "code": "5483",
+          "name": "中美晶",
+          "market": "OTC",
+          "chain": "矽晶圓",
+          "fun": "母公司為環球晶，供應12吋矽晶圓給台積電與聯電，支援2nm以下製程研發需求。",
+          "is_leader": false
+        },
+        {
+          "code": "6488",
+          "name": "環球晶",
+          "market": "OTC",
+          "chain": "矽晶圓",
+          "fun": "全球第三大矽晶圓廠，供應12吋Epi晶圓給台積電2nm製程，技術合作緊密。",
+          "is_leader": true
+        },
+        {
+          "code": "8086",
+          "name": "宏捷科",
+          "market": "OTC",
+          "chain": "射頻代工",
+          "fun": "製造V2X LNA與Switch，採用GaAs pHEMT製程，為聯發科與Qualcomm合作夥伴。",
+          "is_leader": false
+        }
+      ],
+      "stock_count": 18
+    },
+    {
+      "name": "智慧駕駛ADASV2X",
+      "fund_descriptions": "智慧駕駛整合ADAS(先進駕駛輔助系統)與車聯網技術,涵蓋感測(攝影機/毫米波雷達/LiDAR)、運算(域控制器/AI晶片)、通訊(V2X/5G)與車載娛樂系統。台灣廠商在車用鏡頭、感測器、影像辨識晶片、毫米波雷達、車用連接器等領域具備全球競爭力。隨著自動駕駛法規推進與電動車普及,智慧駕駛滲透率快速攀升,台灣供應鏈深度參與Tesla、BMW、Toyota等國際車廠。",
+      "stocks": [
+        {
+          "code": "1533",
+          "name": "車王電",
+          "market": "TSE",
+          "chain": "電動車系統",
+          "fun": "開發V2X整合式車載終端，支援C-V2X與DSRC雙模通訊，已於台北智慧公車示範區落地。",
+          "is_leader": false
+        },
+        {
+          "code": "2204",
+          "name": "中華",
+          "market": "TSE",
+          "chain": "汽車零組件",
+          "fun": "供應V2X天線支架與外殼，具高頻訊號穿透性與耐候性，為同致與車王電合作夥伴。",
+          "is_leader": false
+        },
+        {
+          "code": "2228",
+          "name": "劍麟",
+          "market": "TSE",
+          "chain": "汽車零組件",
+          "fun": "V2X車載單元（OBU）機構件供應商，支援IP67防水與-40~85°C工作溫度。",
+          "is_leader": false
+        },
+        {
+          "code": "2231",
+          "name": "為升",
+          "market": "TSE",
+          "chain": "車用天線",
+          "fun": "開發5G+V2X整合式天線，支援Sub-6GHz與C-V2X頻段，為Tesla與BMW指定供應商。",
+          "is_leader": true
+        },
+        {
+          "code": "2301",
+          "name": "光寶科",
+          "market": "TSE",
+          "chain": "伺服器電源",
+          "fun": "供應OCP鈦金級1+1冗餘電源，功率達3.2kW，效率98%，為Meta與Amazon指定供應商。",
+          "is_leader": true
+        },
+        {
+          "code": "2308",
+          "name": "台達電",
+          "market": "TSE",
+          "chain": "高功率電源",
+          "fun": "提供AI伺服器48V分散式電源架構，轉換效率達98.5%，符合OCP ORv4規範，為Microsoft與Google合作夥伴。",
+          "is_leader": true
+        },
+        {
+          "code": "2317",
+          "name": "鴻海",
+          "market": "TSE",
+          "chain": "雲端伺服器ODM",
+          "fun": "Google與AWS主要伺服器供應商，開發OCP 3.0開放機櫃，支援48V分散式電源架構，2025年AI伺服器營收占比達30%。",
+          "is_leader": true
+        },
+        {
+          "code": "2327",
+          "name": "國巨*",
+          "market": "TSE",
+          "chain": "被動元件",
+          "fun": "供應V2X射頻前端用高Q值MLCC，確保訊號濾波效能，通過AEC-Q200認證。",
+          "is_leader": false
+        },
+        {
+          "code": "2330",
+          "name": "台積電",
+          "market": "TSE",
+          "chain": "量子晶片製造",
+          "fun": "與學研單位合作開發超導量子位元（Qubit）製程，利用300mm晶圓平台提升一致性，為亞洲少數具備量子晶片製造能力的晶圓廠。",
+          "is_leader": true
+        },
+        {
+          "code": "2344",
+          "name": "華邦電",
+          "market": "TSE",
+          "chain": "車用記憶體",
+          "fun": "供應V2X模組用車規級LPDDR4與NOR Flash，通過AEC-Q100 Grade 2認證。",
+          "is_leader": false
+        },
+        {
+          "code": "2353",
+          "name": "宏碁",
+          "market": "TSE",
+          "chain": "車載資訊",
+          "fun": "開發車載資通訊系統（Telematics），整合V2X與ADAS功能，瞄準商用車隊管理市場。",
+          "is_leader": false
+        },
+        {
+          "code": "2355",
+          "name": "敬鵬",
+          "market": "TSE",
+          "chain": "車用PCB",
+          "fun": "供應V2X模組用高頻HDI板，支援5.9GHz DSRC訊號，為車王電與同致合作夥伴。",
+          "is_leader": false
+        },
+        {
+          "code": "2357",
+          "name": "華碩",
+          "market": "TSE",
+          "chain": "車載系統",
+          "fun": "透過ASUS IoT開發車載邊緣運算平台，支援V2X資料即時處理，應用於智慧路口。",
+          "is_leader": false
+        },
+        {
+          "code": "2377",
+          "name": "微星",
+          "market": "TSE",
+          "chain": "邊緣運算",
+          "fun": "提供機器人用強固型邊緣AI電腦，支援ROS 2與NVIDIA Isaac，應用於AMR與自主導航。",
+          "is_leader": false
+        },
+        {
+          "code": "2379",
+          "name": "瑞昱",
+          "market": "TSE",
+          "chain": "車用晶片",
+          "fun": "開發車用乙太網路PHY晶片，支援100BASE-T1，用於V2X與ADAS網路骨幹。",
+          "is_leader": false
+        },
+        {
+          "code": "2392",
+          "name": "正崴",
+          "market": "TSE",
+          "chain": "連接器",
+          "fun": "供應V2X模組用FAKRA與HSD連接器，確保高頻訊號完整性，為Tesla與BMW供應商。",
+          "is_leader": false
+        },
+        {
+          "code": "2401",
+          "name": "凌陽",
+          "market": "TSE",
+          "chain": "車用IC",
+          "fun": "開發車用音訊與語音處理晶片，支援V2X語音警示功能，應用於商用車與巴士。",
+          "is_leader": false
+        },
+        {
+          "code": "2409",
+          "name": "友達",
+          "market": "TSE",
+          "chain": "車用顯示",
+          "fun": "供應智慧座艙顯示器，整合V2X即時交通資訊顯示，為Tesla與BMW合作夥伴。",
+          "is_leader": false
+        },
+        {
+          "code": "2412",
+          "name": "中華電",
+          "market": "TSE",
+          "chain": "5G-V2X",
+          "fun": "建置5G-V2X智慧交通示範區，提供網路基礎設施與MEC邊緣運算平台。",
+          "is_leader": true
+        },
+        {
+          "code": "2428",
+          "name": "興勤",
+          "market": "TSE",
+          "chain": "保護元件",
+          "fun": "供應V2X天線端ESD保護元件，確保雷擊與靜電防護，通過AEC-Q101認證。",
+          "is_leader": false
+        },
+        {
+          "code": "2436",
+          "name": "偉詮電",
+          "market": "TSE",
+          "chain": "MCU",
+          "fun": "車用MCU用於V2X模組控制單元，支援CAN FD與Ethernet通訊，通過AEC-Q100認證。",
+          "is_leader": false
+        },
+        {
+          "code": "2454",
+          "name": "聯發科",
+          "market": "TSE",
+          "chain": "控制晶片",
+          "fun": "評估開發量子控制SoC，整合高速DAC/ADC與數位邏輯，技術預研階段。",
+          "is_leader": false
+        },
+        {
+          "code": "2462",
+          "name": "良得電",
+          "market": "TSE",
+          "chain": "連接器",
+          "fun": "V2X模組內部連接器供應商，支援高頻訊號傳輸，為同致與車王電合作夥伴。",
+          "is_leader": false
+        },
+        {
+          "code": "2497",
+          "name": "怡利電",
+          "market": "TSE",
+          "chain": "車載系統",
+          "fun": "開發V2X整合式車載主機，支援即時交通與安全警示，為台灣公車與計程車主要供應商。",
+          "is_leader": false
+        },
+        {
+          "code": "2498",
+          "name": "宏達電",
+          "market": "TSE",
+          "chain": "車載AR",
+          "fun": "VIVE Focus 3用於駕駛模擬訓練，整合V2X情境，瞄準智慧交通教育市場。",
+          "is_leader": false
+        },
+        {
+          "code": "3036",
+          "name": "文曄",
+          "market": "TSE",
+          "chain": "電子通路",
+          "fun": "代理聯發科、瑞昱等V2X相關晶片，提供車廠一站式採購與技術支援。",
+          "is_leader": false
+        },
+        {
+          "code": "3059",
+          "name": "華晶科",
+          "market": "TSE",
+          "chain": "車用鏡頭",
+          "fun": "供應V2X輔助攝影機模組，用於車輛周圍監控，與V2X系統整合提供情境感知。",
+          "is_leader": false
+        },
+        {
+          "code": "3094",
+          "name": "聯傑",
+          "market": "TSE",
+          "chain": "車用網路",
+          "fun": "Wi-Fi 6/Bluetooth 5.3晶片用於車載手機連結，與V2X系統共享天線資源，提升空間利用率。",
+          "is_leader": false
+        },
+        {
+          "code": "3105",
+          "name": "穩懋",
+          "market": "OTC",
+          "chain": "射頻代工",
+          "fun": "製造V2X射頻前端PA與LNA，採用GaAs製程，效率達35%，為聯發科與Qualcomm合作夥伴。",
+          "is_leader": false
+        },
+        {
+          "code": "3169",
+          "name": "亞信",
+          "market": "OTC",
+          "chain": "車用軟體",
+          "fun": "開發V2X通訊協定棧（Protocol Stack），支援IEEE 1609與3GPP Release 14標準。",
+          "is_leader": false
+        },
+        {
+          "code": "3213",
+          "name": "茂訊",
+          "market": "OTC",
+          "chain": "車用天線",
+          "fun": "開發V2X與5G整合式鲨魚鳍天線，支援多頻段共用，為Tesla與BMW供應商。",
+          "is_leader": false
+        },
+        {
+          "code": "3221",
+          "name": "台嘉碩",
+          "market": "OTC",
+          "chain": "SAW濾波器",
+          "fun": "供應V2X射頻前端SAW濾波器，確保5.9GHz頻段選擇性，通過AEC-Q200認證。",
+          "is_leader": false
+        },
+        {
+          "code": "3227",
+          "name": "原相",
+          "market": "OTC",
+          "chain": "感測IC",
+          "fun": "車用光感測IC用於V2X模組狀態指示，支援自動亮度調節，通過AEC-Q100認證。",
+          "is_leader": false
+        },
+        {
+          "code": "3264",
+          "name": "欣銓",
+          "market": "OTC",
+          "chain": "測試服務",
+          "fun": "提供V2X晶片高溫高濕測試服務，確保車規可靠性，為聯發科與瑞昱合作夥伴。",
+          "is_leader": false
+        },
+        {
+          "code": "3289",
+          "name": "宜特",
+          "market": "OTC",
+          "chain": "可靠度驗證",
+          "fun": "V2X模組AEC-Q100/101可靠度驗證服務供應商，為車王電與同致合作夥伴。",
+          "is_leader": false
+        },
+        {
+          "code": "3306",
+          "name": "鼎天",
+          "market": "OTC",
+          "chain": "車載系統",
+          "fun": "開發V2X資料記錄器（EDR），支援事故重建與責任判定，符合UN R160法規。",
+          "is_leader": false
+        },
+        {
+          "code": "3380",
+          "name": "明泰",
+          "market": "TSE",
+          "chain": "網路設備",
+          "fun": "開發路側單元（RSU），支援5G-V2X與DSRC雙模通訊，部署於智慧路口。",
+          "is_leader": false
+        },
+        {
+          "code": "3419",
+          "name": "譁裕",
+          "market": "TSE",
+          "chain": "連接器",
+          "fun": "供應RSU與OBU用高頻連接器，確保戶外環境下訊號穩定，為明泰與車王電合作夥伴。",
+          "is_leader": false
+        },
+        {
+          "code": "3481",
+          "name": "群創",
+          "market": "TSE",
+          "chain": "車用顯示",
+          "fun": "供應V2X整合式儀表板，即時顯示碰撞警示與交通號誌資訊，為Tesla合作夥伴。",
+          "is_leader": false
+        },
+        {
+          "code": "3499",
+          "name": "環天科",
+          "market": "OTC",
+          "chain": "GNSS模組",
+          "fun": "高精度GNSS模組用於V2X定位，支援RTK與PPP技術，定位精度達公分級。",
+          "is_leader": false
+        },
+        {
+          "code": "3504",
+          "name": "揚明光",
+          "market": "TSE",
+          "chain": "光學元件",
+          "fun": "供應V2X LiDAR用光學鏡片，支援短距障礙物偵測，與V2X系統融合提升安全性。",
+          "is_leader": false
+        },
+        {
+          "code": "3535",
+          "name": "晶彩科",
+          "market": "TSE",
+          "chain": "車用顯示",
+          "fun": "開發V2X HUD抬頭顯示器，投射即時交通與安全警示，為BMW與Audi供應商。",
+          "is_leader": false
+        },
+        {
+          "code": "3552",
+          "name": "同致",
+          "market": "OTC",
+          "chain": "V2X模組",
+          "fun": "77GHz前向雷達解析度達0.1°，探測距離250公尺，通過ISO 26262 ASIL-B認證，供應Tesla Model Y中國版。",
+          "is_leader": true
+        },
+        {
+          "code": "3665",
+          "name": "貿聯-KY",
+          "market": "TSE",
+          "chain": "線材",
+          "fun": "供應V2X模組內部高頻線組，確保訊號完整性，為同致與車王電合作夥伴。",
+          "is_leader": false
+        },
+        {
+          "code": "3693",
+          "name": "營邦",
+          "market": "OTC",
+          "chain": "車載系統",
+          "fun": "開發V2X整合式車隊管理平台，支援即時監控與路徑優化，應用於物流與公車。",
+          "is_leader": false
+        },
+        {
+          "code": "3702",
+          "name": "大聯大",
+          "market": "TSE",
+          "chain": "電子通路",
+          "fun": "代理NXP、Qualcomm等V2X解決方案，提供車廠參考設計與技術支援。",
+          "is_leader": false
+        },
+        {
+          "code": "3706",
+          "name": "神達",
+          "market": "TSE",
+          "chain": "車載電腦",
+          "fun": "MioAuto車載電腦整合V2X與導航功能，支援即時路況更新，為後裝市場領導品牌。",
+          "is_leader": false
+        },
+        {
+          "code": "4904",
+          "name": "遠傳",
+          "market": "TSE",
+          "chain": "5G-V2X",
+          "fun": "建置5G-V2X網路基礎設施，提供低延遲通訊服務，與中華電競爭智慧交通市場。",
+          "is_leader": false
+        },
+        {
+          "code": "4971",
+          "name": "IET-KY",
+          "market": "OTC",
+          "chain": "軍工電子",
+          "fun": "開發軍用GaN射頻元件，用於雷達與電子戰系統，通過MIL-STD認證，供應中科院。",
+          "is_leader": false
+        },
+        {
+          "code": "5351",
+          "name": "鈺創",
+          "market": "OTC",
+          "chain": "記憶體",
+          "fun": "供應V2X模組用RLDRAM，支援高速資料緩衝，為聯發科合作夥伴。",
+          "is_leader": false
+        },
+        {
+          "code": "5388",
+          "name": "中磊",
+          "market": "TSE",
+          "chain": "寬頻設備",
+          "fun": "開發5G CPE整合V2X功能，支援智慧家庭與車聯網互動，瞄準後裝市場。",
+          "is_leader": false
+        },
+        {
+          "code": "5425",
+          "name": "台半",
+          "market": "OTC",
+          "chain": "保護元件",
+          "fun": "V2X天線端TVS保護元件供應商，確保ESD與浪湧防護，通過AEC-Q101認證。",
+          "is_leader": false
+        },
+        {
+          "code": "6129",
+          "name": "普誠",
+          "market": "OTC",
+          "chain": "電源管理",
+          "fun": "車用PMIC用於V2X模組，支援多軌電壓輸出，通過AEC-Q100認證。",
+          "is_leader": false
+        },
+        {
+          "code": "6138",
+          "name": "茂達",
+          "market": "OTC",
+          "chain": "電源管理IC",
+          "fun": "開發SiC/GaN驅動IC，支援高dv/dt環境，用於電動車OBC與DC-DC，客戶包含台達電與Delta。",
+          "is_leader": false
+        },
+        {
+          "code": "6202",
+          "name": "盛群",
+          "market": "TSE",
+          "chain": "MCU",
+          "fun": "8-bit MCU用於V2X輔助控制單元，成本優化方案，瞄準入門級車款。",
+          "is_leader": false
+        },
+        {
+          "code": "6205",
+          "name": "詮欣",
+          "market": "TSE",
+          "chain": "保護元件",
+          "fun": "供應V2X電源端保護元件，確保過壓與反接保護，通過AEC-Q101認證。",
+          "is_leader": false
+        },
+        {
+          "code": "6233",
+          "name": "旺玖",
+          "market": "OTC",
+          "chain": "USB控制",
+          "fun": "車用USB Hub控制晶片，支援V2X模組與手機連結，通過AEC-Q100認證。",
+          "is_leader": false
+        },
+        {
+          "code": "6263",
+          "name": "普萊德",
+          "market": "OTC",
+          "chain": "車載系統",
+          "fun": "開發V2X資料分析平台，支援交通流量預測與事故熱點警示。",
+          "is_leader": false
+        },
+        {
+          "code": "6285",
+          "name": "啟碁",
+          "market": "TSE",
+          "chain": "無線模組",
+          "fun": "供應V2X整合式無線模組，支援C-V2X與5G NR，為車王電與同致合作夥伴。",
+          "is_leader": false
+        },
+        {
+          "code": "6290",
+          "name": "良維",
+          "market": "OTC",
+          "chain": "連接器",
+          "fun": "V2X模組內部微型連接器供應商，支援高密度佈局，為啟碁與同致合作夥伴。",
+          "is_leader": false
+        },
+        {
+          "code": "6451",
+          "name": "訊芯-KY",
+          "market": "TSE",
+          "chain": "光通訊",
+          "fun": "開發車載光纖通訊模組，支援V2X與ADAS資料高速傳輸，瞄準高端車款。",
+          "is_leader": false
+        },
+        {
+          "code": "6465",
+          "name": "威潤",
+          "market": "OTC",
+          "chain": "車載系統",
+          "fun": "開發V2X行車記錄器，整合即時交通與安全警示，符合歐盟eCall法規。",
+          "is_leader": false
+        },
+        {
+          "code": "6486",
+          "name": "互動",
+          "market": "OTC",
+          "chain": "車載軟體",
+          "fun": "開發V2X應用程式，支援iOS與Android手機連結，提供即時路況與警示。",
+          "is_leader": false
+        },
+        {
+          "code": "6533",
+          "name": "晶心科",
+          "market": "TSE",
+          "chain": "CPU IP",
+          "fun": "AndesCore CPU IP用於V2X控制單元，支援功能安全與低功耗，通過ISO 26262認證。",
+          "is_leader": false
+        },
+        {
+          "code": "8046",
+          "name": "南電",
+          "market": "TSE",
+          "chain": "低溫基材",
+          "fun": "評估開發量子應用用特殊基材，控制低溫下介電常數變化，技術可行性研究階段。",
+          "is_leader": false
+        },
+        {
+          "code": "8086",
+          "name": "宏捷科",
+          "market": "OTC",
+          "chain": "射頻代工",
+          "fun": "製造V2X LNA與Switch，採用GaAs pHEMT製程，為聯發科與Qualcomm合作夥伴。",
+          "is_leader": false
+        },
+        {
+          "code": "8255",
+          "name": "朋程",
+          "market": "OTC",
+          "chain": "功率元件",
+          "fun": "車用MOSFET用於V2X電源管理，通過AEC-Q101認證，供應台系車電廠。",
+          "is_leader": false
+        },
+        {
+          "code": "9951",
+          "name": "皇田",
+          "market": "OTC",
+          "chain": "汽車零組件",
+          "fun": "V2X天線外殼供應商，具高頻訊號穿透性與耐候性，為為升與茂訊合作夥伴。",
+          "is_leader": false
+        }
+      ],
+      "stock_count": 68
+    },
+    {
+      "name": "國防產業",
+      "fund_descriptions": "台灣國防自主政策推動國艦國造、國機國造,帶動航太、造船、精密機械、電子系統全產業鏈升級。國防預算持續成長,潛艦國造、下一代戰機、天弓三型飛彈、雄風飛彈等重大專案帶動長期訂單,台灣廠商在精密加工、複合材料、航電系統、雷達、飛彈導引等領域逐步建立自主能量,中科院為核心研發單位,漢翔、台船、中鋼構等為主要系統整合商。",
+      "stocks": [
+        {
+          "code": "2002",
+          "name": "中鋼",
+          "market": "TSE",
+          "chain": "特種鋼材",
+          "fun": "供應潛艦與巡邏艦用高強度鋼板，支援國艦國造政策，為唯一通過國防部認證的本土鋼廠。",
+          "is_leader": false
+        },
+        {
+          "code": "2049",
+          "name": "上銀",
+          "market": "TSE",
+          "chain": "滾珠螺桿",
+          "fun": "全球第二大滾珠螺桿廠，供應協作機器人關節模組，具備高剛性與低背隙特性，為ABB與Yaskawa合作夥伴。",
+          "is_leader": true
+        },
+        {
+          "code": "2208",
+          "name": "台船",
+          "market": "TSE",
+          "chain": "軍艦建造",
+          "fun": "海鯤級潛艦與沱江級巡邏艦總承包商，負責全艦設計與整合，為國艦國造核心執行單位。",
+          "is_leader": true
+        },
+        {
+          "code": "2360",
+          "name": "致茂",
+          "market": "TSE",
+          "chain": "測試設備",
+          "fun": "供應雷達與飛彈系統自動測試設備（ATE），支援中科院與漢翔研發驗證，具備高頻訊號模擬能力。",
+          "is_leader": false
+        },
+        {
+          "code": "2634",
+          "name": "漢翔",
+          "market": "TSE",
+          "chain": "戰機整合",
+          "fun": "F-16V升級與勇鷹高教機總裝廠，負責航電、結構與複合材料製造，為國機國造主力。",
+          "is_leader": true
+        },
+        {
+          "code": "2645",
+          "name": "長榮航太",
+          "market": "TSE",
+          "chain": "航空維修",
+          "fun": "C-130運輸機與P-3C巡邏機維修服務供應商，具備FAA與EASA認證，支援空軍後勤需求。",
+          "is_leader": false
+        },
+        {
+          "code": "3004",
+          "name": "豐達科",
+          "market": "TSE",
+          "chain": "航空零件",
+          "fun": "供應戰機引擎支架與起落架零件，通過NADCAP認證，為漢翔與GE航空合作夥伴。",
+          "is_leader": false
+        },
+        {
+          "code": "3005",
+          "name": "神基",
+          "market": "TSE",
+          "chain": "強固型電腦",
+          "fun": "軍用強固型筆電與平板通過MIL-STD-810H認證，部署於陸軍指揮車與海巡艦艇，支援北斗定位。",
+          "is_leader": true
+        },
+        {
+          "code": "3416",
+          "name": "融程電",
+          "market": "TSE",
+          "chain": "軍規電腦",
+          "fun": "軍用強固型平板通過MIL-STD-810H認證，支援北斗/GPS雙模定位，部署於陸軍指揮車與海巡艦艇。",
+          "is_leader": true
+        },
+        {
+          "code": "3564",
+          "name": "其陽",
+          "market": "OTC",
+          "chain": "軍用天線",
+          "fun": "開發戰術通訊天線，支援HF/VHF/UHF多頻段，為中科院與國防部合作夥伴。",
+          "is_leader": false
+        },
+        {
+          "code": "4536",
+          "name": "拓凱",
+          "market": "TSE",
+          "chain": "複合材料",
+          "fun": "供應戰機與無人機用碳纖維複合材料，具高強度與輕量化特性，為漢翔與中科院合作夥伴。",
+          "is_leader": false
+        },
+        {
+          "code": "4541",
+          "name": "晟田",
+          "market": "OTC",
+          "chain": "航空零件",
+          "fun": "供應F-16與勇鷹戰機引擎零件，通過FAA PMA認證，為GE與漢翔合作夥伴。",
+          "is_leader": false
+        },
+        {
+          "code": "4916",
+          "name": "事欣科",
+          "market": "TSE",
+          "chain": "軍用電池",
+          "fun": "供應單兵通訊設備與無人機用鋰電池，通過MIL-STD-810G認證，具備高低溫操作能力。",
+          "is_leader": false
+        },
+        {
+          "code": "4971",
+          "name": "IET-KY",
+          "market": "OTC",
+          "chain": "軍工電子",
+          "fun": "開發軍用GaN射頻元件，用於雷達與電子戰系統，通過MIL-STD認證，供應中科院。",
+          "is_leader": false
+        },
+        {
+          "code": "5222",
+          "name": "全訊",
+          "market": "TSE",
+          "chain": "軍用通訊",
+          "fun": "軍用微波通訊元件供應商，用於戰術通訊與雷達系統，通過MIL-PRF-38534認證。",
+          "is_leader": true
+        },
+        {
+          "code": "6245",
+          "name": "立端",
+          "market": "OTC",
+          "chain": "通訊加密",
+          "fun": "開發軍用網路安全閘道器，支援國軍指揮管制系統通訊加密，通過國安認證。",
+          "is_leader": true
+        },
+        {
+          "code": "6416",
+          "name": "瑞祺電通",
+          "market": "TSE",
+          "chain": "指揮管制",
+          "fun": "供應國軍C4ISR系統整合服務，開發戰術指揮軟體與硬體平台，為國防部合格供應商。",
+          "is_leader": true
+        },
+        {
+          "code": "6517",
+          "name": "保勝光學",
+          "market": "OTC",
+          "chain": "光學元件",
+          "fun": "供應狙擊鏡與觀測設備用高精度光學鏡片，具防霧與抗反射鍍膜，為中科院合作夥伴。",
+          "is_leader": false
+        },
+        {
+          "code": "6753",
+          "name": "龍德造船",
+          "market": "TSE",
+          "chain": "巡邏艦建造",
+          "fun": "600噸級巡邏艦建造商，支援海巡署艦隊更新，具備複合材料上層結構技術。",
+          "is_leader": false
+        },
+        {
+          "code": "8109",
+          "name": "博大",
+          "market": "OTC",
+          "chain": "軍用連接器",
+          "fun": "供應戰車與艦艇用高可靠性連接器，通過MIL-DTL-38999認證，確保惡劣環境下訊號穩定。",
+          "is_leader": false
+        },
+        {
+          "code": "8222",
+          "name": "寶一",
+          "market": "TSE",
+          "chain": "精密火控組件",
+          "fun": "供應天弓三型防空飛彈精密導引組件，加工精度達±1μm，為中科院核心協力廠。",
+          "is_leader": false
+        }
+      ],
+      "stock_count": 21
+    },
+    {
+      "name": "機器人與智慧機械",
+      "fund_descriptions": "工業4.0與勞動力短缺推動智慧機器人與智慧機械普及,協作機器人(Cobot)與AMR(自主移動機器人)年增30%。台灣在精密傳動、伺服驅動、控制系統、視覺技術與系統整合具完整供應鏈,上銀、台達電、東元、亞德客-KY等廠主導關鍵零組件,盟立、所羅門、凌華等領導系統整合,應用涵蓋半導體、3C電子、金屬加工、物流與醫療等產業。",
+      "stocks": [
+        {
+          "code": "1597",
+          "name": "直得",
+          "market": "TSE",
+          "chain": "線性滑軌",
+          "fun": "供應機械手臂用高精度線性滑軌，重複定位精度達±0.002mm，為KUKA與Fanuc合作夥伴。",
+          "is_leader": false
+        },
+        {
+          "code": "2049",
+          "name": "上銀",
+          "market": "TSE",
+          "chain": "滾珠螺桿",
+          "fun": "全球第二大滾珠螺桿廠，供應協作機器人關節模組，具備高剛性與低背隙特性，為ABB與Yaskawa合作夥伴。",
+          "is_leader": true
+        },
+        {
+          "code": "2308",
+          "name": "台達電",
+          "market": "TSE",
+          "chain": "高功率電源",
+          "fun": "提供AI伺服器48V分散式電源架構，轉換效率達98.5%，符合OCP ORv4規範，為Microsoft與Google合作夥伴。",
+          "is_leader": true
+        },
+        {
+          "code": "2317",
+          "name": "鴻海",
+          "market": "TSE",
+          "chain": "雲端伺服器ODM",
+          "fun": "Google與AWS主要伺服器供應商，開發OCP 3.0開放機櫃，支援48V分散式電源架構，2025年AI伺服器營收占比達30%。",
+          "is_leader": true
+        },
+        {
+          "code": "2354",
+          "name": "鴻準",
+          "market": "TSE",
+          "chain": "機器人機構",
+          "fun": "開發3C產業用精密組裝機器人，支援微米級操作，為Apple供應鏈自動化解決方案提供商。",
+          "is_leader": false
+        },
+        {
+          "code": "2357",
+          "name": "華碩",
+          "market": "TSE",
+          "chain": "車載系統",
+          "fun": "透過ASUS IoT開發車載邊緣運算平台，支援V2X資料即時處理，應用於智慧路口。",
+          "is_leader": false
+        },
+        {
+          "code": "2359",
+          "name": "所羅門",
+          "market": "TSE",
+          "chain": "3D視覺",
+          "fun": "AccuPick 3D視覺引導系統全球市占前三，支援無序抓取與瑕疵檢測，應用於物流與半導體封裝。",
+          "is_leader": true
+        },
+        {
+          "code": "2360",
+          "name": "致茂",
+          "market": "TSE",
+          "chain": "測試設備",
+          "fun": "供應雷達與飛彈系統自動測試設備（ATE），支援中科院與漢翔研發驗證，具備高頻訊號模擬能力。",
+          "is_leader": false
+        },
+        {
+          "code": "2365",
+          "name": "昆盈",
+          "market": "TSE",
+          "chain": "人機介面",
+          "fun": "開發機器人 teach pendant 與遠端監控軟體，支援多語言與雲端連線，為中小型機器人廠合作夥伴。",
+          "is_leader": false
+        },
+        {
+          "code": "2377",
+          "name": "微星",
+          "market": "TSE",
+          "chain": "邊緣運算",
+          "fun": "提供機器人用強固型邊緣AI電腦，支援ROS 2與NVIDIA Isaac，應用於AMR與自主導航。",
+          "is_leader": false
+        },
+        {
+          "code": "2382",
+          "name": "廣達",
+          "market": "TSE",
+          "chain": "GB200系統整合",
+          "fun": "全球唯一通過NVIDIA GB200 NVL72系統認證的ODM，自主開發雙相浸沒式液冷架構，2025年獨佔100%組裝訂單。",
+          "is_leader": true
+        },
+        {
+          "code": "2464",
+          "name": "盟立",
+          "market": "TSE",
+          "chain": "自動化",
+          "fun": "評估提供量子實驗室自動化解決方案，支援樣品傳輸與測試流程，技術評估階段。",
+          "is_leader": false
+        },
+        {
+          "code": "2467",
+          "name": "志聖",
+          "market": "TSE",
+          "chain": "封裝設備",
+          "fun": "開發量子晶片用低溫封裝設備，支援惰性氣體環境製程，與日月光合作驗證中。",
+          "is_leader": false
+        },
+        {
+          "code": "4562",
+          "name": "穎漢",
+          "market": "TSE",
+          "chain": "精密鑄件",
+          "fun": "供應機器人底座與手臂殼體，具高剛性與輕量化設計，為上銀與直得合作夥伴。",
+          "is_leader": false
+        },
+        {
+          "code": "4576",
+          "name": "大銀微系統",
+          "market": "TSE",
+          "chain": "直驅馬達",
+          "fun": "開發機器人關節用直驅馬達，省去減速機提升效率，重複定位精度達±0.001°，為協作機器人廠合作夥伴。",
+          "is_leader": false
+        },
+        {
+          "code": "5371",
+          "name": "中光電",
+          "market": "OTC",
+          "chain": "投影與感測",
+          "fun": "開發機器人用結構光3D感測模組，支援SLAM與避障，應用於服務型機器人。",
+          "is_leader": false
+        },
+        {
+          "code": "6166",
+          "name": "凌華",
+          "market": "TSE",
+          "chain": "邊緣AI",
+          "fun": "提供ROS 2認證邊緣AI平台，支援機器人即時控制與AI推論，客戶包含Boston Dynamics與新創公司。",
+          "is_leader": true
+        },
+        {
+          "code": "6188",
+          "name": "廣明",
+          "market": "OTC",
+          "chain": "光學感測",
+          "fun": "供應機器人用LiDAR與深度相機，支援室內外導航，為AMR廠合作夥伴。",
+          "is_leader": false
+        },
+        {
+          "code": "8374",
+          "name": "羅昇",
+          "market": "TSE",
+          "chain": "自動化元件",
+          "fun": "代理上銀、THK等精密元件，提供機器人系統整合所需零組件一站式採購。",
+          "is_leader": false
+        }
+      ],
+      "stock_count": 19
+    },
+    {
+      "name": "量子電腦",
+      "fund_descriptions": "量子電腦進入NISQ（含雜訊中等規模量子）時代，超導與光子路線並進。台灣在低溫控制、先進封裝、高頻測試與材料環節具潛力，台積電、創意、世芯-KY參與量子晶片設計與製造，日月光探索量子封裝，南電與欣興支援低溫載板開發。",
+      "stocks": [
+        {
+          "code": "2330",
+          "name": "台積電",
+          "market": "TSE",
+          "chain": "量子晶片製造",
+          "fun": "與學研單位合作開發超導量子位元（Qubit）製程，利用300mm晶圓平台提升一致性，為亞洲少數具備量子晶片製造能力的晶圓廠。",
+          "is_leader": true
+        },
+        {
+          "code": "3711",
+          "name": "日月光投控",
+          "market": "TSE",
+          "chain": "量子封裝",
+          "fun": "探索量子晶片異質整合封裝技術，開發低溫環境下可靠互連方案，與台積電合作驗證中。",
+          "is_leader": false
+        },
+        {
+          "code": "2308",
+          "name": "台達電",
+          "market": "TSE",
+          "chain": "高功率電源",
+          "fun": "提供AI伺服器48V分散式電源架構，轉換效率達98.5%，符合OCP ORv4規範，為Microsoft與Google合作夥伴。",
+          "is_leader": true
+        },
+        {
+          "code": "3443",
+          "name": "創意",
+          "market": "TSE",
+          "chain": "量子ASIC設計",
+          "fun": "提供量子控制晶片（Control ASIC）設計服務，整合RF與數位電路，支援多量子位元同步操控，為國際量子新創合作夥伴。",
+          "is_leader": true
+        },
+        {
+          "code": "3661",
+          "name": "世芯-KY",
+          "market": "TSE",
+          "chain": "量子晶片設計",
+          "fun": "開發量子位元控制與讀出電路，支援超導與矽基量子路線，已完成多顆測試晶片tape-out。",
+          "is_leader": false
+        },
+        {
+          "code": "6239",
+          "name": "力成",
+          "market": "TSE",
+          "chain": "低溫測試",
+          "fun": "建置量子晶片低溫測試平台，支援4K以下環境電性量測，為台積電與學研單位合作夥伴。",
+          "is_leader": false
+        },
+        {
+          "code": "3037",
+          "name": "欣興",
+          "market": "TSE",
+          "chain": "低溫載板",
+          "fun": "開發量子晶片用低溫ABF載板，確保-273°C下尺寸穩定性，與台積電共同驗證中。",
+          "is_leader": false
+        },
+        {
+          "code": "8046",
+          "name": "南電",
+          "market": "TSE",
+          "chain": "低溫基材",
+          "fun": "評估開發量子應用用特殊基材，控制低溫下介電常數變化，技術可行性研究階段。",
+          "is_leader": false
+        },
+        {
+          "code": "3324",
+          "name": "雙鴻",
+          "market": "OTC",
+          "chain": "散熱元件",
+          "fun": "供應量子電腦外圍散熱模組，確保制冷機高效運作，為台達電合作夥伴。",
+          "is_leader": false
+        },
+        {
+          "code": "6230",
+          "name": "尼得科超眾",
+          "market": "TSE",
+          "chain": "散熱模組",
+          "fun": "開發量子電腦用熱交換器，支援稀釋制冷機循環，與台達電共同開發中。",
+          "is_leader": false
+        },
+        {
+          "code": "2454",
+          "name": "聯發科",
+          "market": "TSE",
+          "chain": "控制晶片",
+          "fun": "評估開發量子控制SoC，整合高速DAC/ADC與數位邏輯，技術預研階段。",
+          "is_leader": false
+        },
+        {
+          "code": "2467",
+          "name": "志聖",
+          "market": "TSE",
+          "chain": "封裝設備",
+          "fun": "開發量子晶片用低溫封裝設備，支援惰性氣體環境製程，與日月光合作驗證中。",
+          "is_leader": false
+        },
+        {
+          "code": "2464",
+          "name": "盟立",
+          "market": "TSE",
+          "chain": "自動化",
+          "fun": "評估提供量子實驗室自動化解決方案，支援樣品傳輸與測試流程，技術評估階段。",
+          "is_leader": false
+        },
+        {
+          "code": "3583",
+          "name": "辛耘",
+          "market": "TSE",
+          "chain": "再生設備",
+          "fun": "量子製程用高純度化學品再生設備供應商，確保低雜質環境，為台積電合作夥伴。",
+          "is_leader": false
+        },
+        {
+          "code": "3189",
+          "name": "景碩",
+          "market": "TSE",
+          "chain": "載板",
+          "fun": "評估開發量子晶片用特殊載板，支援低溫與高頻需求，技術可行性研究中。",
+          "is_leader": false
+        }
+      ],
+      "stock_count": 15
+    }
+  ]
+}

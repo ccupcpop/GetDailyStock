@@ -118,7 +118,7 @@ def create_required_directories(base_dir):
         'StockInfo',       # 分析報告
         'StockTSEHistory',
         'StockOTCHistory',
-        'ConceptHistory',  # 概念股歷史資料
+        # ConceptHistory 已刪除，不再使用
         'StockTSEHTML',
         'StockOTCHTML',
         'ConceptHTML',     # 概念股圖表
@@ -2848,6 +2848,57 @@ def beautify_excel(output_path):
 
     wb.save(output_path)
 
+def load_top_json_stocks(base_dir, market_type):
+    """
+    從 top.json 讀取指定市場的股票代碼
+    
+    Args:
+        base_dir: 基礎目錄
+        market_type: 'TSE' 或 'OTC'
+    
+    Returns:
+        set: 股票代碼集合
+    """
+    import json
+    
+    top_json_path = os.path.join(base_dir, 'StockInfo', 'top.json')
+    
+    if not os.path.exists(top_json_path):
+        print(f"⚠️  找不到 {top_json_path}, 跳過 top.json 股票")
+        return set()
+    
+    try:
+        with open(top_json_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        
+        top_stocks = set()
+        
+        # 遍歷所有概念股領域
+        for concept in data.get('concepts', []):
+            concept_name = concept.get('name', '')
+            stocks = concept.get('stocks', [])
+            
+            # 只收集符合market_type的股票
+            for stock in stocks:
+                if stock.get('market') == market_type:
+                    stock_code = normalize_stock_code(stock.get('code', ''))
+                    if stock_code:
+                        top_stocks.add(stock_code)
+        
+        print(f"\n{'='*80}")
+        print(f"從 top.json 讀取 {market_type} 股票:")
+        print(f"  - 概念股領域數: {len(data.get('concepts', []))}")
+        print(f"  - {market_type} 股票數: {len(top_stocks)}")
+        if len(top_stocks) > 0:
+            print(f"  - 前10支: {', '.join(list(top_stocks)[:10])}")
+        print(f"{'='*80}\n")
+        
+        return top_stocks
+        
+    except Exception as e:
+        print(f"⚠️  讀取 top.json 時發生錯誤: {e}")
+        return set()
+
 def run_step2_analysis(base_dir, market_type):
     """執行第二步：分析程式 (GitHub Actions 版本)"""
     print(f"\n{'🔥'*40}")
@@ -2914,12 +2965,34 @@ def run_step2_analysis(base_dir, market_type):
 
     # ========== 根據 TOP_STOCKS_ONLY flag 決定要收集歷史的股票 ==========
     if TOP_STOCKS_ONLY:
-        # 只收集買超前150 + 賣超前50 的歷史
+        # 1. 收集買超前150 + 賣超前50
         print(f"\n{'='*80}")
-        print(f"TOP_STOCKS_ONLY = True: 只收集買超前150 + 賣超前50 的歷史數據")
+        print(f"TOP_STOCKS_ONLY = True: 收集買超前150 + 賣超前50 + top.json 的歷史數據")
         print(f"{'='*80}")
-        collect_buy_stocks = latest_buy_stocks_n
-        collect_sell_stocks = latest_sell_stocks_n
+        
+        # 買超前150 + 賣超前50
+        buysell_stocks = latest_buy_stocks_n.union(latest_sell_stocks_n)
+        print(f"買超前{config['top_buy_count']} + 賣超前{config['top_sell_count']} = {len(buysell_stocks)} 支股票")
+        
+        # 2. 讀取 top.json 中該市場的股票
+        top_json_stocks = load_top_json_stocks(base_dir, market_type)
+        
+        # 3. 計算重複的股票
+        overlap_stocks = buysell_stocks.intersection(top_json_stocks)
+        if len(overlap_stocks) > 0:
+            print(f"\n與買超/賣超重複的股票: {len(overlap_stocks)} 支")
+            print(f"  前10支重複: {', '.join(list(overlap_stocks)[:10])}")
+        
+        # 4. 合併並去重
+        collect_buy_stocks = buysell_stocks.union(top_json_stocks)
+        collect_sell_stocks = set()  # 已經包含在 collect_buy_stocks 中
+        
+        print(f"\n最終要收集歷史的股票:")
+        print(f"  - 買超/賣超: {len(buysell_stocks)} 支")
+        print(f"  - top.json: {len(top_json_stocks)} 支")
+        print(f"  - 重複: {len(overlap_stocks)} 支")
+        print(f"  - 總計(去重後): {len(collect_buy_stocks)} 支")
+        print(f"{'='*80}\n")
     else:
         # 收集所有 CSV 內股票的歷史
         print(f"\n{'='*80}")
@@ -3981,111 +4054,25 @@ class Processor:
 
 
 def run_step2_concept_analysis(base_dir):
-    """執行第二步：概念股分析 (不分上市上櫃)"""
+    """
+    執行第二步：概念股分析 (不分上市上櫃)
+    注意：ConceptHistory 已移除，此函數目前不執行任何操作
+    """
     print(f"\n{'🔥'*40}")
-    print(f"第二步分析：概念股 (所有概念股領域不為'無'的股票)")
+    print(f"第二步分析：概念股 (已停用)")
     print(f"{'🔥'*40}\n")
     
-    try:
-        # 讀取公司列表，找出所有有概念股的股票
-        info_dir = os.path.join(base_dir, 'StockInfo')
-        concept_stock_codes = set()
-        
-        # 讀取上市
-        tse_file = os.path.join(info_dir, 'tse_company_list.csv')
-        if os.path.exists(tse_file):
-            try:
-                df_tse = pd.read_csv(tse_file, encoding='utf-8-sig')
-                if len(df_tse.columns) > 3:
-                    # 過濾出概念股領域不是"無"的股票
-                    concept_tse = df_tse[df_tse.iloc[:, 3].astype(str).str.strip() != '無']
-                    for _, row in concept_tse.iterrows():
-                        stock_code = str(row.iloc[0]).strip()
-                        concept_stock_codes.add(stock_code)
-                    print(f"✓ 從上市找到 {len(concept_tse)} 檔概念股")
-            except Exception as e:
-                print(f"⚠️ 讀取 tse_company_list.csv 失敗: {e}")
-        
-        # 讀取上櫃
-        otc_file = os.path.join(info_dir, 'otc_company_list.csv')
-        if os.path.exists(otc_file):
-            try:
-                df_otc = pd.read_csv(otc_file, encoding='utf-8-sig')
-                if len(df_otc.columns) > 3:
-                    # 過濾出概念股領域不是"無"的股票
-                    concept_otc = df_otc[df_otc.iloc[:, 3].astype(str).str.strip() != '無']
-                    for _, row in concept_otc.iterrows():
-                        stock_code = str(row.iloc[0]).strip()
-                        concept_stock_codes.add(stock_code)
-                    print(f"✓ 從上櫃找到 {len(concept_otc)} 檔概念股")
-            except Exception as e:
-                print(f"⚠️ 讀取 otc_company_list.csv 失敗: {e}")
-        
-        print(f"\n總共找到 {len(concept_stock_codes)} 檔概念股（不重複）")
-        
-        if not concept_stock_codes:
-            print("⚠️ 沒有找到概念股，跳過分析")
-            return
-        
-        # 建立輸出資料夾
-        concept_history_dir = os.path.join(base_dir, 'ConceptHistory')
-        os.makedirs(concept_history_dir, exist_ok=True)
-        
-        # 讀取股票清單 (合併上市和上櫃)
-        allowed_stock_codes = set()
-        stock_sector_map = {}
-        
-        # 上市清單
-        tse_config = setup_config(market_type='TSE')
-        tse_allowed, tse_sector_map, _ = load_stock_list(tse_config['market_list_path'])
-        allowed_stock_codes.update(tse_allowed)
-        stock_sector_map.update(tse_sector_map)
-        
-        # 上櫃清單
-        otc_config = setup_config(market_type='OTC')
-        otc_allowed, otc_sector_map, _ = load_stock_list(otc_config['market_list_path'])
-        allowed_stock_codes.update(otc_allowed)
-        stock_sector_map.update(otc_sector_map)
-        
-        # 只保留在清單中且是概念股的股票
-        valid_concept_stocks = concept_stock_codes & allowed_stock_codes
-        print(f"✓ 在清單中的有效概念股: {len(valid_concept_stocks)}")
-        
-        # 讀取價格資料 (合併上市和上櫃)
-        stock_daily_prices = {}
-        tse_daily_folder = os.path.join(base_dir, 'StockTSEDaily')
-        otc_daily_folder = os.path.join(base_dir, 'StockOTCDaily')
-        
-        tse_prices = load_stock_daily_prices(tse_daily_folder, valid_concept_stocks)
-        otc_prices = load_stock_daily_prices(otc_daily_folder, valid_concept_stocks)
-        stock_daily_prices.update(tse_prices)
-        stock_daily_prices.update(otc_prices)
-        
-        # 收集歷史數據 (從上市和上櫃資料夾)
-        print(f"\n開始收集概念股歷史數據...")
-        tse_shares_folder = os.path.join(base_dir, 'StockTSEShares')
-        otc_shares_folder = os.path.join(base_dir, 'StockOTCShares')
-        
-        # 使用上市的函數來收集，但會同時處理兩個資料夾
-        collect_stock_history(valid_concept_stocks, set(), tse_shares_folder,
-                              tse_daily_folder, concept_history_dir,
-                              allowed_stock_codes)
-        
-        # 再收集上櫃的
-        collect_stock_history(valid_concept_stocks, set(), otc_shares_folder,
-                              otc_daily_folder, concept_history_dir,
-                              allowed_stock_codes)
-        
-        # 統計結果
-        csv_files = glob.glob(os.path.join(concept_history_dir, "*.csv"))
-        print(f"\n✓ 概念股歷史數據收集完成")
-        print(f"  生成了 {len(csv_files)} 個 CSV 檔案")
-        print(f"  輸出資料夾: {concept_history_dir}")
-        
-    except Exception as e:
-        print(f"❌ 概念股分析失敗: {e}")
-        import traceback
-        traceback.print_exc()
+    print("⚠️  概念股分析已停用 - ConceptHistory 資料夾已刪除")
+    print("    概念股圖表現在直接從 TSE/OTC HTML 生成，不需要單獨的歷史數據")
+    return
+    
+    # 以下代碼已停用
+    # try:
+    #     # 讀取公司列表，找出所有有概念股的股票
+    #     info_dir = os.path.join(base_dir, 'StockInfo')
+    #     concept_stock_codes = set()
+    #     
+    #     # ... (後續代碼已註釋)
 
 def run_step3_chart_generation(base_dir, market_type):
     """執行第三步：圖表生成"""
@@ -4120,20 +4107,962 @@ def run_step3_chart_generation(base_dir, market_type):
     print(f"\n✓ {market_type} 圖表生成完成")
 
 
+def generate_concept_stock_html(base_dir, config):
+    """
+    讀取 top.json,為每個概念股生成包含所有個股的 HTML
+    """
+    import json
+    
+    print(f"\n{'='*80}")
+    print("生成概念股個股HTML")
+    print(f"{'='*80}\n")
+    
+    # 讀取 top.json
+    top_json_path = os.path.join(config['merged_output_folder'], 'top.json')
+    if not os.path.exists(top_json_path):
+        print(f"⚠️  找不到 top.json: {top_json_path}")
+        return
+    
+    try:
+        with open(top_json_path, 'r', encoding='utf-8') as f:
+            top_data = json.load(f)
+    except Exception as e:
+        print(f"❌ 讀取 top.json 失敗: {e}")
+        return
+    
+    concepts = top_data.get('concepts', [])
+    if not concepts:
+        print("⚠️  top.json 中沒有概念股資料")
+        return
+    
+    print(f"📊 找到 {len(concepts)} 個概念股\n")
+    
+    for idx, concept in enumerate(concepts, 1):
+        concept_name = concept.get('name', f'概念股{idx}')
+        stocks = concept.get('stocks', [])
+        
+        if not stocks:
+            print(f"  [{idx:2d}] {concept_name}: 無個股資料，跳過")
+            continue
+        
+        print(f"  [{idx:2d}] {concept_name}: {len(stocks)} 支個股")
+        
+        # 收集所有個股的 HTML
+        stock_htmls = []
+        
+        for stock in stocks:
+            stock_code = stock.get('code')
+            stock_name = stock.get('name')
+            market = stock.get('market', 'TSE')
+            
+            if not stock_code:
+                continue
+            
+            # 根據市場類型選擇歷史資料夾
+            if market == 'TSE':
+                history_folder = config['tse_history_folder']
+            else:
+                history_folder = config['otc_history_folder']
+            
+            # 讀取個股 CSV
+            csv_path = os.path.join(history_folder, f"{stock_code}.csv")
+            if not os.path.exists(csv_path):
+                continue
+            
+            try:
+                # 讀取 CSV 資料
+                df = pd.read_csv(csv_path, encoding='utf-8')
+                
+                # 檢查是否有足夠的資料
+                if len(df) < 2:
+                    continue
+                
+                # 生成個股的圖表 HTML
+                stock_html = ChartPlotly.generate_chart(
+                    df=df,
+                    stock_code=stock_code,
+                    stock_name=stock_name,
+                    html_output_path=None  # 不儲存,只返回 HTML
+                )
+                
+                if stock_html:
+                    stock_htmls.append(stock_html)
+                    
+            except Exception as e:
+                print(f"      ⚠️  處理 {stock_code} {stock_name} 失敗: {e}")
+                continue
+        
+        if not stock_htmls:
+            print(f"      ⚠️  無可用的個股圖表")
+            continue
+        
+        # 合併所有個股 HTML
+        merged_html = merge_stock_htmls_for_concept(
+            concept_name=concept_name,
+            stock_htmls=stock_htmls,
+            concept_desc=concept.get('fund_descriptions', '')
+        )
+        
+        # 儲存概念股 HTML
+        safe_name = concept_name.replace('/', '_').replace('\\', '_')
+        output_file = os.path.join(config['html_output_folder'], f"{safe_name}.html")
+        
+        try:
+            with open(output_file, 'w', encoding='utf-8') as f:
+                f.write(merged_html)
+            print(f"      ✓ 已生成: {safe_name}.html ({len(stock_htmls)} 支個股)")
+        except Exception as e:
+            print(f"      ❌ 儲存失敗: {e}")
+    
+    print(f"\n✓ 概念股個股HTML生成完成\n")
+
+
+def merge_stock_htmls_for_concept(concept_name, stock_htmls, concept_desc=''):
+    """
+    將多個個股 HTML 合併成一個概念股 HTML,使用下拉選單切換
+    """
+    html_parts = []
+    
+    # HTML 開頭
+    html_parts.append(f"""<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{concept_name} - 個股圖表</title>
+    <style>
+        * {{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }}
+        
+        body {{
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 30px 15px;
+            min-height: 100vh;
+        }}
+        
+        .container {{
+            max-width: 1400px;
+            margin: 0 auto;
+        }}
+        
+        .header {{
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            margin-bottom: 30px;
+        }}
+        
+        .header h1 {{
+            color: #2c3e50;
+            font-size: 2em;
+            margin-bottom: 15px;
+        }}
+        
+        .header .description {{
+            color: #5a6c7d;
+            font-size: 1em;
+            line-height: 1.8;
+            margin-bottom: 20px;
+        }}
+        
+        .selector-container {{
+            margin-bottom: 20px;
+        }}
+        
+        .selector-label {{
+            display: block;
+            color: #2c3e50;
+            font-weight: 600;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }}
+        
+        .stock-selector {{
+            width: 100%;
+            padding: 14px 40px 14px 16px;
+            font-size: 1.05em;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 16px center;
+            font-family: inherit;
+            transition: all 0.3s ease;
+        }}
+        
+        .stock-selector:hover {{
+            border-color: #667eea;
+        }}
+        
+        .stock-selector:focus {{
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }}
+        
+        .stock-chart {{
+            display: none;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        }}
+        
+        .stock-chart.active {{
+            display: block;
+        }}
+        
+        .chart-content {{
+            width: 100%;
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 {concept_name}</h1>
+            <div class="description">{concept_desc}</div>
+            
+            <div class="selector-container">
+                <label class="selector-label">選擇個股:</label>
+                <select class="stock-selector" id="stockSelector">
+                    <option value="">-- 請選擇個股 --</option>
+""")
+    
+    # 添加選項
+    for i, html in enumerate(stock_htmls):
+        # 從 HTML 中提取股票代碼和名稱
+        # 假設 HTML 中有類似 <title>2330 台積電</title> 的標籤
+        import re
+        title_match = re.search(r'<title>([^<]+)</title>', html)
+        if title_match:
+            title = title_match.group(1)
+        else:
+            title = f"個股 {i+1}"
+        
+        html_parts.append(f'                    <option value="stock-{i}">{title}</option>\n')
+    
+    html_parts.append("""                </select>
+            </div>
+        </div>
+        
+""")
+    
+    # 添加每個股票的圖表
+    for i, html in enumerate(stock_htmls):
+        # 提取 body 內容
+        body_match = re.search(r'<body[^>]*>(.*?)</body>', html, re.DOTALL)
+        if body_match:
+            body_content = body_match.group(1)
+        else:
+            body_content = html
+        
+        active_class = ' active' if i == 0 else ''
+        html_parts.append(f'        <div class="stock-chart{active_class}" id="stock-{i}">\n')
+        html_parts.append(f'            <div class="chart-content">\n')
+        html_parts.append(body_content)
+        html_parts.append('            </div>\n')
+        html_parts.append('        </div>\n\n')
+    
+    # HTML 結尾
+    html_parts.append("""    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const selector = document.getElementById('stockSelector');
+            const charts = document.querySelectorAll('.stock-chart');
+            
+            selector.addEventListener('change', function() {
+                const selectedId = this.value;
+                
+                // 隱藏所有圖表
+                charts.forEach(chart => {
+                    chart.classList.remove('active');
+                });
+                
+                // 顯示選中的圖表
+                if (selectedId) {
+                    const selectedChart = document.getElementById(selectedId);
+                    if (selectedChart) {
+                        selectedChart.classList.add('active');
+                        
+                        // 滾動到頂部
+                        window.scrollTo({
+                            top: 0,
+                            behavior: 'smooth'
+                        });
+                    }
+                }
+            });
+            
+            // 預設選擇第一個
+            if (charts.length > 0) {
+                selector.value = 'stock-0';
+            }
+        });
+    </script>
+</body>
+</html>""")
+    
+    return ''.join(html_parts)
+
+
+def generate_concept_merged_html(base_dir, config):
+    """
+    為每個概念股生成獨立的 HTML 檔案
+    檔案命名: 概念股名稱.html (例如: 特殊應用積體電路ASIC.html)
+    儲存位置: ConceptHTML 資料夾
+    """
+    import json
+    
+    print(f"\n{'='*80}")
+    print("生成概念股獨立HTML檔案")
+    print(f"{'='*80}\n")
+    
+    stockinfo_folder = config['merged_output_folder']
+    concept_html_folder = config['html_output_folder']
+    
+    # 1. 讀取 top.json 檔案
+    top_json_path = os.path.join(stockinfo_folder, 'top.json')
+    
+    if not os.path.exists(top_json_path):
+        print(f"⚠️  未找到 {top_json_path}")
+        return
+    
+    print(f"讀取: {top_json_path}\n")
+    
+    # 2. 讀取概念股資料
+    try:
+        with open(top_json_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+    except Exception as e:
+        print(f"✗ 讀取 top.json 失敗: {e}")
+        return
+    
+    concepts = data.get('concepts', [])
+    if not concepts:
+        print("⚠️  top.json 中沒有概念股資料")
+        return
+    
+    print(f"找到 {len(concepts)} 個概念股領域\n")
+    
+    # 3. 為每個概念股生成獨立的 HTML 檔案
+    generated_files = []
+    
+    for concept in concepts:
+        concept_name = concept.get('name', '')
+        fund_descriptions = concept.get('fund_descriptions', '')
+        stocks = concept.get('stocks', [])
+        
+        if not concept_name or not stocks:
+            continue
+        
+        print(f"{'='*80}")
+        print(f"處理概念股: {concept_name}")
+        print(f"{'='*80}")
+        
+        # 讀取該概念股下所有股票的 HTML
+        stock_html_map = {}
+        missing_stocks = []
+        
+        for stock in stocks:
+            code = stock.get('code', '')
+            name = stock.get('name', '')
+            
+            if not code:
+                continue
+            
+            # 先嘗試從 ConceptHTML 找
+            html_path = os.path.join(concept_html_folder, f"{code}.html")
+            
+            # 如果找不到，嘗試從 TSE 或 OTC 找
+            if not os.path.exists(html_path):
+                market = stock.get('market', 'TSE')
+                if market == 'TSE':
+                    html_path = os.path.join(base_dir, 'StockTSEHTML', f"{code}.html")
+                else:
+                    html_path = os.path.join(base_dir, 'StockOTCHTML', f"{code}.html")
+            
+            if os.path.exists(html_path):
+                try:
+                    with open(html_path, 'r', encoding='utf-8') as f:
+                        html_content = f.read()
+                    stock_html_map[code] = {
+                        'html': html_content,
+                        'name': name,
+                        'market': stock.get('market', 'TSE')
+                    }
+                except Exception as e:
+                    print(f"  ✗ 讀取 {code}.html 失敗: {e}")
+                    missing_stocks.append(f"{code} {name}")
+            else:
+                missing_stocks.append(f"{code} {name}")
+        
+        print(f"  ✓ 成功讀取: {len(stock_html_map)} 個HTML檔案")
+        if missing_stocks:
+            print(f"  ⚠️  缺少: {len(missing_stocks)} 個HTML檔案")
+            if len(missing_stocks) <= 5:
+                for stock in missing_stocks:
+                    print(f"      - {stock}")
+        
+        # 生成該概念股的 HTML
+        if stock_html_map:
+            html_content = generate_single_concept_html(
+                concept_name, 
+                fund_descriptions, 
+                stocks, 
+                stock_html_map
+            )
+            
+            # 清理檔名中的特殊字元
+            safe_name = concept_name.replace('/', '_').replace('\\', '_').replace(':', '_')
+            output_filename = f"{safe_name}.html"
+            output_path = os.path.join(concept_html_folder, output_filename)
+            
+            try:
+                with open(output_path, 'w', encoding='utf-8') as f:
+                    f.write(html_content)
+                
+                generated_files.append(output_filename)
+                print(f"  ✓ 成功生成: {output_filename}")
+                print(f"      - {len(stock_html_map)} 個股票圖表")
+                
+            except Exception as e:
+                print(f"  ✗ 儲存失敗: {e}")
+        else:
+            print(f"  ⚠️  跳過 {concept_name} (沒有有效的股票HTML)")
+        
+        print()
+    
+    # 4. 總結
+    print(f"{'='*80}")
+    print(f"概念股HTML生成完成")
+    print(f"{'='*80}")
+    print(f"✓ 共生成 {len(generated_files)} 個概念股HTML檔案")
+    print(f"✓ 儲存位置: {concept_html_folder}")
+    if generated_files:
+        print(f"\n生成的檔案:")
+        for filename in generated_files:
+            print(f"  - {filename}")
+    print(f"{'='*80}\n")
+
+
+def generate_concept_all_html(base_dir, config):
+    """
+    生成 Concept_ALL.html - 合併所有概念股 HTML 的總覽頁面
+    使用下拉選單切換，iframe 加載對應的概念股 HTML
+    """
+    import json
+    
+    print(f"\n{'='*80}")
+    print("生成 Concept_ALL.html")
+    print(f"{'='*80}\n")
+    
+    stockinfo_folder = config['merged_output_folder']
+    concept_html_folder = config['html_output_folder']
+    
+    # 1. 讀取 top.json
+    top_json_path = os.path.join(stockinfo_folder, 'top.json')
+    if not os.path.exists(top_json_path):
+        print(f"⚠️  未找到 {top_json_path}")
+        return
+    
+    try:
+        with open(top_json_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+    except Exception as e:
+        print(f"✗ 讀取 top.json 失敗: {e}")
+        return
+    
+    concepts = data.get('concepts', [])
+    if not concepts:
+        print("⚠️  top.json 中沒有概念股資料")
+        return
+    
+    print(f"找到 {len(concepts)} 個概念股\n")
+    
+    # 2. 收集概念股資訊和對應的 HTML 文件
+    concept_files = []
+    for concept in concepts:
+        concept_name = concept.get('name', '')
+        if not concept_name:
+            continue
+        
+        # 清理檔名中的特殊字元
+        safe_name = concept_name.replace('/', '_').replace('\\', '_').replace(':', '_')
+        html_filename = f"{safe_name}.html"
+        html_path = os.path.join(concept_html_folder, html_filename)
+        
+        if os.path.exists(html_path):
+            concept_files.append({
+                'name': concept_name,
+                'filename': html_filename,
+                'stock_count': concept.get('stock_count', len(concept.get('stocks', [])))
+            })
+            print(f"✓ {concept_name}: {html_filename}")
+        else:
+            print(f"⚠️  找不到: {html_filename}")
+    
+    if not concept_files:
+        print("\n⚠️  沒有找到任何概念股HTML檔案")
+        return
+    
+    print(f"\n共找到 {len(concept_files)} 個概念股HTML檔案")
+    
+    # 3. 生成 Concept_ALL.html
+    html_content = generate_concept_all_html_template(concept_files)
+    
+    # 4. 儲存
+    output_path = os.path.join(stockinfo_folder, 'Concept_ALL.html')
+    try:
+        with open(output_path, 'w', encoding='utf-8') as f:
+            f.write(html_content)
+        
+        print(f"\n✓ 成功生成: {output_path}")
+        print(f"  - {len(concept_files)} 個概念股")
+        
+    except Exception as e:
+        print(f"\n✗ 儲存失敗: {e}")
+    
+    print(f"{'='*80}\n")
+
+
+def generate_concept_all_html_template(concept_files):
+    """生成 Concept_ALL.html 的模板"""
+    
+    html_parts = []
+    
+    # HTML head
+    html_parts.append("""<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <title>台灣概念股產業鏈結構圖</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft JhengHei', 'PingFang TC', 'Noto Sans TC', sans-serif;
+            background: #f5f7fa;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .selector-section {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            margin-bottom: 30px;
+        }
+
+        .selector-label {
+            font-size: 0.95em;
+            color: #666;
+            margin-bottom: 12px;
+            display: block;
+        }
+
+        .concept-selector {
+            width: 100%;
+            padding: 14px 40px 14px 16px;
+            font-size: 1.1em;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 16px center;
+            font-family: inherit;
+        }
+
+        .concept-selector:focus {
+            outline: none;
+            border-color: #4A90E2;
+            box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+        }
+
+        .concept-frame-container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            overflow: hidden;
+        }
+
+        .concept-frame {
+            width: 100%;
+            min-height: 800px;
+            border: none;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 12px;
+            }
+
+            .selector-section {
+                padding: 20px;
+            }
+
+            .concept-selector {
+                font-size: 1em;
+                padding: 12px 35px 12px 14px;
+            }
+
+            .concept-frame {
+                min-height: 600px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="selector-section">
+            <label class="selector-label">選擇產業概念:</label>
+            <select id="conceptSelector" class="concept-selector">
+""")
+    
+    # 添加下拉選單選項
+    for i, concept in enumerate(concept_files):
+        selected = ' selected' if i == 0 else ''
+        html_parts.append(f'                <option value="{i}"{selected}>{concept["name"]} (共{concept["stock_count"]}檔)</option>\n')
+    
+    html_parts.append("""            </select>
+        </div>
+
+        <div class="concept-frame-container">
+            <iframe id="conceptFrame" class="concept-frame" src=""></iframe>
+        </div>
+    </div>
+
+    <script>
+        const concepts = [
+""")
+    
+    # 添加概念股數據
+    for i, concept in enumerate(concept_files):
+        comma = ',' if i < len(concept_files) - 1 else ''
+        html_parts.append(f'            {{ name: "{concept["name"]}",filename: "../ConceptHTML/{concept["filename"]}" }}{comma}\n')
+    
+    html_parts.append("""        ];
+
+        const selector = document.getElementById('conceptSelector');
+        const frame = document.getElementById('conceptFrame');
+
+        function loadConcept(index) {
+            const concept = concepts[index];
+            frame.src = concept.filename;
+        }
+
+        selector.addEventListener('change', function() {
+            loadConcept(parseInt(this.value));
+        });
+
+        // 初始載入第一個概念股
+        if (concepts.length > 0) {
+            loadConcept(0);
+        }
+    </script>
+</body>
+</html>""")
+    
+    return ''.join(html_parts)
+
+
+def generate_single_concept_html(concept_name, fund_descriptions, stocks, stock_html_map):
+    """
+    生成單一概念股的HTML檔案
+    
+    Args:
+        concept_name: 概念股名稱
+        fund_descriptions: 概念股說明
+        stocks: 股票列表
+        stock_html_map: {股票代碼: {'html': HTML內容, 'name': 股票名稱, 'market': 市場類型}}
+    
+    Returns:
+        str: HTML內容
+    """
+    html_parts = []
+    
+    # 計算有效股票數
+    valid_stocks = [s for s in stocks if s.get('code', '') in stock_html_map]
+    valid_count = len(valid_stocks)
+    
+    # HTML head
+    html_parts.append(f"""<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{concept_name} - 技術分析圖表</title>
+    <style>
+        * {{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }}
+
+        body {{
+            font-family: 'Microsoft JhengHei', 'PingFang TC', 'Noto Sans TC', sans-serif;
+            background: #f5f7fa;
+            padding: 20px;
+            line-height: 1.6;
+        }}
+
+        .container {{
+            max-width: 1600px;
+            margin: 0 auto;
+        }}
+
+        .header {{
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }}
+
+        .header h1 {{
+            font-size: 2em;
+            margin-bottom: 10px;
+        }}
+
+        .header .subtitle {{
+            opacity: 0.9;
+            font-size: 1.1em;
+        }}
+
+        .concept-info {{
+            background: white;
+            padding: 35px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            margin-bottom: 30px;
+        }}
+
+        .concept-title {{
+            font-size: 1.8em;
+            color: #2c3e50;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }}
+
+        .concept-count {{
+            color: #7f8c8d;
+            font-size: 0.95em;
+            margin-bottom: 20px;
+        }}
+
+        .concept-description {{
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            color: #495057;
+            line-height: 1.8;
+            border-left: 4px solid #667eea;
+        }}
+
+        .stocks-container {{
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }}
+
+        .stock-item {{
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            overflow: hidden;
+        }}
+
+        .stock-header {{
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 25px;
+            font-size: 1.2em;
+            font-weight: 500;
+        }}
+
+        .stock-header .code {{
+            font-weight: 700;
+            margin-right: 10px;
+        }}
+
+        .stock-header .badge {{
+            background: rgba(255,255,255,0.2);
+            padding: 3px 10px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            margin-left: 10px;
+        }}
+
+        .stock-item iframe {{
+            width: 100%;
+            min-height: 800px;
+            border: none;
+        }}
+
+        .back-to-top {{
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transition: transform 0.3s ease;
+            text-decoration: none;
+            font-size: 1.5em;
+        }}
+
+        .back-to-top:hover {{
+            transform: translateY(-5px);
+        }}
+
+        @media (max-width: 1200px) {{
+            .container {{
+                padding: 10px;
+            }}
+            
+            .header h1 {{
+                font-size: 1.5em;
+            }}
+            
+            .concept-title {{
+                font-size: 1.4em;
+            }}
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 {concept_name}</h1>
+            <div class="subtitle">概念股技術分析圖表</div>
+        </div>
+
+        <div class="concept-info">
+            <div class="concept-title">{concept_name}</div>
+            <div class="concept-count">共 {valid_count} 檔個股</div>
+""")
+    
+    # 添加概念股說明
+    if fund_descriptions:
+        html_parts.append('            <div class="concept-description">\n')
+        html_parts.append(f'                {fund_descriptions}\n')
+        html_parts.append('            </div>\n')
+    
+    html_parts.append('        </div>\n\n')
+    html_parts.append('        <div class="stocks-container">\n')
+    
+    # 為每個股票添加圖表
+    for stock in stocks:
+        code = stock.get('code', '')
+        name = stock.get('name', '')
+        
+        if code not in stock_html_map:
+            continue
+        
+        stock_data = stock_html_map[code]
+        stock_html = stock_data['html']
+        market = stock_data.get('market', 'TSE')
+        market_name = '上市' if market == 'TSE' else '上櫃'
+        
+        # 轉義HTML以用於srcdoc屬性
+        stock_html_escaped = (stock_html
+                             .replace('&', '&amp;')
+                             .replace('<', '&lt;')
+                             .replace('>', '&gt;')
+                             .replace('"', '&quot;'))
+        
+        html_parts.append('            <div class="stock-item">\n')
+        html_parts.append(f'                <div class="stock-header">\n')
+        html_parts.append(f'                    <span class="code">{code}</span>\n')
+        html_parts.append(f'                    <span>{name}</span>\n')
+        html_parts.append(f'                    <span class="badge">{market_name}</span>\n')
+        html_parts.append('                </div>\n')
+        html_parts.append(f'                <iframe srcdoc="{stock_html_escaped}" title="{code} {name}"></iframe>\n')
+        html_parts.append('            </div>\n')
+    
+    html_parts.append('        </div>\n')
+    html_parts.append('    </div>\n\n')
+    
+    # 返回頂部按鈕
+    html_parts.append('    <a href="#" class="back-to-top" title="返回頂部">↑</a>\n\n')
+    
+    # JavaScript
+    html_parts.append("""    <script>
+        // 返回頂部功能
+        document.querySelector('.back-to-top').addEventListener('click', function(e) {
+            e.preventDefault();
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        });
+        
+        // 顯示/隱藏返回頂部按鈕
+        window.addEventListener('scroll', function() {
+            const backToTop = document.querySelector('.back-to-top');
+            if (window.pageYOffset > 300) {
+                backToTop.style.display = 'flex';
+            } else {
+                backToTop.style.display = 'none';
+            }
+        });
+        
+        // 初始隱藏返回頂部按鈕
+        document.querySelector('.back-to-top').style.display = 'none';
+    </script>
+</body>
+</html>""")
+    
+    return ''.join(html_parts)
+
+
 def run_step3_concept_chart_generation(base_dir):
     """執行第三步：概念股圖表生成"""
     print(f"\n{'🔥'*40}")
     print(f"第三步圖表生成：概念股")
     print(f"{'🔥'*40}\n")
     
-    # 設定配置 (使用 TSE 的配置但修改資料夾)
+    # 設定配置
     config = {
         'market_type': 'CONCEPT',
         'market_name': '概念股',
-        'history_folder': os.path.join(base_dir, 'ConceptHistory'),
+        # ConceptHistory 已刪除，不再使用
         'html_output_folder': os.path.join(base_dir, 'ConceptHTML'),
         'merged_output_folder': os.path.join(base_dir, 'StockInfo'),
         'stocklist_folder': os.path.join(base_dir, 'StockList'),
+        'tse_history_folder': os.path.join(base_dir, 'StockTSEHistory'),
+        'otc_history_folder': os.path.join(base_dir, 'StockOTCHistory'),
     }
     
     # 建立輸出資料夾
@@ -4142,23 +5071,19 @@ def run_step3_concept_chart_generation(base_dir):
     
     print(f"{'='*80}")
     print(f"市場類型: 概念股 (TSE + OTC)")
-    print(f"輸出模式: 個別HTML + 合併HTML")
-    print(f"歷史數據資料夾: {config['history_folder']}")
-    print(f"個別HTML輸出: {config['html_output_folder']}")
-    print(f"合併HTML輸出: {config['merged_output_folder']}")
+    print(f"輸出模式: 為每個概念股生成獨立HTML")
+    print(f"資料來源: {config['merged_output_folder']}/top.json")
+    print(f"股票HTML來源: StockTSEHTML, StockOTCHTML")
+    print(f"概念股HTML: {config['html_output_folder']}")
     print(f"{'='*80}\n")
     
-    # 設定字體
-    Utils.setup_chinese_font(base_dir)
+    # 直接生成概念股HTML（每個概念股一個檔案）
+    generate_concept_merged_html(base_dir, config)
     
-    # 批次處理所有概念股
-    Processor.batch_process_all_stocks(base_dir, config, merged_filename='Concept_ALL.html')
+    # 生成 Concept_ALL.html（合併所有概念股的總覽頁面）
+    generate_concept_all_html(base_dir, config)
     
     print(f"\n✓ 概念股圖表生成完成")
-
-# ============================================================================
-# 主程式流程
-# ============================================================================
 
 def copy_data_to_repo(base_dir, repo_data_dir='data'):
     """
@@ -4183,7 +5108,7 @@ def copy_data_to_repo(base_dir, repo_data_dir='data'):
         'StockOTCShares',  # 上櫃三大法人
         'StockTSEHistory',    # 上市歷史資料
         'StockOTCHistory', # 上櫃歷史資料
-        'ConceptHistory',  # 概念股歷史資料
+        # ConceptHistory 已刪除，不再使用
         'StockInfo',       # 分析報告
         'StockTSEHTML',       # 上市圖表 HTML
         'StockOTCHTML',    # 上櫃圖表 HTML
@@ -4256,12 +5181,12 @@ def main():
         print("  2. 清理舊的 History 資料夾")
         print("  3. 執行分析程式 - TSE (上市)" if args.market in ['TSE', 'BOTH'] else "")
         print("  4. 執行分析程式 - OTC (上櫃)" if args.market in ['OTC', 'BOTH'] else "")
-        print("  5. 執行分析程式 - 概念股 (所有概念股)")
+        # 概念股分析已停用，直接從 TSE/OTC HTML 生成概念股圖表
     if not args.skip_charts:
         print("  6. 清理舊的圖表資料夾")
         print("  7. 執行圖表生成 - TSE (上市)" if args.market in ['TSE', 'BOTH'] else "")
         print("  8. 執行圖表生成 - OTC (上櫃)" if args.market in ['OTC', 'BOTH'] else "")
-        print("  9. 執行圖表生成 - 概念股 (所有概念股)")
+        print("  9. 執行圖表生成 - 概念股 (為每個概念股生成獨立HTML)")
     print("="*80 + "\n")
     
     # 設定基礎目錄
@@ -4290,7 +5215,8 @@ def main():
             print("🔥"*40)
             # 根據 TOP_STOCKS_ONLY 決定要清理的資料夾
             if TOP_STOCKS_ONLY:
-                delete_folders(base_dir, ['StockTSEHistory', 'StockOTCHistory', 'ConceptHistory'])
+                # ConceptHistory 已刪除，不再使用
+                delete_folders(base_dir, ['StockTSEHistory', 'StockOTCHistory'])
             else:
                 delete_folders(base_dir, ['local_StockTSEHistory', 'local_StockOTCHistory'])
             
@@ -4301,8 +5227,9 @@ def main():
             if args.market in ['OTC', 'BOTH']:
                 run_step2_analysis(base_dir, 'OTC')
             
-            # 概念股分析 (不分上市上櫃)
-            run_step2_concept_analysis(base_dir)
+            # 概念股分析已停用 - ConceptHistory 已刪除
+            # 概念股圖表現在直接從 TSE/OTC HTML 生成
+            # run_step2_concept_analysis(base_dir)
     
     # ========== 步驟 5-7：圖表生成 ==========
     if not args.skip_charts:
