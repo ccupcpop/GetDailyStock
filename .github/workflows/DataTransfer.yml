@@ -14,6 +14,7 @@ on:
       - 'StockInfo/Concept_ALL.html'
       - 'StockInfo/tse_analysis_result_complete.html'
       - 'StockInfo/otc_analysis_result_complete.html'
+      - 'ConceptHTML/**'
 
 jobs:
   transfer-data:
@@ -64,6 +65,13 @@ jobs:
           else
             echo "❌ otc_analysis_result_complete.html not found"
           fi
+          if [ -d "ConceptHTML" ]; then
+            echo "✅ ConceptHTML folder found"
+            echo "ConceptHTML files:"
+            ls -la ConceptHTML/
+          else
+            echo "❌ ConceptHTML folder not found"
+          fi
       
       - name: Checkout StockTracker repository
         uses: actions/checkout@v3
@@ -88,6 +96,7 @@ jobs:
           rm -f stocktracker/StockInfo/Concept_ALL.html
           rm -f stocktracker/StockInfo/tse_analysis_result_complete.html
           rm -f stocktracker/StockInfo/otc_analysis_result_complete.html
+          rm -rf stocktracker/ConceptHTML
           echo "✅ Old files removed"
       
       - name: Copy data files to StockTracker
@@ -124,6 +133,15 @@ jobs:
           echo ""
           echo "Files in stocktracker/StockInfo:"
           ls -la stocktracker/StockInfo/
+          
+          echo ""
+          echo "Copying ConceptHTML folder to StockTracker root..."
+          if [ -d "ConceptHTML" ]; then
+            cp -r ConceptHTML stocktracker/
+            echo "✅ Copied ConceptHTML folder to StockTracker/"
+            echo "ConceptHTML files in target:"
+            ls -la stocktracker/ConceptHTML/
+          fi
       
       - name: Commit and push to StockTracker
         run: |
@@ -132,6 +150,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add StockInfo/*.txt
           git add StockInfo/*.html
+          git add ConceptHTML/
           
           # 生成台北時間的時間戳
           TAIPEI_TIME=$(TZ='Asia/Taipei' date +'%Y-%m-%d %H:%M:%S')
@@ -160,5 +179,10 @@ jobs:
           echo "  - Concept_ALL.html"
           echo "  - tse_analysis_result_complete.html"
           echo "  - otc_analysis_result_complete.html"
+          echo ""
+          echo "Source: GetDailyStock/ConceptHTML"
+          echo "Target: StockTracker/ConceptHTML"
+          echo "Folder: ConceptHTML/ (entire folder)"
+          echo ""
           echo "Time: $(TZ='Asia/Taipei' date +'%Y-%m-%d %H:%M:%S') (Taipei)"
           echo "================================"
