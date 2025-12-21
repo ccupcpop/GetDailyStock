@@ -4546,11 +4546,15 @@ def generate_concept_merged_html(base_dir, config):
             print(f"  - {filename}")
     print(f"{'='*80}\n")
 
-
 def generate_concept_all_html(base_dir, config):
     """
-    生成 Concept_ALL.html - 简单合并所有概念股HTML
-    上方下拉选单，下方直接显示对应概念股内容
+    生成 Concept_ALL.html - 使用 iframe 直接引用方案
+    
+    改進:
+    - 使用 iframe 嵌入每個概念股 HTML
+    - 直接引用 ConceptHTML 資料夾，不需要複製檔案
+    - 避免 body 提取問題
+    - 100% 可靠顯示所有概念股
     """
     import json
     
@@ -4561,7 +4565,7 @@ def generate_concept_all_html(base_dir, config):
     stockinfo_folder = config['merged_output_folder']
     concept_html_folder = config['html_output_folder']
     
-    # 1. 读取 top.json
+    # 1. 讀取 top.json
     top_json_path = os.path.join(stockinfo_folder, 'top.json')
     if not os.path.exists(top_json_path):
         print(f"⚠️  未找到 {top_json_path}")
@@ -4571,81 +4575,74 @@ def generate_concept_all_html(base_dir, config):
         with open(top_json_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
     except Exception as e:
-        print(f"✗ 读取 top.json 失败: {e}")
+        print(f"✗ 讀取 top.json 失敗: {e}")
         return
     
     concepts = data.get('concepts', [])
     if not concepts:
-        print("⚠️  top.json 中没有概念股资料")
+        print("⚠️  top.json 中沒有概念股資料")
         return
     
-    print(f"找到 {len(concepts)} 个概念股\n")
+    print(f"找到 {len(concepts)} 個概念股\n")
     
-    # 2. 读取每个概念股的HTML内容
-    concept_contents = []
+    # 2. 檢查每個概念股的 HTML 是否存在
+    concept_data = []
     for concept in concepts:
         concept_name = concept.get('name', '')
         if not concept_name:
             continue
         
-        # 清理档名
+        # 清理檔名
         safe_name = concept_name.replace('/', '_').replace('\\', '_').replace(':', '_')
         html_filename = f"{safe_name}.html"
         html_path = os.path.join(concept_html_folder, html_filename)
         
         if os.path.exists(html_path):
-            try:
-                with open(html_path, 'r', encoding='utf-8') as f:
-                    full_html = f.read()
-                
-                # 提取完整的body内容（包括所有嵌套的style和script）
-                body_start = full_html.find('<body')
-                body_end = full_html.rfind('</body>')
-                
-                if body_start != -1 and body_end != -1:
-                    # 找到body标签的结束位置
-                    body_tag_end = full_html.find('>', body_start)
-                    body_content = full_html[body_tag_end + 1:body_end]
-                    
-                    concept_contents.append({
-                        'name': concept_name,
-                        'content': body_content
-                    })
-                    print(f"✓ {concept_name}")
-                else:
-                    print(f"⚠️  无法找到body标签: {html_filename}")
-                    
-            except Exception as e:
-                print(f"✗ 读取失败 {html_filename}: {e}")
+            file_size = os.path.getsize(html_path)
+            concept_data.append({
+                'name': concept_name,
+                'filename': html_filename
+            })
+            print(f"✓ {concept_name:<30} ({file_size/1024:.1f} KB)")
         else:
             print(f"⚠️  找不到: {html_filename}")
     
-    if not concept_contents:
-        print("\n⚠️  没有读取到任何概念股HTML内容")
+    if not concept_data:
+        print("\n⚠️  沒有可用的概念股 HTML")
         return
     
-    print(f"\n共读取 {len(concept_contents)} 个概念股HTML")
+    print(f"\n共找到 {len(concept_data)} 個概念股 HTML")
     
-    # 3. 生成合并HTML
-    html_content = generate_merged_html_content(concept_contents)
+    # 3. 生成合併 HTML
+    html_content = generate_concept_all_iframe_html(concept_data)
     
-    # 4. 储存
+    # 4. 儲存
     output_path = os.path.join(stockinfo_folder, 'Concept_ALL.html')
     try:
         with open(output_path, 'w', encoding='utf-8') as f:
             f.write(html_content)
         
+        file_size = len(html_content)
         print(f"\n✓ 成功生成: {output_path}")
-        print(f"  - {len(concept_contents)} 个概念股")
+        print(f"  檔案大小: {file_size:,} bytes ({file_size/1024:.1f} KB)")
+        print(f"  包含 {len(concept_data)} 個概念股")
         
     except Exception as e:
-        print(f"\n✗ 储存失败: {e}")
+        print(f"\n✗ 儲存失敗: {e}")
     
     print(f"{'='*80}\n")
 
 
-def generate_merged_html_content(concept_contents):
-    """完全按照concept_stocks.html的样式生成"""
+def generate_concept_all_iframe_html(concept_data):
+    """
+    生成使用 iframe 的 Concept_ALL.html 內容
+    
+    Args:
+        concept_data: 概念股資料列表 [{'name': '...', 'filename': '...'}, ...]
+    
+    Returns:
+        完整的 HTML 字符串
+    """
     
     html = """<!DOCTYPE html>
 <html lang="zh-TW">
@@ -4665,10 +4662,11 @@ def generate_merged_html_content(concept_contents):
             background: #f5f7fa;
             padding: 20px;
             line-height: 1.6;
+            overflow-x: hidden;
         }
 
         .container {
-            max-width: 1400px;
+            max-width: 100%;
             margin: 0 auto;
         }
 
@@ -4677,7 +4675,10 @@ def generate_merged_html_content(concept_contents):
             padding: 30px;
             border-radius: 12px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-            margin-bottom: 30px;
+            margin-bottom: 20px;
+            position: sticky;
+            top: 20px;
+            z-index: 100;
         }
 
         .selector-label {
@@ -4700,6 +4701,11 @@ def generate_merged_html_content(concept_contents):
             background-repeat: no-repeat;
             background-position: right 16px center;
             font-family: inherit;
+            transition: all 0.2s ease;
+        }
+
+        .concept-selector:hover {
+            border-color: #4A90E2;
         }
 
         .concept-selector:focus {
@@ -4708,12 +4714,69 @@ def generate_merged_html_content(concept_contents):
             box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
         }
 
-        .concept-detail {
-            display: none;
+        .iframe-container {
+            width: 100%;
+            position: relative;
+            min-height: 800px;
         }
 
-        .concept-detail.active {
-            display: block;
+        .concept-frame {
+            width: 100%;
+            height: calc(100vh - 180px);
+            min-height: 800px;
+            border: none;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            position: absolute;
+            top: 0;
+            left: 0;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s ease-in, visibility 0s linear 0.2s;
+        }
+
+        .concept-frame.active {
+            opacity: 1;
+            visibility: visible;
+            transition: opacity 0.2s ease-in, visibility 0s linear 0s;
+            z-index: 1;
+        }
+
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            z-index: 10;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s;
+        }
+
+        .loading-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #4A90E2;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
         @media (max-width: 768px) {
@@ -4723,11 +4786,22 @@ def generate_merged_html_content(concept_contents):
 
             .selector-section {
                 padding: 20px;
+                position: relative;
+                top: 0;
             }
 
             .concept-selector {
                 font-size: 1em;
                 padding: 12px 35px 12px 14px;
+            }
+
+            .concept-frame {
+                height: calc(100vh - 150px);
+                min-height: 600px;
+            }
+
+            .iframe-container {
+                min-height: 600px;
             }
         }
     </style>
@@ -4736,38 +4810,94 @@ def generate_merged_html_content(concept_contents):
     <div class="container">
         <div class="selector-section">
             <label class="selector-label">選擇產業概念:</label>
-            <select class="concept-selector" id="conceptSelector" onchange="loadConcept(this.value)">
+            <select class="concept-selector" id="conceptSelector">
 """
     
-    # 选项
-    for i, concept in enumerate(concept_contents):
+    # 生成下拉選單選項
+    for i, concept in enumerate(concept_data):
         html += f'                <option value="{i}">{concept["name"]}</option>\n'
     
     html += """            </select>
         </div>
+
+        <div class="iframe-container" id="iframeContainer">
+            <div class="loading-overlay" id="loadingOverlay">
+                <div class="loading-spinner"></div>
+            </div>
 """
     
-    # 每个概念股内容
-    for i, concept in enumerate(concept_contents):
+    # 生成 iframe，直接引用 ConceptHTML 資料夾
+    for i, concept in enumerate(concept_data):
         active = ' active' if i == 0 else ''
-        html += f'        <div id="concept-{i}" class="concept-detail{active}">\n'
-        html += concept['content']
-        html += '\n        </div>\n'
+        # 關鍵：使用相對路徑 ../ConceptHTML/檔名.html
+        html += f'            <iframe id="frame-{i}" class="concept-frame{active}" src="../ConceptHTML/{concept["filename"]}"></iframe>\n'
     
-    html += """    </div>
+    html += """        </div>
+    </div>
 
     <script>
+        let isInitialLoad = true;
+        let loadedFrames = new Set();
+
         function loadConcept(index) {
-            document.querySelectorAll('.concept-detail').forEach(el => el.classList.remove('active'));
-            document.getElementById('concept-' + index).classList.add('active');
+            document.querySelectorAll('.concept-frame').forEach(function(frame) {
+                frame.classList.remove('active');
+            });
+            
+            const targetFrame = document.getElementById('frame-' + index);
+            if (targetFrame) {
+                targetFrame.classList.add('active');
+                
+                window.scrollTo({
+                    top: 0,
+                    behavior: 'smooth'
+                });
+                
+                if (!loadedFrames.has(index)) {
+                    loadedFrames.add(index);
+                }
+            }
         }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const selector = document.getElementById('conceptSelector');
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            
+            if (selector) {
+                selector.addEventListener('change', function(e) {
+                    loadConcept(this.value);
+                });
+            }
+            
+            const firstFrame = document.getElementById('frame-0');
+            if (firstFrame) {
+                if (isInitialLoad) {
+                    loadingOverlay.classList.add('active');
+                }
+                
+                firstFrame.addEventListener('load', function() {
+                    setTimeout(function() {
+                        loadingOverlay.classList.remove('active');
+                        isInitialLoad = false;
+                        loadedFrames.add(0);
+                    }, 500);
+                });
+            }
+            
+            setTimeout(function() {
+                for (let i = 1; i < selector.options.length; i++) {
+                    const frame = document.getElementById('frame-' + i);
+                    if (frame && !loadedFrames.has(i)) {
+                        loadedFrames.add(i);
+                    }
+                }
+            }, 2000);
+        });
     </script>
 </body>
 </html>"""
     
     return html
-
-
 
 def generate_single_concept_html(concept_name, fund_descriptions, stocks, stock_html_map):
     """
