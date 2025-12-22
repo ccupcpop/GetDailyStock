@@ -2404,8 +2404,7 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
     if buy_stocks is not None and len(buy_stocks) > 0:
         html_content += """
                 <div class="section">
-                    <h2 class="section-title buy">📈 彙整買超分析</h2>
-                    <p style="color: #718096; margin-bottom: 5px; font-size: 1.1em;">最近5天買賣超淨值 >= 10000張</p>
+                    <h2 class="section-title buy">📈 彙整買超分析 (最近5天買賣超淨值 >= 10000張)</h2>
                     <div class="table-container">
                         <table>
                             <thead class="buy">
@@ -2447,8 +2446,7 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
     if sell_stocks is not None and len(sell_stocks) > 0:
         html_content += """
                 <div class="section">
-                    <h2 class="section-title sell">📉 彙整賣超分析</h2>
-                    <p style="color: #718096; margin-bottom: 5px; font-size: 1.1em;">最近5天買賣超淨值 <= -10000張</p>
+                    <h2 class="section-title sell">📉 彙整賣超分析 (最近5天買賣超淨值 <= -10000張)</h2>
                     <div class="table-container">
                         <table>
                             <thead class="sell">
@@ -2490,8 +2488,7 @@ def generate_complete_html(output_path, buy_stocks, sell_stocks, both_stocks_set
     if both_stocks_df is not None and len(both_stocks_df) > 0:
         html_content += """
                 <div class="section">
-                    <h2 class="section-title attention">⚠️ 特別注意</h2>
-                    <p style="color: #718096; margin-bottom: 5px; font-size: 1.1em;">同時出現在買超與賣超前20</p>
+                    <h2 class="section-title attention">⚠️ 特別注意 (同時出現在買超與賣超前20)</h2>
                     <div class="table-container">
                         <table>
                             <thead class="attention">
