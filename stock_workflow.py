@@ -1696,6 +1696,62 @@ def collect_stock_history(latest_buy_stocks_n, latest_sell_stocks_n, folder_path
     print(f"\n完成! 共儲存 {saved_count} 個股票的歷史數據到: {history_folder}")
     print(f"每個檔案包含最近100天的合併數據(StockTSEDaily + StockTSEShares)")
     print(f"注意: 所有股數欄位已轉換為張數(除以1000取整數)")
+    
+    # ========== 將所有 CSV 合併存成資料庫 ==========
+    import sqlite3
+    
+    # 根據 history_folder 名稱決定資料庫檔名
+    if 'TSE' in history_folder:
+        db_name = 'stock_tse.db'
+    elif 'OTC' in history_folder:
+        db_name = 'stock_otc.db'
+    else:
+        db_name = 'stock_history.db'
+    
+    db_path = os.path.join(history_folder, db_name)
+    
+    print(f"\n{'='*80}")
+    print(f"開始將 CSV 合併存成資料庫: {db_name}")
+    print(f"{'='*80}")
+    
+    try:
+        # 刪除舊的資料庫檔案
+        if os.path.exists(db_path):
+            os.remove(db_path)
+            print(f"✓ 已刪除舊資料庫")
+        
+        # 讀取所有 CSV 並合併
+        all_csv_files = glob.glob(os.path.join(history_folder, '*.csv'))
+        
+        print(f"找到 {len(all_csv_files)} 個 CSV 檔案")
+        
+        df_list = []
+        for csv_file in all_csv_files:
+            try:
+                df = pd.read_csv(csv_file, encoding='utf-8-sig')
+                df_list.append(df)
+            except Exception as e:
+                print(f"⚠️  讀取 {os.path.basename(csv_file)} 失敗: {e}")
+        
+        if df_list:
+            # 合併所有 CSV
+            combined_df = pd.concat(df_list, ignore_index=True)
+            
+            # 存成資料庫
+            conn = sqlite3.connect(db_path)
+            combined_df.to_sql('stock_data', conn, if_exists='replace', index=False)
+            conn.close()
+            
+            print(f"✓ 已合併 {len(df_list)} 個 CSV")
+            print(f"✓ 總共 {len(combined_df)} 筆記錄")
+            print(f"✓ 資料庫: {db_path}")
+        else:
+            print("⚠️  沒有 CSV 檔案")
+        
+    except Exception as e:
+        print(f"✗ 建立資料庫失敗: {e}")
+    
+    print(f"{'='*80}\n")
 
 # 【第二步-aggregate_analysis】
 # 從第二步程式複製 aggregate_analysis 函數
