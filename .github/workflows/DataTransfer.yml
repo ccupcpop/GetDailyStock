@@ -1,4 +1,4 @@
-name: Transfer Data to StockTracker
+name: Transfer Data to StockTracker and StockTrend
 
 on:
   schedule:
@@ -15,6 +15,8 @@ on:
       - 'StockInfo/tse_analysis_result_complete.html'
       - 'StockInfo/otc_analysis_result_complete.html'
       - 'ConceptHTML/**'
+      - 'StockTSEHistory/**'
+      - 'StockOTCHistory/**'
 
 jobs:
   transfer-data:
@@ -71,6 +73,21 @@ jobs:
             ls -la ConceptHTML/
           else
             echo "❌ ConceptHTML folder not found"
+          fi
+          
+          echo ""
+          echo "Checking for CSV history folders..."
+          if [ -d "StockTSEHistory" ]; then
+            echo "✅ StockTSEHistory folder found"
+            echo "CSV count: $(find StockTSEHistory -name '*.csv' | wc -l)"
+          else
+            echo "❌ StockTSEHistory folder not found"
+          fi
+          if [ -d "StockOTCHistory" ]; then
+            echo "✅ StockOTCHistory folder found"
+            echo "CSV count: $(find StockOTCHistory -name '*.csv' | wc -l)"
+          else
+            echo "❌ StockOTCHistory folder not found"
           fi
       
       - name: Checkout StockTracker repository
@@ -163,26 +180,99 @@ jobs:
             echo "✅ Successfully pushed to StockTracker"
           fi
       
+      - name: Checkout StockTrend repository
+        uses: actions/checkout@v3
+        with:
+          repository: ccupcpop/StockTrend
+          token: ${{ secrets.PAT_TOKEN }}
+          path: stocktrend
+          fetch-depth: 1
+      
+      - name: Create stock_data folder if not exists
+        run: |
+          mkdir -p stocktrend/stock_data
+          echo "stock_data folder ready"
+      
+      - name: Remove old CSV files in StockTrend
+        run: |
+          echo "Removing old CSV files from StockTrend/stock_data..."
+          rm -f stocktrend/stock_data/*.csv
+          echo "✅ Old CSV files removed"
+      
+      - name: Copy CSV files to StockTrend
+        run: |
+          echo "Copying CSV files to StockTrend/stock_data..."
+          CSV_COUNT=0
+          
+          if [ -d "StockTSEHistory" ]; then
+            echo "Copying TSE CSV files..."
+            find StockTSEHistory -name '*.csv' -exec cp {} stocktrend/stock_data/ \;
+            TSE_COUNT=$(find StockTSEHistory -name '*.csv' | wc -l)
+            echo "✅ Copied ${TSE_COUNT} TSE CSV files"
+            CSV_COUNT=$((CSV_COUNT + TSE_COUNT))
+          fi
+          
+          if [ -d "StockOTCHistory" ]; then
+            echo "Copying OTC CSV files..."
+            find StockOTCHistory -name '*.csv' -exec cp {} stocktrend/stock_data/ \;
+            OTC_COUNT=$(find StockOTCHistory -name '*.csv' | wc -l)
+            echo "✅ Copied ${OTC_COUNT} OTC CSV files"
+            CSV_COUNT=$((CSV_COUNT + OTC_COUNT))
+          fi
+          
+          echo ""
+          echo "Total CSV files copied: ${CSV_COUNT}"
+          echo "Files in stocktrend/stock_data:"
+          ls -la stocktrend/stock_data/ | head -20
+          echo "..."
+          echo "Total files: $(ls -1 stocktrend/stock_data/*.csv 2>/dev/null | wc -l)"
+      
+      - name: Commit and push to StockTrend
+        run: |
+          cd stocktrend
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add stock_data/*.csv
+          
+          # 生成台北時間的時間戳
+          TAIPEI_TIME=$(TZ='Asia/Taipei' date +'%Y-%m-%d %H:%M:%S')
+          
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "📈 Update stock CSV data - ${TAIPEI_TIME}"
+            git push
+            echo "✅ Successfully pushed to StockTrend"
+          fi
+      
       - name: Summary
         if: always()
         run: |
           echo "================================"
           echo "📋 Transfer Summary"
           echo "================================"
-          echo "Source: GetDailyStock/StockInfo"
-          echo "Target: StockTracker/StockInfo"
-          echo "Files:"
-          echo "  - TSE_buy_ranking.txt"
-          echo "  - OTC_buy_ranking.txt"
-          echo "  - ALL_TSE.html"
-          echo "  - ALL_OTC.html"
-          echo "  - Concept_ALL.html"
-          echo "  - tse_analysis_result_complete.html"
-          echo "  - otc_analysis_result_complete.html"
           echo ""
-          echo "Source: GetDailyStock/ConceptHTML"
-          echo "Target: StockTracker/ConceptHTML"
-          echo "Folder: ConceptHTML/ (entire folder)"
+          echo "📦 StockTracker Transfer:"
+          echo "  Source: GetDailyStock/StockInfo"
+          echo "  Target: StockTracker/StockInfo"
+          echo "  Files:"
+          echo "    - TSE_buy_ranking.txt"
+          echo "    - OTC_buy_ranking.txt"
+          echo "    - ALL_TSE.html"
+          echo "    - ALL_OTC.html"
+          echo "    - Concept_ALL.html"
+          echo "    - tse_analysis_result_complete.html"
+          echo "    - otc_analysis_result_complete.html"
+          echo ""
+          echo "  Source: GetDailyStock/ConceptHTML"
+          echo "  Target: StockTracker/ConceptHTML"
+          echo "  Folder: ConceptHTML/ (entire folder)"
+          echo ""
+          echo "📈 StockTrend Transfer:"
+          echo "  Source: GetDailyStock/StockTSEHistory"
+          echo "  Source: GetDailyStock/StockOTCHistory"
+          echo "  Target: StockTrend/stock_data"
+          echo "  Files: All *.csv files"
           echo ""
           echo "Time: $(TZ='Asia/Taipei' date +'%Y-%m-%d %H:%M:%S') (Taipei)"
           echo "================================"
