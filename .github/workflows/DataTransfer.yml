@@ -76,6 +76,21 @@ jobs:
           fi
           
           echo ""
+          echo "Checking for database files..."
+          if [ -f "StockTSEHistory/stock_tse.db" ]; then
+            echo "✅ stock_tse.db found"
+            echo "Size: $(du -h StockTSEHistory/stock_tse.db | cut -f1)"
+          else
+            echo "❌ stock_tse.db not found"
+          fi
+          if [ -f "StockOTCHistory/stock_otc.db" ]; then
+            echo "✅ stock_otc.db found"
+            echo "Size: $(du -h StockOTCHistory/stock_otc.db | cut -f1)"
+          else
+            echo "❌ stock_otc.db not found"
+          fi
+          
+          echo ""
           echo "Checking for CSV history folders..."
           if [ -d "StockTSEHistory" ]; then
             echo "✅ StockTSEHistory folder found"
@@ -113,6 +128,8 @@ jobs:
           rm -f stocktracker/StockInfo/Concept_ALL.html
           rm -f stocktracker/StockInfo/tse_analysis_result_complete.html
           rm -f stocktracker/StockInfo/otc_analysis_result_complete.html
+          rm -f stocktracker/StockInfo/stock_tse.db
+          rm -f stocktracker/StockInfo/stock_otc.db
           rm -rf stocktracker/ConceptHTML
           echo "✅ Old files removed"
       
@@ -147,6 +164,18 @@ jobs:
             cp StockInfo/otc_analysis_result_complete.html stocktracker/StockInfo/
             echo "✅ Copied otc_analysis_result_complete.html"
           fi
+          
+          echo ""
+          echo "Copying database files to StockTracker/StockInfo..."
+          if [ -f "StockTSEHistory/stock_tse.db" ]; then
+            cp StockTSEHistory/stock_tse.db stocktracker/StockInfo/
+            echo "✅ Copied stock_tse.db ($(du -h StockTSEHistory/stock_tse.db | cut -f1))"
+          fi
+          if [ -f "StockOTCHistory/stock_otc.db" ]; then
+            cp StockOTCHistory/stock_otc.db stocktracker/StockInfo/
+            echo "✅ Copied stock_otc.db ($(du -h StockOTCHistory/stock_otc.db | cut -f1))"
+          fi
+          
           echo ""
           echo "Files in stocktracker/StockInfo:"
           ls -la stocktracker/StockInfo/
@@ -167,6 +196,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add StockInfo/*.txt
           git add StockInfo/*.html
+          git add StockInfo/*.db
           git add ConceptHTML/
           
           # 生成台北時間的時間戳
@@ -211,6 +241,12 @@ jobs:
           echo "    - Concept_ALL.html"
           echo "    - tse_analysis_result_complete.html"
           echo "    - otc_analysis_result_complete.html"
+          echo ""
+          echo "  Source: GetDailyStock/StockTSEHistory & StockOTCHistory"
+          echo "  Target: StockTracker/StockInfo"
+          echo "  Database Files:"
+          echo "    - stock_tse.db"
+          echo "    - stock_otc.db"
           echo ""
           echo "  Source: GetDailyStock/ConceptHTML"
           echo "  Target: StockTracker/ConceptHTML"
