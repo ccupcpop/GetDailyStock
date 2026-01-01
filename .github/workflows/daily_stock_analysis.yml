@@ -2,13 +2,13 @@ name: 每日台股分析-Gmail通知
 
 on:
   schedule:
-    # 每天 UTC 09:15 執行 = 台灣時間下午 17:15 (UTC+8)
+    # 每天 UTC 09:15 执行 = 台湾时间下午 17:15 (UTC+8)
     - cron: '0 8 * * *'
   
   workflow_dispatch:
     inputs:
       send_email:
-        description: '是否發送 Email 通知'
+        description: '是否发送 Email 通知'
         required: false
         default: false
         type: boolean
@@ -42,15 +42,15 @@ jobs:
       
       - name: Ensure data directories exist
         run: |
-          mkdir -p StockTSEHTML StockOTCHTML StockInfo
+          mkdir -p StockTSEHTML StockOTCHTML StockInfo StockTSEHistory StockOTCHistory
       
       - name: Run stock analysis
         env:
           TZ: 'Asia/Taipei'
-          DEBUG_MODE: 'false'  # 改成 'true' 啟用除錯模式 (跳過爬蟲和 History)
+          DEBUG_MODE: 'false'  # 改成 'true' 启用除错模式 (跳过爬虫和 History)
         run: |
           if [ "$DEBUG_MODE" = "true" ]; then
-            echo "⚡ 除錯模式：跳過爬蟲和 History 生成"
+            echo "⚡ 除错模式:跳过爬虫和 History 生成"
             python stock_workflow.py --debug-skip-data-processing --copy-to-repo
           else
             echo "🚀 完整流程模式"
@@ -59,33 +59,48 @@ jobs:
       
       - name: Verify files in StockInfo directory
         run: |
-          echo "📦 檢查 StockInfo 資料夾的檔案..."
+          echo "📦 检查 StockInfo 资料夹的档案..."
           
-          # 檢查 StockInfo 資料夾
+          # 检查 StockInfo 资料夹
           if [ -d "StockInfo" ]; then
-            echo "📋 StockInfo 資料夾內容:"
+            echo "📋 StockInfo 资料夹内容:"
             ls -lh StockInfo/
           else
-            echo "❌ StockInfo 資料夾不存在！"
+            echo "❌ StockInfo 资料夹不存在!"
+          fi
+          
+          # 检查数据库文件
+          echo ""
+          echo "📦 检查数据库文件..."
+          if [ -f "StockTSEHistory/stock_tse.db" ]; then
+            echo "✅ stock_tse.db 存在 ($(ls -lh StockTSEHistory/stock_tse.db | awk '{print $5}'))"
+          else
+            echo "⚠️  stock_tse.db 不存在"
+          fi
+          
+          if [ -f "StockOTCHistory/stock_otc.db" ]; then
+            echo "✅ stock_otc.db 存在 ($(ls -lh StockOTCHistory/stock_otc.db | awk '{print $5}'))"
+          else
+            echo "⚠️  stock_otc.db 不存在"
           fi
       
       - name: Package analysis results
         run: |
-          # 創建日期標記
+          # 创建日期标记
           DATE=$(TZ=Asia/Taipei date +'%Y%m%d')
           DATETIME=$(TZ=Asia/Taipei date +'%Y-%m-%d %H:%M')
           
-          # 打包所有分析結果
+          # 打包所有分析结果
           mkdir -p release_package
           
-          # 複製 Excel 報表
+          # 复制 Excel 报表
           cp -f *.xlsx release_package/ 2>/dev/null || true
           
-          # 複製 HTML 和 PNG 圖表
+          # 复制 HTML 和 PNG 图表
           cp -f StockTSEHTML/*.html release_package/ 2>/dev/null || true
           cp -f StockOTCHTML/*.html release_package/ 2>/dev/null || true
           
-          # 創建壓縮檔
+          # 创建压缩档
           cd release_package
           zip -r ../stock-analysis-${DATE}.zip . -x "*.git*"
           cd ..
@@ -93,8 +108,8 @@ jobs:
           echo "DATE=${DATE}" >> $GITHUB_ENV
           echo "DATETIME=${DATETIME}" >> $GITHUB_ENV
           
-          # 顯示打包內容
-          echo "打包內容:"
+          # 显示打包内容
+          echo "打包内容:"
           unzip -l stock-analysis-${DATE}.zip | head -20
       
       - name: Create GitHub Release
@@ -102,27 +117,27 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: analysis-${{ env.DATE }}
-          name: 股票分析報告 ${{ env.DATETIME }}
+          name: 股票分析报告 ${{ env.DATETIME }}
           body: |
-            ## 📊 台股分析報告
+            ## 📊 台股分析报告
             
-            **分析時間:** ${{ env.DATETIME }}
+            **分析时间:** ${{ env.DATETIME }}
             
-            ### 📦 下載內容
-            - ✅ 上市分析報表 (tse_analysis_result.xlsx)
-            - ✅ 上櫃分析報表 (otc_analysis_result.xlsx)
-            - ✅ 所有 HTML 互動圖表
-            - ✅ 所有 PNG 靜態圖表
+            ### 📦 下载内容
+            - ✅ 上市分析报表 (tse_analysis_result.xlsx)
+            - ✅ 上柜分析报表 (otc_analysis_result.xlsx)
+            - ✅ 所有 HTML 互动图表
+            - ✅ 所有 PNG 静态图表
             
-            ### 📈 分析指標
-            - 成交量異常分析
-            - 法人買賣超統計
-            - 漲跌幅排行
-            - 技術指標分析
+            ### 📈 分析指标
+            - 成交量异常分析
+            - 法人买卖超统计
+            - 涨跌幅排行
+            - 技术指标分析
             
             ---
             
-            ⚠️ 此 release 會在 30 天後自動刪除
+            ⚠️ 此 release 会在 30 天后自动删除
           files: |
             tse_analysis_result.xlsx
             otc_analysis_result.xlsx
@@ -138,39 +153,39 @@ jobs:
           TAG="analysis-${{ env.DATE }}"
           RELEASE_URL="https://github.com/${REPO}/releases/tag/${TAG}"
           echo "RELEASE_URL=${RELEASE_URL}" >> $GITHUB_ENV
-          echo "📎 Release URL: ${RELEASE_URL}"
+          echo "🔎 Release URL: ${RELEASE_URL}"
       
       - name: Remove source code archives from release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: analysis-${{ env.DATE }}
         run: |
-          # 等待 release 完全創建
+          # 等待 release 完全创建
           sleep 5
           
-          # 使用 GitHub API 刪除 source code 壓縮檔
+          # 使用 GitHub API 删除 source code 压缩档
           REPO="${{ github.repository }}"
           
-          # 獲取 release ID
+          # 获取 release ID
           RELEASE_ID=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
             "https://api.github.com/repos/${REPO}/releases/tags/${TAG}" | \
             jq -r '.id')
           
           if [ "$RELEASE_ID" != "null" ] && [ -n "$RELEASE_ID" ]; then
-            # 獲取所有 assets
+            # 获取所有 assets
             ASSETS=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
               "https://api.github.com/repos/${REPO}/releases/${RELEASE_ID}/assets")
             
-            # 刪除 source code 壓縮檔
-            echo "$ASSETS" | jq -r '.[] | select(.name | test("^(Source code|源代碼).*\\.(zip|tar\\.gz)$")) | .id' | while read asset_id; do
+            # 删除 source code 压缩档
+            echo "$ASSETS" | jq -r '.[] | select(.name | test("^(Source code|源代码).*\\.(zip|tar\\.gz)$")) | .id' | while read asset_id; do
               if [ -n "$asset_id" ]; then
-                echo "🗑️  刪除 source code asset: $asset_id"
+                echo "🗑️  删除 source code asset: $asset_id"
                 curl -X DELETE -H "Authorization: token $GITHUB_TOKEN" \
                   "https://api.github.com/repos/${REPO}/releases/assets/${asset_id}"
               fi
             done
             
-            echo "✅ 已移除 source code 壓縮檔"
+            echo "✅ 已移除 source code 压缩档"
           else
             echo "⚠️  找不到 release ID"
           fi
@@ -182,10 +197,10 @@ jobs:
           GMAIL_PASSWORD: ${{ secrets.GMAIL_PASSWORD }}
           RECIPIENT_EMAIL: ${{ secrets.RECIPIENT_EMAIL }}
         run: |
-          # 安裝 Python 郵件套件
+          # 安装 Python 邮件套件
           pip install secure-smtplib
           
-          # 創建發送郵件的 Python 腳本
+          # 创建发送邮件的 Python 脚本
           cat > send_email.py << 'EOF'
           import smtplib
           import os
@@ -202,7 +217,7 @@ jobs:
               date_str = os.environ.get('DATE')
               datetime_str = os.environ.get('DATETIME')
               
-              # 多個收件人
+              # 多个收件人
               recipients = [
                   recipient_email_primary,
                   'i07250717@gmail.com',
@@ -213,13 +228,13 @@ jobs:
               ]
               recipients_str = ', '.join(recipients)
               
-              # 創建郵件
+              # 创建邮件
               msg = MIMEMultipart()
               msg['From'] = sender_email
               msg['To'] = recipients_str
-              msg['Subject'] = f'📊 台股每日分析報告 - {datetime_str}'
+              msg['Subject'] = f'📊 台股每日分析报告 - {datetime_str}'
               
-              # 郵件內容 (HTML格式)
+              # 邮件内容 (HTML格式)
               body = f"""
           <html>
             <head>
@@ -266,36 +281,36 @@ jobs:
               </style>
             </head>
             <body>
-              <h2 style="color: #667eea;">📊 台股每日分析報告</h2>
+              <h2 style="color: #667eea;">📊 台股每日分析报告</h2>
               
-              <p><strong>分析時間:</strong> {datetime_str}</p>
+              <p><strong>分析时间:</strong> {datetime_str}</p>
               <div class="info-box">
-                <h3 style="color: #667eea; margin-top: 0;">📎 郵件附件</h3>
+                <h3 style="color: #667eea; margin-top: 0;">🔎 邮件附件</h3>
                 <ul style="margin: 10px 0;">
-                  <li style="margin: 8px 0;">✅ <strong>tse_analysis_result.xlsx</strong> - 上市股票分析報表（完整資料）</li>
-                  <li style="margin: 8px 0;">✅ <strong>otc_analysis_result.xlsx</strong> - 上櫃股票分析報表（完整資料）</li>
-                  <li style="margin: 8px 0;">✅ <strong>ALL_TSE.html</strong> - 上市完整分析報告（互動式）</li>
-                  <li style="margin: 8px 0;">✅ <strong>ALL_OTC.html</strong> - 上櫃完整分析報告（互動式）</li>
+                  <li style="margin: 8px 0;">✅ <strong>tse_analysis_result.xlsx</strong> - 上市股票分析报表(完整资料)</li>
+                  <li style="margin: 8px 0;">✅ <strong>otc_analysis_result.xlsx</strong> - 上柜股票分析报表(完整资料)</li>
+                  <li style="margin: 8px 0;">✅ <strong>ALL_TSE.html</strong> - 上市完整分析报告(互动式)</li>
+                  <li style="margin: 8px 0;">✅ <strong>ALL_OTC.html</strong> - 上柜完整分析报告(互动式)</li>
                 </ul>
                 <p style="color: #666; font-size: 14px; margin-top: 15px;">
-                  💡 Excel 使用 Excel 開啟，HTML 使用瀏覽器開啟查看互動圖表
+                  💡 Excel 使用 Excel 开启,HTML 使用浏览器开启查看互动图表
                 </p>
               </div>
               
               <div class="info-box">
-                <h3 style="color: #667eea; margin-top: 0;">📈 分析內容</h3>
+                <h3 style="color: #667eea; margin-top: 0;">📈 分析内容</h3>
                 <ul style="margin: 10px 0;">
-                  <li>✅ 成交量異常分析（標準差檢測）</li>
-                  <li>✅ 三大法人買賣超統計</li>
-                  <li>✅ 漲跌幅排行榜</li>
-                  <li>✅ 技術指標分析圖表</li>
-                  <li>✅ 彙整分析與值得觀察股票</li>
+                  <li>✅ 成交量异常分析(标准差检测)</li>
+                  <li>✅ 三大法人买卖超统计</li>
+                  <li>✅ 涨跌幅排行榜</li>
+                  <li>✅ 技术指标分析图表</li>
+                  <li>✅ 汇整分析与值得观察股票</li>
                 </ul>
               </div>
               
               <p style="margin-top: 30px; color: #666; font-size: 12px; text-align: center; padding-top: 20px; border-top: 1px solid #eee;">
-                🤖 此報告由 GitHub Actions 自動產生<br>
-                📅 生成時間: {datetime_str}
+                🤖 此报告由 GitHub Actions 自动产生<br>
+                📅 生成时间: {datetime_str}
               </p>
             </body>
           </html>
@@ -303,7 +318,7 @@ jobs:
               
               msg.attach(MIMEText(body, 'html', 'utf-8'))
               
-              # 附加檔案（包含 complete.html）
+              # 附加档案(包含 complete.html)
               files_to_attach = [
                   'StockInfo/tse_analysis_result.xlsx',
                   'StockInfo/otc_analysis_result.xlsx',
@@ -322,27 +337,27 @@ jobs:
                               f'attachment; filename= {os.path.basename(filename)}'
                           )
                           msg.attach(part)
-                          print(f'✅ 附加檔案: {filename}')
+                          print(f'✅ 附加档案: {filename}')
                   else:
-                      print(f'⚠️  檔案不存在: {filename}')
+                      print(f'⚠️  档案不存在: {filename}')
               
-              # 發送郵件
+              # 发送邮件
               try:
                   server = smtplib.SMTP('smtp.gmail.com', 587)
                   server.starttls()
                   server.login(sender_email, sender_password)
                   server.send_message(msg)
                   server.quit()
-                  print(f'✅ 郵件已成功發送到: {recipients_str}')
+                  print(f'✅ 邮件已成功发送到: {recipients_str}')
               except Exception as e:
-                  print(f'❌ 郵件發送失敗: {str(e)}')
+                  print(f'❌ 邮件发送失败: {str(e)}')
                   raise
           
           if __name__ == '__main__':
               send_email()
           EOF
           
-          # 執行發送郵件
+          # 执行发送邮件
           python send_email.py
       
       - name: Commit stock data to repo
@@ -350,28 +365,32 @@ jobs:
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           
-          echo "📋 準備提交的檔案列表:"
+          echo "📋 准备提交的档案列表:"
           echo ""
           
-          
-          # 檢查檔案是否存在
-          echo "🔍 檢查 StockInfo 資料夾的檔案:"
-          ls -lh StockInfo/ || echo "⚠️  StockInfo 資料夾不存在"
+          # 检查档案是否存在
+          echo "🔍 检查 StockInfo 资料夹的档案:"
+          ls -lh StockInfo/ || echo "⚠️  StockInfo 资料夹不存在"
           echo ""
           
-          # 強制加入所有檔案（使用 --force 忽略 .gitignore）
-          echo "📦 加入檔案到 Git staging area..."
+          # 强制加入所有档案(使用 --force 忽略 .gitignore)
+          echo "📦 加入档案到 Git staging area..."
           
-          # 加入 CSV 原始資料
+          # 加入 CSV 原始资料
           git add -f StockTSEDaily/*.csv 2>/dev/null || true
           git add -f StockTSEShares/*.csv 2>/dev/null || true
           git add -f StockOTCDaily/*.csv 2>/dev/null || true
           git add -f StockOTCShares/*.csv 2>/dev/null || true
           
-          # 加入 StockInfo 資料夾的所有檔案
-          echo "📦 加入 StockInfo 資料夾的檔案..."
+          # 🆕 加入数据库文件
+          echo "📦 加入数据库文件..."
+          git add -f StockTSEHistory/stock_tse.db 2>/dev/null || true
+          git add -f StockOTCHistory/stock_otc.db 2>/dev/null || true
           
-          # 不帶日期的檔案
+          # 加入 StockInfo 资料夹的所有档案
+          echo "📦 加入 StockInfo 资料夹的档案..."
+          
+          # 不带日期的档案
           git add -f StockInfo/tse_analysis_result.xlsx 2>/dev/null || true
           git add -f StockInfo/otc_analysis_result.xlsx 2>/dev/null || true
           git add -f StockInfo/tse_analysis_result_complete.html 2>/dev/null || true
@@ -381,38 +400,39 @@ jobs:
           git add -f StockInfo/TSE_buy_ranking.txt 2>/dev/null || true
           git add -f StockInfo/OTC_buy_ranking.txt 2>/dev/null || true
           
-          
-          # 保險措施：確保所有 HTML 都被加入
+          # 保险措施:确保所有 HTML 都被加入
           git add -f StockInfo/*.html 2>/dev/null || true
           
           echo ""
-          echo "📦 Git staging area 中的檔案:"
+          echo "📦 Git staging area 中的档案:"
           git diff --staged --name-status
           echo ""
           
-          
-          # 檢查是否有變更
+          # 检查是否有变更
           if git diff --staged --quiet; then
-            echo "❌ 沒有檔案變更，跳過提交"
+            echo "❌ 没有档案变更,跳过提交"
             echo ""
-            echo "🔍 除錯資訊："
-            echo "StockInfo 目錄內容:"
+            echo "🔍 除错资讯:"
+            echo "StockInfo 目录内容:"
             ls -la StockInfo/ 2>/dev/null || echo "StockInfo 不存在"
             echo ""
-            echo "Git 狀態:"
+            echo "数据库文件:"
+            ls -lh StockTSEHistory/stock_tse.db StockOTCHistory/stock_otc.db 2>/dev/null || echo "数据库文件不存在"
+            echo ""
+            echo "Git 状态:"
             git status
           else
-            echo "✅ 發現檔案變更，準備提交..."
+            echo "✅ 发现档案变更,准备提交..."
             echo ""
             
-            # 提交並推送
-            git commit -m "📊 更新股票資料 $(TZ=Asia/Taipei date +'%Y-%m-%d %H:%M')"
+            # 提交并推送
+            git commit -m "📊 更新股票资料与数据库 $(TZ=Asia/Taipei date +'%Y-%m-%d %H:%M')"
             git push
             
             echo ""
-            echo "✅ 成功推送資料到 repository"
+            echo "✅ 成功推送资料到 repository"
             echo ""
-            echo "📂 已更新的檔案:"
+            echo "📂 已更新的档案:"
             git diff HEAD~1 --name-only | while read file; do
               echo "   ✓ $file"
             done
