@@ -1772,7 +1772,7 @@ def collect_stock_history(latest_buy_stocks_n, latest_sell_stocks_n, folder_path
             print(f"✓ 計算完成，共 {len(stock_order)} 檔股票")
             print(f"\n前10名買超股票:")
             for i, (code, row) in enumerate(stock_order.head(10).iterrows(), 1):
-                print(f"  {i:2d}. {code:10s} 總買賣超: {int(row['總買賣超']):>8,} 張")
+                print(f"  {i:2d}. {str(code):<10} 總買賣超: {int(row['總買賣超']):>8,} 張")
             
             # 按買賣超順序重新排列數據
             print(f"\n按買賣超順序重新排列數據...")
