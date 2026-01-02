@@ -223,6 +223,51 @@ jobs:
           mkdir -p stocktrend/stock_data
           echo "stock_data folder ready"
       
+      - name: Remove old database files in StockTrend
+        run: |
+          echo "Removing old database files from StockTrend/stock_data..."
+          rm -f stocktrend/stock_data/stock_tse.db
+          rm -f stocktrend/stock_data/stock_otc.db
+          echo "✅ Old database files removed"
+      
+      - name: Copy database files to StockTrend
+        run: |
+          echo "Copying database files to StockTrend/stock_data..."
+          if [ -f "StockTSEHistory/stock_tse.db" ]; then
+            cp StockTSEHistory/stock_tse.db stocktrend/stock_data/
+            echo "✅ Copied stock_tse.db ($(du -h StockTSEHistory/stock_tse.db | cut -f1))"
+          else
+            echo "⚠️ stock_tse.db not found"
+          fi
+          if [ -f "StockOTCHistory/stock_otc.db" ]; then
+            cp StockOTCHistory/stock_otc.db stocktrend/stock_data/
+            echo "✅ Copied stock_otc.db ($(du -h StockOTCHistory/stock_otc.db | cut -f1))"
+          else
+            echo "⚠️ stock_otc.db not found"
+          fi
+          
+          echo ""
+          echo "Files in stocktrend/stock_data:"
+          ls -la stocktrend/stock_data/
+      
+      - name: Commit and push to StockTrend
+        run: |
+          cd stocktrend
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add stock_data/*.db
+          
+          # 生成台北時間的時間戳
+          TAIPEI_TIME=$(TZ='Asia/Taipei' date +'%Y-%m-%d %H:%M:%S')
+          
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "📊 Update stock databases - ${TAIPEI_TIME}"
+            git push
+            echo "✅ Successfully pushed to StockTrend"
+          fi
+      
       - name: Summary
         if: always()
         run: |
@@ -256,7 +301,10 @@ jobs:
           echo "  Source: GetDailyStock/StockTSEHistory"
           echo "  Source: GetDailyStock/StockOTCHistory"
           echo "  Target: StockTrend/stock_data"
-          echo "  Files: All *.csv files ($(ls -1 stocktrend/stock_data/*.csv 2>/dev/null | wc -l) files)"
+          echo "  Database Files:"
+          echo "    - stock_tse.db"
+          echo "    - stock_otc.db"
+          echo "  CSV Files: $(ls -1 stocktrend/stock_data/*.csv 2>/dev/null | wc -l) files"
           echo ""
           echo "Time: $(TZ='Asia/Taipei' date +'%Y-%m-%d %H:%M:%S') (Taipei)"
           echo "================================"
