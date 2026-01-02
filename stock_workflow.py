@@ -1737,14 +1737,63 @@ def collect_stock_history(latest_buy_stocks_n, latest_sell_stocks_n, folder_path
             # 合併所有 CSV
             combined_df = pd.concat(df_list, ignore_index=True)
             
+            print(f"✓ 已合併 {len(df_list)} 個 CSV")
+            print(f"✓ 總共 {len(combined_df)} 筆記錄")
+            
+            # ========== 按買賣超排序 ==========
+            print(f"\n{'='*80}")
+            print("計算股票排序（按最近5天買賣超總和）...")
+            print(f"{'='*80}")
+            
+            # 找出最近5個交易日
+            latest_dates = combined_df['日期'].drop_duplicates().sort_values(ascending=False).head(5)
+            print(f"最近5個交易日: {', '.join(latest_dates.tolist())}")
+            
+            # 篩選最近5天的數據
+            recent_df = combined_df[combined_df['日期'].isin(latest_dates)].copy()
+            
+            # 計算每個股票的買賣超總和（外資+投信+自營商）
+            stock_order = recent_df.groupby('股票代碼').agg({
+                '外陸資買賣超張數': 'sum',
+                '投信買賣超張數': 'sum',
+                '自營商買賣超張數': 'sum'
+            })
+            
+            # 計算總買賣超
+            stock_order['總買賣超'] = (
+                stock_order['外陸資買賣超張數'].fillna(0) + 
+                stock_order['投信買賣超張數'].fillna(0) + 
+                stock_order['自營商買賣超張數'].fillna(0)
+            )
+            
+            # 按總買賣超降序排序
+            stock_order = stock_order.sort_values('總買賣超', ascending=False)
+            
+            print(f"✓ 計算完成，共 {len(stock_order)} 檔股票")
+            print(f"\n前10名買超股票:")
+            for i, (code, row) in enumerate(stock_order.head(10).iterrows(), 1):
+                print(f"  {i:2d}. {code:10s} 總買賣超: {int(row['總買賣超']):>8,} 張")
+            
+            # 按買賣超順序重新排列數據
+            print(f"\n按買賣超順序重新排列數據...")
+            ordered_dfs = []
+            for stock_code in stock_order.index:
+                stock_df = combined_df[combined_df['股票代碼'] == stock_code].copy()
+                if len(stock_df) > 0:
+                    ordered_dfs.append(stock_df)
+            
+            # 合併排序後的數據
+            combined_df = pd.concat(ordered_dfs, ignore_index=True)
+            print(f"✓ 數據已按買賣超順序排列")
+            print(f"{'='*80}\n")
+            
             # 存成資料庫
             conn = sqlite3.connect(db_path)
             combined_df.to_sql('stock_data', conn, if_exists='replace', index=False)
             conn.close()
             
-            print(f"✓ 已合併 {len(df_list)} 個 CSV")
-            print(f"✓ 總共 {len(combined_df)} 筆記錄")
             print(f"✓ 資料庫: {db_path}")
+            print(f"✓ 股票順序: 按最近5天買賣超總和（由高到低）")
         else:
             print("⚠️  沒有 CSV 檔案")
         
