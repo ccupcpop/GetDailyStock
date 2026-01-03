@@ -1673,6 +1673,10 @@ def collect_stock_history(latest_buy_stocks_n, latest_sell_stocks_n, folder_path
         if len(date_dict) > 0:
             history_list = list(date_dict.values())
             history_df = pd.DataFrame(history_list)
+            
+            # 確保股票代碼為字串格式（保留前導零）
+            if '股票代碼' in history_df.columns:
+                history_df['股票代碼'] = history_df['股票代碼'].astype(str)
 
             column_order = [
                 '日期', '股票代碼', '股票名稱',
@@ -1743,7 +1747,7 @@ def collect_stock_history(latest_buy_stocks_n, latest_sell_stocks_n, folder_path
         df_list = []
         for csv_file in all_csv_files:
             try:
-                df = pd.read_csv(csv_file, encoding='utf-8-sig')
+                df = pd.read_csv(csv_file, encoding='utf-8-sig', dtype={'股票代碼': str})
                 df_list.append(df)
             except Exception as e:
                 print(f"⚠️  讀取 {os.path.basename(csv_file)} 失敗: {e}")
@@ -1803,6 +1807,10 @@ def collect_stock_history(latest_buy_stocks_n, latest_sell_stocks_n, folder_path
             
             combined_df_all = pd.concat(ordered_dfs_all, ignore_index=True)
             
+            # 確保股票代碼為字串格式（保留前導零，如 00881）
+            if '股票代碼' in combined_df_all.columns:
+                combined_df_all['股票代碼'] = combined_df_all['股票代碼'].astype(str)
+            
             # 存成完整版資料庫
             conn_all = sqlite3.connect(db_path_all)
             combined_df_all.to_sql('stock_data', conn_all, if_exists='replace', index=False)
@@ -1838,6 +1846,10 @@ def collect_stock_history(latest_buy_stocks_n, latest_sell_stocks_n, folder_path
                         ordered_dfs_filtered.append(stock_df)
             
             combined_df_filtered = pd.concat(ordered_dfs_filtered, ignore_index=True)
+            
+            # 確保股票代碼為字串格式（保留前導零，如 00881）
+            if '股票代碼' in combined_df_filtered.columns:
+                combined_df_filtered['股票代碼'] = combined_df_filtered['股票代碼'].astype(str)
             
             # 存成篩選版資料庫
             conn_filtered = sqlite3.connect(db_path_filtered)
@@ -3129,6 +3141,11 @@ def merge_tse_otc_databases(base_dir):
         if df_list:
             # 合併資料
             combined_df = pd.concat(df_list, ignore_index=True)
+            
+            # 確保股票代碼為字串格式（保留前導零）
+            if '股票代碼' in combined_df.columns:
+                combined_df['股票代碼'] = combined_df['股票代碼'].astype(str)
+            
             print(f"\n✓ 合併完成: {len(combined_df)} 筆記錄")
             
             # ========== 按買賣超重新排序 ==========
