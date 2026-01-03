@@ -226,24 +226,24 @@ jobs:
       - name: Remove old database files in StockTrend
         run: |
           echo "Removing old database files from StockTrend/stock_data..."
-          rm -f stocktrend/stock_data/stock_tse.db
-          rm -f stocktrend/stock_data/stock_otc.db
+          rm -f stocktrend/stock_data/stock_tse_all.db
+          rm -f stocktrend/stock_data/stock_otc_all.db
           echo "✅ Old database files removed"
       
       - name: Copy database files to StockTrend
         run: |
           echo "Copying database files to StockTrend/stock_data..."
-          if [ -f "StockTSEHistory/stock_tse.db" ]; then
-            cp StockTSEHistory/stock_tse.db stocktrend/stock_data/
-            echo "✅ Copied stock_tse.db ($(du -h StockTSEHistory/stock_tse.db | cut -f1))"
+          if [ -f "StockInfo/stock_tse_all.db" ]; then
+            cp StockInfo/stock_tse_all.db stocktrend/stock_data/
+            echo "✅ Copied stock_tse_all.db ($(du -h StockInfo/stock_tse_all.db | cut -f1))"
           else
-            echo "⚠️ stock_tse.db not found"
+            echo "⚠️ stock_tse_all.db not found"
           fi
-          if [ -f "StockOTCHistory/stock_otc.db" ]; then
-            cp StockOTCHistory/stock_otc.db stocktrend/stock_data/
-            echo "✅ Copied stock_otc.db ($(du -h StockOTCHistory/stock_otc.db | cut -f1))"
+          if [ -f "StockInfo/stock_otc_all.db" ]; then
+            cp StockInfo/stock_otc_all.db stocktrend/stock_data/
+            echo "✅ Copied stock_otc_all.db ($(du -h StockInfo/stock_otc_all.db | cut -f1))"
           else
-            echo "⚠️ stock_otc.db not found"
+            echo "⚠️ stock_otc_all.db not found"
           fi
           
           echo ""
