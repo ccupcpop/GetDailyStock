@@ -1757,15 +1757,15 @@ def collect_stock_history(latest_buy_stocks_n, latest_sell_stocks_n, folder_path
             
             # ========== 按買賣超排序 ==========
             print(f"\n{'='*80}")
-            print("計算股票排序（按最近5天買賣超總和）...")
+            print("計算股票排序（按最近一天買賣超）...")
             print(f"{'='*80}")
             
-            # 找出最近5個交易日
-            latest_dates = combined_df['日期'].drop_duplicates().sort_values(ascending=False).head(5)
-            print(f"最近5個交易日: {', '.join(latest_dates.tolist())}")
+            # 找出最近一個交易日
+            latest_date = combined_df['日期'].drop_duplicates().sort_values(ascending=False).iloc[0]
+            print(f"最近交易日: {latest_date}")
             
-            # 篩選最近5天的數據
-            recent_df = combined_df[combined_df['日期'].isin(latest_dates)].copy()
+            # 篩選最近一天的數據
+            recent_df = combined_df[combined_df['日期'] == latest_date].copy()
             
             # 計算每個股票的買賣超總和（外資+投信+自營商）
             stock_order = recent_df.groupby('股票代碼').agg({
@@ -1785,7 +1785,7 @@ def collect_stock_history(latest_buy_stocks_n, latest_sell_stocks_n, folder_path
             stock_order = stock_order.sort_values('總買賣超', ascending=False)
             
             print(f"✓ 計算完成，共 {len(stock_order)} 檔股票")
-            print(f"\n前10名買超股票:")
+            print(f"\n前10名買超股票 ({latest_date}):")
             for i, (code, row) in enumerate(stock_order.head(10).iterrows(), 1):
                 print(f"  {i:2d}. {str(code):<10} 總買賣超: {int(row['總買賣超']):>8,} 張")
             
@@ -1810,7 +1810,7 @@ def collect_stock_history(latest_buy_stocks_n, latest_sell_stocks_n, folder_path
             
             print(f"✓ 完整版資料庫: {db_path_all}")
             print(f"✓ 包含 {len(stock_order)} 檔股票")
-            print(f"✓ 股票順序: 按最近5天買賣超總和（由高到低）")
+            print(f"✓ 股票順序: 按最近一天買賣超（由高到低）")
             
             # ========== 2. 生成篩選版資料庫（買超前100+賣超前50）到 History ==========
             print(f"\n{'='*80}")
@@ -1846,7 +1846,7 @@ def collect_stock_history(latest_buy_stocks_n, latest_sell_stocks_n, folder_path
             
             print(f"✓ 篩選版資料庫: {db_path_filtered}")
             print(f"✓ 包含 {len(selected_stocks)} 檔精選股票")
-            print(f"✓ 股票順序: 按最近5天買賣超總和（由高到低）")
+            print(f"✓ 股票順序: 按最近一天買賣超（由高到低）")
             print(f"{'='*80}")
         else:
             print("⚠️  沒有 CSV 檔案")
