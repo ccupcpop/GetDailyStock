@@ -37,7 +37,12 @@ import argparse
 # 控制是否只分析熱門股票 (買超前150 + 賣超前50)
 # True:  只分析買超前150 + 賣超前50
 # False: 分析所有 CSV 內的股票
-TOP_STOCKS_ONLY = True
+TOP_STOCKS_ONLY = False
+
+# 控制是否生成個股HTML和合併HTML
+# True:  生成個股HTML和ALL_TSE.html/ALL_OTC.html
+# False: 不生成HTML（使用資料庫即可）
+IS_HTML = False
 # ============================================================================
 # 共用工具函數
 # ============================================================================
@@ -1540,18 +1545,20 @@ def collect_stock_history(latest_buy_stocks_n, latest_sell_stocks_n, folder_path
     for stock_code in all_target_stocks:
         stock_history_data[stock_code] = {}
 
-    # 從 StockTSEShares 讀取
-    print("\n從 StockTSEShares 收集數據(2025-01-01 之後)...")
+    # 計算90天前的日期
+    cutoff_date = (datetime.now() - timedelta(days=90)).strftime('%Y-%m-%d')
+    print(f"\n從 StockTSEShares 收集數據({cutoff_date} 之後，最近90天)...")
+    
     all_shares_files = glob.glob(os.path.join(folder_path, '*.csv'))
 
     shares_files_2025 = []
     for file_path in all_shares_files:
         file_date = os.path.basename(file_path).replace('.csv', '')
-        if file_date >= '2025-01-01':
+        if file_date >= cutoff_date:
             shares_files_2025.append(file_path)
 
     shares_files_2025 = sorted(shares_files_2025, key=lambda x: os.path.basename(x).replace('.csv', ''), reverse=True)
-    print(f"找到 {len(shares_files_2025)} 個 StockTSEShares 檔案(2025-01-01 之後)")
+    print(f"找到 {len(shares_files_2025)} 個 StockTSEShares 檔案({cutoff_date} 之後，最近90天)")
 
     shares_processed = 0
     for file_path in shares_files_2025:
@@ -1591,18 +1598,18 @@ def collect_stock_history(latest_buy_stocks_n, latest_sell_stocks_n, folder_path
 
     # 從 StockTSEDaily 讀取
     if os.path.exists(stock_daily_folder):
-        print("\n從 StockTSEDaily 收集數據(2025-01-01 之後)...")
+        print(f"\n從 StockTSEDaily 收集數據({cutoff_date} 之後，最近90天)...")
 
         all_daily_files = glob.glob(os.path.join(stock_daily_folder, '*.csv'))
 
         daily_files_2025 = []
         for file_path in all_daily_files:
             file_date = os.path.basename(file_path).replace('.csv', '')
-            if file_date >= '2025-01-01':
+            if file_date >= cutoff_date:
                 daily_files_2025.append(file_path)
 
         daily_files_2025 = sorted(daily_files_2025, key=lambda x: os.path.basename(x).replace('.csv', ''), reverse=True)
-        print(f"找到 {len(daily_files_2025)} 個 StockTSEDaily 檔案(2025-01-01 之後)")
+        print(f"找到 {len(daily_files_2025)} 個 StockTSEDaily 檔案({cutoff_date} 之後，最近90天)")
 
         stock_data_count = {code: 0 for code in all_target_stocks}
         daily_processed = 0
@@ -1694,17 +1701,20 @@ def collect_stock_history(latest_buy_stocks_n, latest_sell_stocks_n, folder_path
                 print(f"  已儲存: {stock_code}.csv ({len(history_list)} 筆記錄)")
 
     print(f"\n完成! 共儲存 {saved_count} 個股票的歷史數據到: {history_folder}")
-    print(f"每個檔案包含最近100天的合併數據(StockTSEDaily + StockTSEShares)")
+    print(f"每個檔案包含最近90天的合併數據(StockTSEDaily + StockTSEShares)")
     print(f"注意: 所有股數欄位已轉換為張數(除以1000取整數)")
     
     # ========== 將所有 CSV 合併存成資料庫 ==========
     import sqlite3
     
     # 根據 history_folder 名稱決定資料庫檔名
+    # 如果是 local_ 開頭（TOP_STOCK_ONLY=False），使用 _all 後綴
+    is_all_stocks = 'local_' in history_folder
+    
     if 'TSE' in history_folder:
-        db_name = 'stock_tse.db'
+        db_name = 'stock_tse_all.db' if is_all_stocks else 'stock_tse.db'
     elif 'OTC' in history_folder:
-        db_name = 'stock_otc.db'
+        db_name = 'stock_otc_all.db' if is_all_stocks else 'stock_otc.db'
     else:
         db_name = 'stock_history.db'
     
@@ -5235,11 +5245,13 @@ def main():
         print("  3. 執行分析程式 - TSE (上市)" if args.market in ['TSE', 'BOTH'] else "")
         print("  4. 執行分析程式 - OTC (上櫃)" if args.market in ['OTC', 'BOTH'] else "")
         # 概念股分析已停用，直接從 TSE/OTC HTML 生成概念股圖表
-    if not args.skip_charts:
+    if IS_HTML and not args.skip_charts:
         print("  6. 清理舊的圖表資料夾")
         print("  7. 執行圖表生成 - TSE (上市)" if args.market in ['TSE', 'BOTH'] else "")
         print("  8. 執行圖表生成 - OTC (上櫃)" if args.market in ['OTC', 'BOTH'] else "")
         print("  9. 執行圖表生成 - 概念股 (為每個概念股生成獨立HTML)")
+    elif not IS_HTML:
+        print("  ⊘ 跳過圖表生成步驟 (IS_HTML = False，使用資料庫)")
     print("="*80 + "\n")
     
     # 設定基礎目錄
@@ -5285,7 +5297,7 @@ def main():
             # run_step2_concept_analysis(base_dir)
     
     # ========== 步驟 5-7：圖表生成 ==========
-    if not args.skip_charts:
+    if IS_HTML and not args.skip_charts:
         # 刪除圖表資料夾
         print("\n" + "🔥"*40)
         print("步驟 5：清理圖表資料夾")
@@ -5305,6 +5317,10 @@ def main():
         
         # 概念股圖表生成 (不分上市上櫃)
         run_step3_concept_chart_generation(base_dir)
+    elif not IS_HTML:
+        print("\n" + "⊘"*40)
+        print("跳過圖表生成步驟 (IS_HTML = False)")
+        print("⊘"*40)
     
     
     # ========== 步驟 8：複製到 Repository ==========
@@ -5323,14 +5339,24 @@ def main():
     if not args.skip_analysis:
         if args.market in ['TSE', 'BOTH']:
             print("  ✓ TSE 分析報告 (Excel) 已生成")
+            if not TOP_STOCKS_ONLY:
+                print("  ✓ TSE 資料庫 (stock_tse_all.db) 已生成")
+            else:
+                print("  ✓ TSE 資料庫 (stock_tse.db) 已生成")
         if args.market in ['OTC', 'BOTH']:
             print("  ✓ OTC 分析報告 (Excel) 已生成")
-    if not args.skip_charts:
+            if not TOP_STOCKS_ONLY:
+                print("  ✓ OTC 資料庫 (stock_otc_all.db) 已生成")
+            else:
+                print("  ✓ OTC 資料庫 (stock_otc.db) 已生成")
+    if IS_HTML and not args.skip_charts:
         if args.market in ['TSE', 'BOTH']:
             print("  ✓ TSE 技術分析圖表 (HTML) 已生成")
         if args.market in ['OTC', 'BOTH']:
             print("  ✓ OTC 技術分析圖表 (HTML) 已生成")
         print("  ✓ 概念股技術分析圖表 (HTML) 已生成")
+    elif not IS_HTML:
+        print("  ⊘ 跳過圖表生成 (IS_HTML = False，使用資料庫)")
     print("\n" + "="*80)
 
 if __name__ == "__main__":
