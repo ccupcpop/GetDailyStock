@@ -386,6 +386,8 @@ jobs:
           echo "📦 加入数据库文件..."
           git add -f StockTSEHistory/stock_tse.db 2>/dev/null || true
           git add -f StockOTCHistory/stock_otc.db 2>/dev/null || true
+          git add -f StockInfo/stock_tse_all.db 2>/dev/null || true
+          git add -f StockInfo/stock_otc_all.db 2>/dev/null || true
           
           # 加入 StockInfo 资料夹的所有档案
           echo "📦 加入 StockInfo 资料夹的档案..."
@@ -417,7 +419,8 @@ jobs:
             ls -la StockInfo/ 2>/dev/null || echo "StockInfo 不存在"
             echo ""
             echo "数据库文件:"
-            ls -lh StockTSEHistory/stock_tse.db StockOTCHistory/stock_otc.db 2>/dev/null || echo "数据库文件不存在"
+            ls -lh StockTSEHistory/stock_tse.db StockOTCHistory/stock_otc.db 2>/dev/null || echo "History 数据库文件不存在"
+            ls -lh StockInfo/stock_tse_all.db StockInfo/stock_otc_all.db 2>/dev/null || echo "StockInfo 数据库文件不存在"
             echo ""
             echo "Git 状态:"
             git status
