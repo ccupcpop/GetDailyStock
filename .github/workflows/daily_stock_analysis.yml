@@ -93,12 +93,21 @@ jobs:
           # 打包所有分析结果
           mkdir -p release_package
           
-          # 复制 Excel 报表
-          cp -f *.xlsx release_package/ 2>/dev/null || true
+          # 复制 Excel 报表（从 StockInfo 目录）
+          cp -f StockInfo/*.xlsx release_package/ 2>/dev/null || true
           
-          # 复制 HTML 和 PNG 图表
-          cp -f StockTSEHTML/*.html release_package/ 2>/dev/null || true
-          cp -f StockOTCHTML/*.html release_package/ 2>/dev/null || true
+          # 复制 HTML 图表（从 StockInfo 目录）
+          cp -f StockInfo/*.html release_package/ 2>/dev/null || true
+          
+          # 检查是否有文件
+          if [ -z "$(ls -A release_package 2>/dev/null)" ]; then
+            echo "⚠️  警告: release_package 目录为空，没有文件可以打包"
+            echo "📂 StockInfo 目录内容:"
+            ls -lh StockInfo/ 2>/dev/null || echo "StockInfo 目录不存在"
+            # 创建一个空的 zip 文件以避免后续步骤失败
+            touch release_package/README.txt
+            echo "本次执行未生成分析文件" > release_package/README.txt
+          fi
           
           # 创建压缩档
           cd release_package
@@ -139,8 +148,8 @@ jobs:
             
             ⚠️ 此 release 会在 30 天后自动删除
           files: |
-            tse_analysis_result.xlsx
-            otc_analysis_result.xlsx
+            StockInfo/tse_analysis_result.xlsx
+            StockInfo/otc_analysis_result.xlsx
           draft: false
           prerelease: false
           generate_release_notes: false
