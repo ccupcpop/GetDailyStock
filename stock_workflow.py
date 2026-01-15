@@ -1535,9 +1535,9 @@ def collect_stock_history(latest_buy_stocks_n, latest_sell_stocks_n, folder_path
     for stock_code in all_target_stocks:
         stock_history_data[stock_code] = {}
 
-    # 計算120天前的日期
-    cutoff_date = (datetime.now() - timedelta(days=120)).strftime('%Y-%m-%d')
-    print(f"\n從 StockTSEShares 收集數據({cutoff_date} 之後，最近120天)...")
+    # 計算160天前的日期
+    cutoff_date = (datetime.now() - timedelta(days=160)).strftime('%Y-%m-%d')
+    print(f"\n從 StockTSEShares 收集數據({cutoff_date} 之後，最近160天)...")
     
     all_shares_files = glob.glob(os.path.join(folder_path, '*.csv'))
 
@@ -1548,7 +1548,7 @@ def collect_stock_history(latest_buy_stocks_n, latest_sell_stocks_n, folder_path
             shares_files_2025.append(file_path)
 
     shares_files_2025 = sorted(shares_files_2025, key=lambda x: os.path.basename(x).replace('.csv', ''), reverse=True)
-    print(f"找到 {len(shares_files_2025)} 個 StockTSEShares 檔案({cutoff_date} 之後，最近120天)")
+    print(f"找到 {len(shares_files_2025)} 個 StockTSEShares 檔案({cutoff_date} 之後，最近160天)")
 
     shares_processed = 0
     for file_path in shares_files_2025:
@@ -1589,7 +1589,7 @@ def collect_stock_history(latest_buy_stocks_n, latest_sell_stocks_n, folder_path
 
     # 從 StockTSEDaily 讀取
     if os.path.exists(stock_daily_folder):
-        print(f"\n從 StockTSEDaily 收集數據({cutoff_date} 之後，最近120天)...")
+        print(f"\n從 StockTSEDaily 收集數據({cutoff_date} 之後，最近160天)...")
 
         all_daily_files = glob.glob(os.path.join(stock_daily_folder, '*.csv'))
 
@@ -1600,7 +1600,7 @@ def collect_stock_history(latest_buy_stocks_n, latest_sell_stocks_n, folder_path
                 daily_files_2025.append(file_path)
 
         daily_files_2025 = sorted(daily_files_2025, key=lambda x: os.path.basename(x).replace('.csv', ''), reverse=True)
-        print(f"找到 {len(daily_files_2025)} 個 StockTSEDaily 檔案({cutoff_date} 之後，最近120天)")
+        print(f"找到 {len(daily_files_2025)} 個 StockTSEDaily 檔案({cutoff_date} 之後，最近160天)")
 
         stock_data_count = {code: 0 for code in all_target_stocks}
         daily_processed = 0
@@ -1697,7 +1697,7 @@ def collect_stock_history(latest_buy_stocks_n, latest_sell_stocks_n, folder_path
                 print(f"  已儲存: {stock_code}.csv ({len(history_list)} 筆記錄)")
 
     print(f"\n完成! 共儲存 {saved_count} 個股票的歷史數據到: {history_folder}")
-    print(f"每個檔案包含最近120天的合併數據(StockTSEDaily + StockTSEShares)")
+    print(f"每個檔案包含最近160天的合併數據(StockTSEDaily + StockTSEShares)")
     print(f"注意: 所有股數欄位已轉換為張數(除以1000取整數)")
     
     # ========== 將所有 CSV 合併存成資料庫 ==========
