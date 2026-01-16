@@ -34,11 +34,6 @@ import argparse
 # 全域設定
 # ============================================================================
 
-# 控制是否只分析熱門股票 (買超前150 + 賣超前50)
-# True:  只分析買超前150 + 賣超前50
-# False: 分析所有 CSV 內的股票
-TOP_STOCKS_ONLY = False
-
 # 控制是否生成個股HTML和合併HTML
 # True:  生成個股HTML和ALL_TSE.html/ALL_OTC.html
 # False: 不生成HTML（使用資料庫即可）
@@ -123,14 +118,9 @@ def create_required_directories(base_dir):
         'StockInfo',       # 分析報告
         'StockTSEHistory',
         'StockOTCHistory',
-        # ConceptHistory 已刪除，不再使用
         'StockTSEHTML',
         'StockOTCHTML',
         'ConceptHTML',     # 概念股圖表
-        'local_StockTSEHistory',  # 新增 local 資料夾
-        'local_StockOTCHistory',
-        'local_StockTSEHTML',
-        'local_StockOTCHTML'
     ]
     
     print(f"\n{'='*80}")
@@ -1523,7 +1513,7 @@ def analyze_new_entries_and_observables(latest_file, daily_buy_stocks, daily_sel
 # 【第二步-collect_stock_history】
 # 從第二步程式複製 collect_stock_history 函數
 def collect_stock_history(latest_buy_stocks_n, latest_sell_stocks_n, folder_path, stock_daily_folder,
-                          history_folder, allowed_stock_codes):
+                          history_folder, allowed_stock_codes, market_type):
     """收集買超前N檔和賣超前N檔股票的歷史數據"""
     print(f"\n{'='*80}")
     print(f"開始收集買超前{len(latest_buy_stocks_n)}檔 + 賣超前{len(latest_sell_stocks_n)}檔股票的歷史數據...")
@@ -1545,9 +1535,9 @@ def collect_stock_history(latest_buy_stocks_n, latest_sell_stocks_n, folder_path
     for stock_code in all_target_stocks:
         stock_history_data[stock_code] = {}
 
-    # 計算90天前的日期
-    cutoff_date = (datetime.now() - timedelta(days=90)).strftime('%Y-%m-%d')
-    print(f"\n從 StockTSEShares 收集數據({cutoff_date} 之後，最近90天)...")
+    # 計算160天前的日期
+    cutoff_date = (datetime.now() - timedelta(days=160)).strftime('%Y-%m-%d')
+    print(f"\n從 StockTSEShares 收集數據({cutoff_date} 之後，最近160天)...")
     
     all_shares_files = glob.glob(os.path.join(folder_path, '*.csv'))
 
@@ -1558,7 +1548,7 @@ def collect_stock_history(latest_buy_stocks_n, latest_sell_stocks_n, folder_path
             shares_files_2025.append(file_path)
 
     shares_files_2025 = sorted(shares_files_2025, key=lambda x: os.path.basename(x).replace('.csv', ''), reverse=True)
-    print(f"找到 {len(shares_files_2025)} 個 StockTSEShares 檔案({cutoff_date} 之後，最近90天)")
+    print(f"找到 {len(shares_files_2025)} 個 StockTSEShares 檔案({cutoff_date} 之後，最近160天)")
 
     shares_processed = 0
     for file_path in shares_files_2025:
@@ -1579,10 +1569,11 @@ def collect_stock_history(latest_buy_stocks_n, latest_sell_stocks_n, folder_path
                     row = stock_data.iloc[0]
 
                     if file_date not in stock_history_data[stock_code]:
+                        stock_name = row.get('證券名稱', '').strip()
                         stock_history_data[stock_code][file_date] = {
                             '日期': file_date,
                             '股票代碼': stock_code,
-                            '股票名稱': row.get('證券名稱', '').strip()
+                            '股票名稱': stock_name
                         }
 
                     stock_history_data[stock_code][file_date]['外陸資買賣超張數'] = shares_to_lots(row.get('外陸資買賣超股數(不含外資自營商)', 0))
@@ -1598,7 +1589,7 @@ def collect_stock_history(latest_buy_stocks_n, latest_sell_stocks_n, folder_path
 
     # 從 StockTSEDaily 讀取
     if os.path.exists(stock_daily_folder):
-        print(f"\n從 StockTSEDaily 收集數據({cutoff_date} 之後，最近90天)...")
+        print(f"\n從 StockTSEDaily 收集數據({cutoff_date} 之後，最近160天)...")
 
         all_daily_files = glob.glob(os.path.join(stock_daily_folder, '*.csv'))
 
@@ -1609,7 +1600,7 @@ def collect_stock_history(latest_buy_stocks_n, latest_sell_stocks_n, folder_path
                 daily_files_2025.append(file_path)
 
         daily_files_2025 = sorted(daily_files_2025, key=lambda x: os.path.basename(x).replace('.csv', ''), reverse=True)
-        print(f"找到 {len(daily_files_2025)} 個 StockTSEDaily 檔案({cutoff_date} 之後，最近90天)")
+        print(f"找到 {len(daily_files_2025)} 個 StockTSEDaily 檔案({cutoff_date} 之後，最近160天)")
 
         stock_data_count = {code: 0 for code in all_target_stocks}
         daily_processed = 0
@@ -1637,10 +1628,11 @@ def collect_stock_history(latest_buy_stocks_n, latest_sell_stocks_n, folder_path
                         row = stock_data.iloc[0]
 
                         if file_date not in stock_history_data[stock_code]:
+                            stock_name = row.get('證券名稱', '').strip()
                             stock_history_data[stock_code][file_date] = {
                                 '日期': file_date,
                                 '股票代碼': stock_code,
-                                '股票名稱': row.get('證券名稱', '').strip()
+                                '股票名稱': stock_name
                             }
 
                         stock_history_data[stock_code][file_date]['成交張數'] = shares_to_lots(row.get('成交股數', 0))
@@ -1681,6 +1673,10 @@ def collect_stock_history(latest_buy_stocks_n, latest_sell_stocks_n, folder_path
         if len(date_dict) > 0:
             history_list = list(date_dict.values())
             history_df = pd.DataFrame(history_list)
+            
+            # 確保股票代碼為字串格式（保留前導零）
+            if '股票代碼' in history_df.columns:
+                history_df['股票代碼'] = history_df['股票代碼'].astype(str)
 
             column_order = [
                 '日期', '股票代碼', '股票名稱',
@@ -1701,44 +1697,57 @@ def collect_stock_history(latest_buy_stocks_n, latest_sell_stocks_n, folder_path
                 print(f"  已儲存: {stock_code}.csv ({len(history_list)} 筆記錄)")
 
     print(f"\n完成! 共儲存 {saved_count} 個股票的歷史數據到: {history_folder}")
-    print(f"每個檔案包含最近90天的合併數據(StockTSEDaily + StockTSEShares)")
+    print(f"每個檔案包含最近160天的合併數據(StockTSEDaily + StockTSEShares)")
     print(f"注意: 所有股數欄位已轉換為張數(除以1000取整數)")
     
     # ========== 將所有 CSV 合併存成資料庫 ==========
     import sqlite3
     
-    # 根據 history_folder 名稱決定資料庫檔名
-    # 如果是 local_ 開頭（TOP_STOCK_ONLY=False），使用 _all 後綴
-    is_all_stocks = 'local_' in history_folder
-    
+    # 確定市場類型和資料庫名稱
     if 'TSE' in history_folder:
-        db_name = 'stock_tse_all.db' if is_all_stocks else 'stock_tse.db'
+        market_name = 'TSE'
+        db_name_filtered = 'stock_tse.db'
+        db_name_all = 'stock_tse_all.db'
     elif 'OTC' in history_folder:
-        db_name = 'stock_otc_all.db' if is_all_stocks else 'stock_otc.db'
+        market_name = 'OTC'
+        db_name_filtered = 'stock_otc.db'
+        db_name_all = 'stock_otc_all.db'
     else:
-        db_name = 'stock_history.db'
+        market_name = 'UNKNOWN'
+        db_name_filtered = 'stock_history.db'
+        db_name_all = 'stock_history_all.db'
     
-    db_path = os.path.join(history_folder, db_name)
+    # 路徑設定
+    stockinfo_folder = os.path.join(os.path.dirname(history_folder), 'StockInfo')
+    os.makedirs(stockinfo_folder, exist_ok=True)
+    
+    db_path_filtered = os.path.join(history_folder, db_name_filtered)  # 買超前100+賣超前50
+    db_path_all = os.path.join(stockinfo_folder, db_name_all)  # 所有股票
     
     print(f"\n{'='*80}")
-    print(f"開始將 CSV 合併存成資料庫: {db_name}")
+    print(f"開始將 CSV 合併存成資料庫")
+    print(f"{'='*80}")
+    print(f"市場: {market_name}")
+    print(f"篩選版資料庫（買超前100+賣超前50）: {db_path_filtered}")
+    print(f"完整版資料庫（所有股票）: {db_path_all}")
     print(f"{'='*80}")
     
     try:
         # 刪除舊的資料庫檔案
-        if os.path.exists(db_path):
-            os.remove(db_path)
-            print(f"✓ 已刪除舊資料庫")
+        for db_path in [db_path_filtered, db_path_all]:
+            if os.path.exists(db_path):
+                os.remove(db_path)
+                print(f"✓ 已刪除舊資料庫: {os.path.basename(db_path)}")
         
         # 讀取所有 CSV 並合併
         all_csv_files = glob.glob(os.path.join(history_folder, '*.csv'))
         
-        print(f"找到 {len(all_csv_files)} 個 CSV 檔案")
+        print(f"\n找到 {len(all_csv_files)} 個 CSV 檔案")
         
         df_list = []
         for csv_file in all_csv_files:
             try:
-                df = pd.read_csv(csv_file, encoding='utf-8-sig')
+                df = pd.read_csv(csv_file, encoding='utf-8-sig', dtype={'股票代碼': str})
                 df_list.append(df)
             except Exception as e:
                 print(f"⚠️  讀取 {os.path.basename(csv_file)} 失敗: {e}")
@@ -1752,15 +1761,15 @@ def collect_stock_history(latest_buy_stocks_n, latest_sell_stocks_n, folder_path
             
             # ========== 按買賣超排序 ==========
             print(f"\n{'='*80}")
-            print("計算股票排序（按最近5天買賣超總和）...")
+            print("計算股票排序（按最近一天買賣超）...")
             print(f"{'='*80}")
             
-            # 找出最近5個交易日
-            latest_dates = combined_df['日期'].drop_duplicates().sort_values(ascending=False).head(5)
-            print(f"最近5個交易日: {', '.join(latest_dates.tolist())}")
+            # 找出最近一個交易日
+            latest_date = combined_df['日期'].drop_duplicates().sort_values(ascending=False).iloc[0]
+            print(f"最近交易日: {latest_date}")
             
-            # 篩選最近5天的數據
-            recent_df = combined_df[combined_df['日期'].isin(latest_dates)].copy()
+            # 篩選最近一天的數據
+            recent_df = combined_df[combined_df['日期'] == latest_date].copy()
             
             # 計算每個股票的買賣超總和（外資+投信+自營商）
             stock_order = recent_df.groupby('股票代碼').agg({
@@ -1780,37 +1789,86 @@ def collect_stock_history(latest_buy_stocks_n, latest_sell_stocks_n, folder_path
             stock_order = stock_order.sort_values('總買賣超', ascending=False)
             
             print(f"✓ 計算完成，共 {len(stock_order)} 檔股票")
-            print(f"\n前10名買超股票:")
+            print(f"\n前10名買超股票 ({latest_date}):")
             for i, (code, row) in enumerate(stock_order.head(10).iterrows(), 1):
                 print(f"  {i:2d}. {str(code):<10} 總買賣超: {int(row['總買賣超']):>8,} 張")
             
+            # ========== 1. 生成完整版資料庫（所有股票）到 StockInfo ==========
+            print(f"\n{'='*80}")
+            print(f"生成完整版資料庫: {db_name_all}")
+            print(f"{'='*80}")
+            
             # 按買賣超順序重新排列數據
-            print(f"\n按買賣超順序重新排列數據...")
-            ordered_dfs = []
+            ordered_dfs_all = []
             for stock_code in stock_order.index:
                 stock_df = combined_df[combined_df['股票代碼'] == stock_code].copy()
                 if len(stock_df) > 0:
-                    ordered_dfs.append(stock_df)
+                    ordered_dfs_all.append(stock_df)
             
-            # 合併排序後的數據
-            combined_df = pd.concat(ordered_dfs, ignore_index=True)
-            print(f"✓ 數據已按買賣超順序排列")
-            print(f"{'='*80}\n")
+            combined_df_all = pd.concat(ordered_dfs_all, ignore_index=True)
             
-            # 存成資料庫
-            conn = sqlite3.connect(db_path)
-            combined_df.to_sql('stock_data', conn, if_exists='replace', index=False)
-            conn.close()
+            # 確保股票代碼為字串格式（保留前導零，如 00881）
+            if '股票代碼' in combined_df_all.columns:
+                combined_df_all['股票代碼'] = combined_df_all['股票代碼'].astype(str)
             
-            print(f"✓ 資料庫: {db_path}")
-            print(f"✓ 股票順序: 按最近5天買賣超總和（由高到低）")
+            # 存成完整版資料庫
+            conn_all = sqlite3.connect(db_path_all)
+            combined_df_all.to_sql('stock_data', conn_all, if_exists='replace', index=False)
+            conn_all.close()
+            
+            print(f"✓ 完整版資料庫: {db_path_all}")
+            print(f"✓ 包含 {len(stock_order)} 檔股票")
+            print(f"✓ 股票順序: 按最近一天買賣超（由高到低）")
+            
+            # ========== 2. 生成篩選版資料庫（買超前100+賣超前50）到 History ==========
+            print(f"\n{'='*80}")
+            print(f"生成篩選版資料庫: {db_name_filtered}")
+            print(f"{'='*80}")
+            
+            # 取得買超前100和賣超前50的股票代碼
+            top_buy_100 = stock_order.head(100).index.tolist()
+            top_sell_50 = stock_order.tail(50).index.tolist()
+            selected_stocks = list(set(top_buy_100 + top_sell_50))
+            
+            print(f"✓ 買超前100檔股票")
+            print(f"✓ 賣超前50檔股票")
+            print(f"✓ 總共篩選: {len(selected_stocks)} 檔股票（去除重複）")
+            
+            # 篩選數據
+            filtered_df = combined_df[combined_df['股票代碼'].isin(selected_stocks)].copy()
+            
+            # 按買賣超順序重新排列（只包含篩選的股票）
+            ordered_dfs_filtered = []
+            for stock_code in stock_order.index:
+                if stock_code in selected_stocks:
+                    stock_df = filtered_df[filtered_df['股票代碼'] == stock_code].copy()
+                    if len(stock_df) > 0:
+                        ordered_dfs_filtered.append(stock_df)
+            
+            combined_df_filtered = pd.concat(ordered_dfs_filtered, ignore_index=True)
+            
+            # 確保股票代碼為字串格式（保留前導零，如 00881）
+            if '股票代碼' in combined_df_filtered.columns:
+                combined_df_filtered['股票代碼'] = combined_df_filtered['股票代碼'].astype(str)
+            
+            # 存成篩選版資料庫
+            conn_filtered = sqlite3.connect(db_path_filtered)
+            combined_df_filtered.to_sql('stock_data', conn_filtered, if_exists='replace', index=False)
+            conn_filtered.close()
+            
+            print(f"✓ 篩選版資料庫: {db_path_filtered}")
+            print(f"✓ 包含 {len(selected_stocks)} 檔精選股票")
+            print(f"✓ 股票順序: 按最近一天買賣超（由高到低）")
+            print(f"{'='*80}")
         else:
             print("⚠️  沒有 CSV 檔案")
         
     except Exception as e:
         print(f"✗ 建立資料庫失敗: {e}")
+        import traceback
+        traceback.print_exc()
     
-    print(f"{'='*80}\n")
+    print(f"\n{'='*80}\n")
 
 # 【第二步-aggregate_analysis】
 # 從第二步程式複製 aggregate_analysis 函數
@@ -3011,6 +3069,150 @@ def load_top_json_stocks(base_dir, market_type):
         print(f"⚠️  讀取 top.json 時發生錯誤: {e}")
         return set()
 
+# ============================================================================
+# 【已停用】合併資料庫函數
+# 說明：不再需要合併 TSE 和 OTC 資料庫
+# 保持獨立的 stock_tse_all.db 和 stock_otc_all.db
+# ============================================================================
+"""
+def merge_tse_otc_databases(base_dir):
+    \"\"\"合併 TSE 和 OTC 完整資料庫到 StockInfo/stock_all.db\"\"\"
+    import sqlite3
+    
+    print(f"\n{'🔥'*40}")
+    print("合併 TSE 和 OTC 資料庫")
+    print(f"{'🔥'*40}\n")
+    
+    stockinfo_folder = os.path.join(base_dir, 'StockInfo')
+    os.makedirs(stockinfo_folder, exist_ok=True)
+    
+    # 使用完整版資料庫（包含所有股票）
+    tse_db_path = os.path.join(stockinfo_folder, 'stock_tse_all.db')
+    otc_db_path = os.path.join(stockinfo_folder, 'stock_otc_all.db')
+    merged_db_path = os.path.join(stockinfo_folder, 'stock_all.db')
+    
+    print(f"來源資料庫（完整版）:")
+    print(f"  - TSE: {tse_db_path}")
+    print(f"  - OTC: {otc_db_path}")
+    print(f"目標資料庫: {merged_db_path}\n")
+    
+    # 檢查來源資料庫是否存在
+    tse_exists = os.path.exists(tse_db_path)
+    otc_exists = os.path.exists(otc_db_path)
+    
+    if not tse_exists and not otc_exists:
+        print("⚠️  TSE 和 OTC 資料庫都不存在，跳過合併")
+        return
+    
+    try:
+        # 刪除舊的合併資料庫
+        if os.path.exists(merged_db_path):
+            os.remove(merged_db_path)
+            print("✓ 已刪除舊的合併資料庫")
+        
+        df_list = []
+        
+        # 讀取 TSE 資料庫
+        if tse_exists:
+            try:
+                conn_tse = sqlite3.connect(tse_db_path)
+                df_tse = pd.read_sql_query("SELECT * FROM stock_data", conn_tse)
+                conn_tse.close()
+                df_list.append(df_tse)
+                print(f"✓ 讀取 TSE 完整資料庫: {len(df_tse)} 筆記錄")
+            except Exception as e:
+                print(f"⚠️  讀取 TSE 資料庫失敗: {e}")
+        else:
+            print("⊘ TSE 資料庫不存在")
+        
+        # 讀取 OTC 資料庫
+        if otc_exists:
+            try:
+                conn_otc = sqlite3.connect(otc_db_path)
+                df_otc = pd.read_sql_query("SELECT * FROM stock_data", conn_otc)
+                conn_otc.close()
+                df_list.append(df_otc)
+                print(f"✓ 讀取 OTC 完整資料庫: {len(df_otc)} 筆記錄")
+            except Exception as e:
+                print(f"⚠️  讀取 OTC 資料庫失敗: {e}")
+        else:
+            print("⊘ OTC 資料庫不存在")
+        
+        if df_list:
+            # 合併資料
+            combined_df = pd.concat(df_list, ignore_index=True)
+            
+            # 確保股票代碼為字串格式（保留前導零）
+            if '股票代碼' in combined_df.columns:
+                combined_df['股票代碼'] = combined_df['股票代碼'].astype(str)
+            
+            print(f"\n✓ 合併完成: {len(combined_df)} 筆記錄")
+            
+            # ========== 按買賣超重新排序 ==========
+            print(f"\n{'='*80}")
+            print("重新計算股票排序（按最近5天買賣超總和）...")
+            print(f"{'='*80}")
+            
+            # 找出最近5個交易日
+            latest_dates = combined_df['日期'].drop_duplicates().sort_values(ascending=False).head(5)
+            print(f"最近5個交易日: {', '.join(latest_dates.tolist())}")
+            
+            # 篩選最近5天的數據
+            recent_df = combined_df[combined_df['日期'].isin(latest_dates)].copy()
+            
+            # 計算每個股票的買賣超總和
+            stock_order = recent_df.groupby('股票代碼').agg({
+                '外陸資買賣超張數': 'sum',
+                '投信買賣超張數': 'sum',
+                '自營商買賣超張數': 'sum'
+            })
+            
+            # 計算總買賣超
+            stock_order['總買賣超'] = (
+                stock_order['外陸資買賣超張數'].fillna(0) + 
+                stock_order['投信買賣超張數'].fillna(0) + 
+                stock_order['自營商買賣超張數'].fillna(0)
+            )
+            
+            # 按總買賣超降序排序
+            stock_order = stock_order.sort_values('總買賣超', ascending=False)
+            
+            print(f"✓ 計算完成，共 {len(stock_order)} 檔股票")
+            print(f"\n前10名買超股票:")
+            for i, (code, row) in enumerate(stock_order.head(10).iterrows(), 1):
+                print(f"  {i:2d}. {str(code):<10} 總買賣超: {int(row['總買賣超']):>8,} 張")
+            
+            # 按買賣超順序重新排列數據
+            print(f"\n按買賣超順序重新排列數據...")
+            ordered_dfs = []
+            for stock_code in stock_order.index:
+                stock_df = combined_df[combined_df['股票代碼'] == stock_code].copy()
+                if len(stock_df) > 0:
+                    ordered_dfs.append(stock_df)
+            
+            # 合併排序後的數據
+            combined_df = pd.concat(ordered_dfs, ignore_index=True)
+            print(f"✓ 數據已按買賣超順序排列")
+            print(f"{'='*80}\n")
+            
+            # 存成資料庫
+            conn_merged = sqlite3.connect(merged_db_path)
+            combined_df.to_sql('stock_data', conn_merged, if_exists='replace', index=False)
+            conn_merged.close()
+            
+            print(f"✓ 合併資料庫: {merged_db_path}")
+            print(f"✓ 包含 TSE + OTC 股票")
+            print(f"✓ 股票順序: 按最近5天買賣超總和（由高到低）")
+        else:
+            print("⚠️  沒有資料可合併")
+        
+    except Exception as e:
+        print(f"✗ 合併資料庫失敗: {e}")
+    
+    print(f"\n{'='*80}\n")
+"""
+
+
 def run_step2_analysis(base_dir, market_type):
     """執行第二步：分析程式 (GitHub Actions 版本)"""
     print(f"\n{'🔥'*40}")
@@ -3019,18 +3221,6 @@ def run_step2_analysis(base_dir, market_type):
 
     # 設定配置 (使用當前目錄，不使用 Google Drive)
     config = setup_config(market_type=market_type)
-    
-    # 根據 TOP_STOCKS_ONLY 決定 history_folder 路徑
-    if not TOP_STOCKS_ONLY:
-        # 使用 local_ 開頭的資料夾
-        if market_type == 'TSE':
-            config['history_folder'] = os.path.join(base_dir, 'local_StockTSEHistory')
-        else:
-            config['history_folder'] = os.path.join(base_dir, 'local_StockOTCHistory')
-        
-        # 確保資料夾存在
-        os.makedirs(config['history_folder'], exist_ok=True)
-        print(f"📁 History 資料夾: {config['history_folder']}\n")
 
     # 讀取股票清單
     allowed_stock_codes, stock_sector_map, etf_stock_codes = load_stock_list(config['market_list_path'])
@@ -3075,53 +3265,22 @@ def run_step2_analysis(base_dir, market_type):
         top_sell_count=config['top_sell_count']
     )
 
-    # ========== 根據 TOP_STOCKS_ONLY flag 決定要收集歷史的股票 ==========
-    if TOP_STOCKS_ONLY:
-        # 1. 收集買超前150 + 賣超前50
-        print(f"\n{'='*80}")
-        print(f"TOP_STOCKS_ONLY = True: 收集買超前150 + 賣超前50 + top.json 的歷史數據")
-        print(f"{'='*80}")
-        
-        # 買超前150 + 賣超前50
-        buysell_stocks = latest_buy_stocks_n.union(latest_sell_stocks_n)
-        print(f"買超前{config['top_buy_count']} + 賣超前{config['top_sell_count']} = {len(buysell_stocks)} 支股票")
-        
-        # 2. 讀取 top.json 中該市場的股票
-        top_json_stocks = load_top_json_stocks(base_dir, market_type)
-        
-        # 3. 計算重複的股票
-        overlap_stocks = buysell_stocks.intersection(top_json_stocks)
-        if len(overlap_stocks) > 0:
-            print(f"\n與買超/賣超重複的股票: {len(overlap_stocks)} 支")
-            print(f"  前10支重複: {', '.join(list(overlap_stocks)[:10])}")
-        
-        # 4. 合併並去重
-        collect_buy_stocks = buysell_stocks.union(top_json_stocks)
-        collect_sell_stocks = set()  # 已經包含在 collect_buy_stocks 中
-        
-        print(f"\n最終要收集歷史的股票:")
-        print(f"  - 買超/賣超: {len(buysell_stocks)} 支")
-        print(f"  - top.json: {len(top_json_stocks)} 支")
-        print(f"  - 重複: {len(overlap_stocks)} 支")
-        print(f"  - 總計(去重後): {len(collect_buy_stocks)} 支")
-        print(f"{'='*80}\n")
-    else:
-        # 收集所有 CSV 內股票的歷史
-        print(f"\n{'='*80}")
-        print(f"TOP_STOCKS_ONLY = False: 收集所有 CSV 內股票的歷史數據")
-        print(f"{'='*80}")
-        
-        # 從所有歷史數據中取得所有股票代碼
-        all_stocks_in_csv = set(all_historical_data.keys())
-        print(f"從 CSV 檔案中找到 {len(all_stocks_in_csv)} 支股票")
-        
-        collect_buy_stocks = all_stocks_in_csv
-        collect_sell_stocks = set()  # 已經包含在 collect_buy_stocks 中
+    # ========== 收集所有 CSV 內股票的歷史數據 ==========
+    print(f"\n{'='*80}")
+    print(f"收集所有 CSV 內股票的歷史數據")
+    print(f"{'='*80}")
+    
+    # 從所有歷史數據中取得所有股票代碼
+    all_stocks_in_csv = set(all_historical_data.keys())
+    print(f"從 CSV 檔案中找到 {len(all_stocks_in_csv)} 支股票")
+    
+    collect_buy_stocks = all_stocks_in_csv
+    collect_sell_stocks = set()  # 已經包含在 collect_buy_stocks 中
 
-    # 收集歷史數據
+    # 收集歷史數據（傳遞 market_type）
     collect_stock_history(collect_buy_stocks, collect_sell_stocks, config['folder_path'],
                       config['stock_daily_folder'], config['history_folder'],
-                      allowed_stock_codes)
+                      allowed_stock_codes, market_type)
 
     # 彙整分析
     buy_stocks, sell_stocks, both_stocks_set, both_stocks_df = aggregate_analysis(
@@ -4195,21 +4354,6 @@ def run_step3_chart_generation(base_dir, market_type):
     # 設定配置
     config = Config.setup_config(base_path=base_dir, market_type=market_type)
     
-    # 根據 TOP_STOCKS_ONLY 決定資料夾路徑
-    if not TOP_STOCKS_ONLY:
-        # 使用 local_ 開頭的資料夾
-        if market_type == 'TSE':
-            config['history_folder'] = os.path.join(base_dir, 'local_StockTSEHistory')
-            config['html_output_folder'] = os.path.join(base_dir, 'local_StockTSEHTML')
-        else:
-            config['history_folder'] = os.path.join(base_dir, 'local_StockOTCHistory')
-            config['html_output_folder'] = os.path.join(base_dir, 'local_StockOTCHTML')
-        
-        # 確保資料夾存在
-        os.makedirs(config['history_folder'], exist_ok=True)
-        os.makedirs(config['html_output_folder'], exist_ok=True)
-        print(f"📁 History 資料夾: {config['history_folder']}")
-        print(f"📁 HTML 資料夾: {config['html_output_folder']}\n")
     # 設定字體 (GitHub Actions 環境)
     Utils.setup_chinese_font(base_dir)
     
@@ -5278,12 +5422,7 @@ def main():
             print("\n" + "🔥"*40)
             print("步驟 2：清理 History 資料夾")
             print("🔥"*40)
-            # 根據 TOP_STOCKS_ONLY 決定要清理的資料夾
-            if TOP_STOCKS_ONLY:
-                # ConceptHistory 已刪除，不再使用
-                delete_folders(base_dir, ['StockTSEHistory', 'StockOTCHistory'])
-            else:
-                delete_folders(base_dir, ['local_StockTSEHistory', 'local_StockOTCHistory'])
+            delete_folders(base_dir, ['StockTSEHistory', 'StockOTCHistory'])
             
             # 執行分析
             if args.market in ['TSE', 'BOTH']:
@@ -5291,6 +5430,9 @@ def main():
             
             if args.market in ['OTC', 'BOTH']:
                 run_step2_analysis(base_dir, 'OTC')
+            
+            # 不再合併 TSE 和 OTC 資料庫
+            # 保留獨立的 stock_tse_all.db 和 stock_otc_all.db
             
             # 概念股分析已停用 - ConceptHistory 已刪除
             # 概念股圖表現在直接從 TSE/OTC HTML 生成
@@ -5302,11 +5444,7 @@ def main():
         print("\n" + "🔥"*40)
         print("步驟 5：清理圖表資料夾")
         print("🔥"*40)
-        # 根據 TOP_STOCKS_ONLY 決定要清理的資料夾
-        if TOP_STOCKS_ONLY:
-            delete_folders(base_dir, ['StockTSEHTML', 'StockOTCHTML', 'ConceptHTML'])
-        else:
-            delete_folders(base_dir, ['local_StockTSEHTML', 'local_StockOTCHTML'])
+        delete_folders(base_dir, ['StockTSEHTML', 'StockOTCHTML', 'ConceptHTML'])
         
         # 執行圖表生成
         if args.market in ['TSE', 'BOTH']:
@@ -5339,16 +5477,12 @@ def main():
     if not args.skip_analysis:
         if args.market in ['TSE', 'BOTH']:
             print("  ✓ TSE 分析報告 (Excel) 已生成")
-            if not TOP_STOCKS_ONLY:
-                print("  ✓ TSE 資料庫 (stock_tse_all.db) 已生成")
-            else:
-                print("  ✓ TSE 資料庫 (stock_tse.db) 已生成")
+            print("  ✓ TSE 篩選資料庫 (StockTSEHistory/stock_tse.db) - 買超前100+賣超前50")
+            print("  ✓ TSE 完整資料庫 (StockInfo/stock_tse_all.db) - 所有股票")
         if args.market in ['OTC', 'BOTH']:
             print("  ✓ OTC 分析報告 (Excel) 已生成")
-            if not TOP_STOCKS_ONLY:
-                print("  ✓ OTC 資料庫 (stock_otc_all.db) 已生成")
-            else:
-                print("  ✓ OTC 資料庫 (stock_otc.db) 已生成")
+            print("  ✓ OTC 篩選資料庫 (StockOTCHistory/stock_otc.db) - 買超前100+賣超前50")
+            print("  ✓ OTC 完整資料庫 (StockInfo/stock_otc_all.db) - 所有股票")
     if IS_HTML and not args.skip_charts:
         if args.market in ['TSE', 'BOTH']:
             print("  ✓ TSE 技術分析圖表 (HTML) 已生成")

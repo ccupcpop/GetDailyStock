@@ -1535,9 +1535,9 @@ def collect_stock_history(latest_buy_stocks_n, latest_sell_stocks_n, folder_path
     for stock_code in all_target_stocks:
         stock_history_data[stock_code] = {}
 
-    # 計算160天前的日期
-    cutoff_date = (datetime.now() - timedelta(days=160)).strftime('%Y-%m-%d')
-    print(f"\n從 StockTSEShares 收集數據({cutoff_date} 之後，最近160天)...")
+    # 計算240天前的日期
+    cutoff_date = (datetime.now() - timedelta(days=240)).strftime('%Y-%m-%d')
+    print(f"\n從 StockTSEShares 收集數據({cutoff_date} 之後，最近240天)...")
     
     all_shares_files = glob.glob(os.path.join(folder_path, '*.csv'))
 
@@ -1548,7 +1548,7 @@ def collect_stock_history(latest_buy_stocks_n, latest_sell_stocks_n, folder_path
             shares_files_2025.append(file_path)
 
     shares_files_2025 = sorted(shares_files_2025, key=lambda x: os.path.basename(x).replace('.csv', ''), reverse=True)
-    print(f"找到 {len(shares_files_2025)} 個 StockTSEShares 檔案({cutoff_date} 之後，最近160天)")
+    print(f"找到 {len(shares_files_2025)} 個 StockTSEShares 檔案({cutoff_date} 之後，最近240天)")
 
     shares_processed = 0
     for file_path in shares_files_2025:
@@ -1589,7 +1589,7 @@ def collect_stock_history(latest_buy_stocks_n, latest_sell_stocks_n, folder_path
 
     # 從 StockTSEDaily 讀取
     if os.path.exists(stock_daily_folder):
-        print(f"\n從 StockTSEDaily 收集數據({cutoff_date} 之後，最近160天)...")
+        print(f"\n從 StockTSEDaily 收集數據({cutoff_date} 之後，最近240天)...")
 
         all_daily_files = glob.glob(os.path.join(stock_daily_folder, '*.csv'))
 
@@ -1600,7 +1600,7 @@ def collect_stock_history(latest_buy_stocks_n, latest_sell_stocks_n, folder_path
                 daily_files_2025.append(file_path)
 
         daily_files_2025 = sorted(daily_files_2025, key=lambda x: os.path.basename(x).replace('.csv', ''), reverse=True)
-        print(f"找到 {len(daily_files_2025)} 個 StockTSEDaily 檔案({cutoff_date} 之後，最近160天)")
+        print(f"找到 {len(daily_files_2025)} 個 StockTSEDaily 檔案({cutoff_date} 之後，最近240天)")
 
         stock_data_count = {code: 0 for code in all_target_stocks}
         daily_processed = 0
@@ -1697,7 +1697,7 @@ def collect_stock_history(latest_buy_stocks_n, latest_sell_stocks_n, folder_path
                 print(f"  已儲存: {stock_code}.csv ({len(history_list)} 筆記錄)")
 
     print(f"\n完成! 共儲存 {saved_count} 個股票的歷史數據到: {history_folder}")
-    print(f"每個檔案包含最近160天的合併數據(StockTSEDaily + StockTSEShares)")
+    print(f"每個檔案包含最近240天的合併數據(StockTSEDaily + StockTSEShares)")
     print(f"注意: 所有股數欄位已轉換為張數(除以1000取整數)")
     
     # ========== 將所有 CSV 合併存成資料庫 ==========
@@ -1758,6 +1758,50 @@ def collect_stock_history(latest_buy_stocks_n, latest_sell_stocks_n, folder_path
             
             print(f"✓ 已合併 {len(df_list)} 個 CSV")
             print(f"✓ 總共 {len(combined_df)} 筆記錄")
+            
+            # ========== 過濾成交量條件：最近100天任一天成交量 > 5000張 ==========
+            print(f"\n{'='*80}")
+            print("過濾成交量條件：最近100天任一天成交量 > 5000張")
+            print(f"{'='*80}")
+            
+            # 找出最近100天的日期
+            all_dates = combined_df['日期'].drop_duplicates().sort_values(ascending=False)
+            recent_100_dates = all_dates.head(100).tolist()
+            print(f"最近100天日期範圍: {recent_100_dates[-1]} ~ {recent_100_dates[0]}")
+            
+            # 篩選最近100天的資料
+            recent_df = combined_df[combined_df['日期'].isin(recent_100_dates)].copy()
+            
+            # 將成交張數轉換為數值（處理逗號和空值）
+            recent_df['成交張數_數值'] = pd.to_numeric(
+                recent_df['成交張數'].astype(str).str.replace(',', ''), 
+                errors='coerce'
+            ).fillna(0)
+            
+            # 計算每個股票在最近100天的最大成交張數
+            stock_max_volume = recent_df.groupby('股票代碼')['成交張數_數值'].max()
+            
+            # 找出符合條件的股票（最近100天有任一天成交量>5000張）
+            qualified_stocks = stock_max_volume[stock_max_volume > 5000].index.tolist()
+            
+            # 統計
+            total_stocks = len(stock_max_volume)
+            qualified_count = len(qualified_stocks)
+            filtered_count = total_stocks - qualified_count
+            
+            print(f"✓ 總共 {total_stocks} 檔股票")
+            print(f"✓ 符合條件（最近100天有任一天>5000張）: {qualified_count} 檔")
+            print(f"✓ 過濾掉（最近100天都<=5000張）: {filtered_count} 檔")
+            
+            # 過濾 combined_df，只保留符合條件的股票
+            before_count = len(combined_df)
+            combined_df = combined_df[combined_df['股票代碼'].isin(qualified_stocks)].copy()
+            after_count = len(combined_df)
+            
+            print(f"✓ 過濾前記錄數: {before_count:,}")
+            print(f"✓ 過濾後記錄數: {after_count:,}")
+            print(f"✓ 移除了 {before_count - after_count:,} 筆記錄")
+            print(f"{'='*80}")
             
             # ========== 按買賣超排序 ==========
             print(f"\n{'='*80}")
