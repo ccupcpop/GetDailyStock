@@ -5,3 +5,12 @@ local_StockTSEHistory
 local_StockTSEHTML
 nul
 .claude/settings.local.json
+__pycache__/
+*.pyc
+.pytest_cache/
+.integration/
+_site/
+output_charts/
+data/
+tests/.tmp-*/
+.site-build-*/

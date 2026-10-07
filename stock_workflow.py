@@ -768,7 +768,7 @@ def setup_config(market_type='TSE'):
         dict: 包含所有路徑配置的字典
     """
     # GitHub Actions 使用當前目錄
-    base_path = os.getcwd()
+    base_path = os.environ.get('STOCK_DATA_DIR', os.getcwd())
 
     if market_type == 'TSE':
         config = {
