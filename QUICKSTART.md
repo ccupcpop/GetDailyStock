@@ -10,4 +10,4 @@ python -m http.server 8000 --directory _site
 
 `python run_pipeline.py --skip-crawler` 可用現有 CSV 重建全部分析。
 
-部署由「台股完整分析與網站發布」GitHub Actions 工作流程完成，下載、分析、選股、發布依序執行。自訂追蹤股位於 `StockInfo/focus_stocks.csv`。完整設定與資料篩選範圍見 [README](README.md)。
+部署由「台股完整分析與網站發布」GitHub Actions 工作流程完成，下載、分析、選股、發布依序執行。「爆量候選」分上市／上櫃掃描，「追蹤股」自動累積最近 5 個交易日的候選，沒有自訂清單。完整設定與資料篩選範圍見 [README](README.md)。

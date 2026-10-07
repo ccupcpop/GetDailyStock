@@ -938,6 +938,9 @@
                 <button class="category-tab" id="tabSixtyDay" onclick="switchCategory('sixtyDay')">
                     歷史走勢
                 </button>
+                <button class="category-tab" id="tabBreakout" onclick="switchCategory('breakout')">
+                    爆量候選
+                </button>
             </div>
         </div>
 
@@ -946,6 +949,7 @@
         </div>
 
         <div class="stock-panel" id="stockChartContainer" style="display: none;">
+            <div id="breakoutSummary" style="display:none; margin-bottom:16px; padding:14px; border-radius:10px; background:#f0f4ff; color:#334563; line-height:1.8;"></div>
             <div class="chart-toolbar">
                 <button class="stock-nav-button" id="prevStockBtn">
                     ← 上一筆
@@ -965,14 +969,9 @@
                     下一筆 →
                 </button>
             </div>
+            <div id="breakoutDetails" style="display:none; margin-bottom:12px; line-height:1.8; color:#334563;"></div>
             <div id="stockChartContent"></div>
             
-            <!-- 當前股票的分析卡片 -->
-            <div id="currentStockAnalysis" style="margin-top: 10px; display: none;">
-                <div id="stockAnalysisCard" style="background: white; border-radius: 12px; padding: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                    <div style="text-align: center; padding: 20px; color: #95a5a6;">載入中...</div>
-                </div>
-            </div>
         </div>
     </div>
 
@@ -990,9 +989,12 @@
         let currentMarket = localStorage.getItem('currentMarket') || 'TSE';
         let currentCategory = localStorage.getItem('currentCategory') || 'fiveday';
         if (!['TSE', 'OTC', 'WATCHLIST'].includes(currentMarket)) currentMarket = 'TSE';
-        if (!['fiveday', 'sixtyDay'].includes(currentCategory)) currentCategory = 'fiveday';
+        if (!['fiveday', 'sixtyDay', 'breakout'].includes(currentCategory)) currentCategory = 'fiveday';
         let sqlDB = null;
         let hotDatabase = null;
+        let hotDBInstance = null;
+        let breakoutCandidates = new Map();
+        let watchCandidates = new Map();
         let sqlPromise = null;
         let reportResizeObserver = null;
         let currentChartTitle = '';
@@ -1005,7 +1007,7 @@
 
         function updateDataDate() {
             const key = currentMarket === 'WATCHLIST' ? 'WATCHLIST' : currentMarket;
-            const date = manifest?.markets?.[key]?.latest_date || manifest?.markets?.TSE?.latest_date;
+            const date = (key === 'WATCHLIST' ? manifest?.watchlist?.market_dates?.TSE : manifest?.markets?.[key]?.latest_date) || manifest?.markets?.TSE?.latest_date;
             document.getElementById('updateTime').textContent = date ? `資料日期：${date}` : '資料日期讀取中';
         }
 
@@ -1018,15 +1020,16 @@
         }
 
         async function getHotDatabase() {
-            hotDatabase ||= readDatabase('stock_hot.db');
-            return hotDatabase;
+            hotDatabase ||= readDatabase('stock_breakout_watch.db');
+            hotDBInstance = await hotDatabase;
+            return hotDBInstance;
         }
 
         function switchMarket(market) {
             viewLoadId++;
             currentMarket = market;
             updateDataDate();
-            document.getElementById('currentStockAnalysis').style.display = 'none';
+            resetBreakoutInfo();
             localStorage.setItem('currentMarket', market);
             
             document.getElementById('btnTSE').classList.remove('active');
@@ -1056,13 +1059,15 @@
             
             document.getElementById('tabFiveDay').classList.remove('active');
             document.getElementById('tabSixtyDay').classList.remove('active');
+            document.getElementById('tabBreakout').classList.remove('active');
+            resetBreakoutInfo();
             
             if (category === 'fiveday') {
                 document.getElementById('tabFiveDay').classList.add('active');
                 showIframeView();
                 loadExternalPage(currentMarket === 'TSE' ? 'tse_analysis_result_complete.html' : 'otc_analysis_result_complete.html');
-            } else if (category === 'sixtyDay') {
-                document.getElementById('tabSixtyDay').classList.add('active');
+            } else if (category === 'sixtyDay' || category === 'breakout') {
+                document.getElementById(category === 'breakout' ? 'tabBreakout' : 'tabSixtyDay').classList.add('active');
                 showStockChartView();
                 loadStockList();
             }
@@ -1186,19 +1191,64 @@
             iframe.src = DATA_PATH + filename;
         }
 
+        function resetBreakoutInfo() {
+            breakoutCandidates = new Map();
+            document.getElementById('breakoutSummary').style.display = 'none';
+            document.getElementById('breakoutDetails').style.display = 'none';
+        }
+
+        function showBreakoutSummary() {
+            const panel = document.getElementById('breakoutSummary');
+            const meta = manifest?.breakouts?.[currentMarket];
+            panel.style.display = 'block';
+            panel.replaceChildren();
+            if (!meta) { panel.textContent = '掃描資料讀取中…'; return; }
+            const title = document.createElement('strong');
+            title.textContent = `${currentMarket === 'TSE' ? '上市' : '上櫃'}爆量候選 ${meta.candidates} 檔 · 資料日期 ${meta.latest_date}`;
+            const count = document.createElement('div');
+            count.textContent = `掃描 ${meta.scanned_stocks} 檔；${meta.eligible_stocks} 檔具備最近 61 日有效價量。顯示最近 3 個交易日首次出現的訊號。`;
+            const details = document.createElement('details');
+            const label = document.createElement('summary');
+            label.textContent = '查看篩選條件與資料範圍';
+            const rules = document.createElement('div');
+            const r = meta.rules;
+            rules.textContent = `前 ${r.quiet_days} 日均量 ≤ 再往前 ${r.reference_days} 日均量的 ${r.quiet_ratio * 100}%；前 ${r.quiet_days} 日高低價區間 ≤ ${r.max_range * 100}%；訊號日成交量 ≥ ${r.volume_multiple} 倍前期均量、漲幅 ≥ ${r.min_gain * 100}%、收盤突破前期最高價，且收在當日區間上方 ${Math.round((1 - r.min_close_position) * 100)}%。基準均排除訊號當日，前 20 日已有相同訊號者不重複入選。`;
+            const scope = document.createElement('div');
+            scope.textContent = `${meta.scope}；不受法人前 150 檔與 5,000 張門檻限制。缺漏、停牌或資料不足不以零量補齊。法人缺漏留空，累積值以已取得資料計算。此為價量形態篩選，尚未回測。`;
+            details.append(label, rules, scope);
+            panel.append(title, count, details);
+        }
+
+        function showBreakoutDetails(code) {
+            const panel = document.getElementById('breakoutDetails');
+            const stock = getStockAtIndex(currentStockIndex);
+            const candidate = currentMarket === 'WATCHLIST' ? watchCandidates.get(`${stock?.market}:${code}`) : currentCategory === 'breakout' ? breakoutCandidates.get(code) : null;
+            panel.style.display = candidate ? 'block' : 'none';
+            if (!candidate) return;
+            const pct = value => `${(Number(value) * 100).toFixed(2)}%`;
+            panel.textContent = `首次突破 ${candidate.signal_date} ｜ 追蹤第 ${candidate.signal_age} 天 ｜ ${Number(candidate.volume_multiple).toFixed(2)} 倍量 ｜ 當日漲幅 ${pct(candidate.day_gain)} ｜ 入選後漲幅 ${pct(candidate.return_since_signal)} ｜ ${candidate.status}（盤整上緣 ${Number(candidate.base_high).toFixed(2)}；價格日期 ${candidate.latest_price_date}）`;
+            panel.style.color = candidate.status === '跌回盤整區' ? '#ae3434' : '#334563';
+        }
+
         async function loadStockList() {
             const chartContent = document.getElementById('stockChartContent');
             chartContent.innerHTML = '<div style="text-align: center; padding: 40px; color: #95a5a6;">載入中...</div>';
+            const requestId = ++viewLoadId;
+            const isBreakout = currentCategory === 'breakout';
+            allStocksList = [];
+            currentStockIndex = 0;
+            updateStockSelector();
+            if (isBreakout) showBreakoutSummary();
             
             try {
-                const requestId = ++viewLoadId;
-                const db = await readDatabase(currentMarket === 'TSE' ? 'stock_tse.db' : 'stock_otc.db');
+                const market = currentMarket === 'TSE' ? 'tse' : 'otc';
+                const db = await readDatabase(`stock_${market}${isBreakout ? '_breakout' : ''}.db`);
                 if (requestId !== viewLoadId) { db.close(); return; }
-                if (sqlDB && sqlDB !== await hotDatabase) sqlDB.close();
+                if (sqlDB && sqlDB !== hotDBInstance) sqlDB.close();
                 sqlDB = db;
 
                 // 保持資料庫原有順序
-                const query = `
+                const query = isBreakout ? `SELECT code, name FROM candidates ORDER BY signal_date DESC, volume_multiple DESC, code` : `
                     SELECT 股票代碼, 股票名稱
                     FROM stock_data
                     WHERE ROWID IN (
@@ -1209,9 +1259,16 @@
                     ORDER BY ROWID
                 `;
                 const result = sqlDB.exec(query);
+                if (isBreakout) {
+                    const rows = sqlDB.exec('SELECT * FROM candidates')[0];
+                    breakoutCandidates = new Map((rows?.values || []).map(values => {
+                        const candidate = Object.fromEntries(rows.columns.map((col, i) => [col, values[i]]));
+                        return [candidate.code, candidate];
+                    }));
+                }
                 
                 if (result.length === 0 || result[0].values.length === 0) {
-                    chartContent.innerHTML = '<div style="text-align: center; padding: 40px; color: #95a5a6;">無股票資料</div>';
+                    chartContent.innerHTML = `<div style="text-align: center; padding: 40px; color: #65758a;">${isBreakout ? '最近 3 個交易日沒有符合全部條件的爆量候選。' : '無股票資料'}</div>`;
                     return;
                 }
                 
@@ -1229,6 +1286,7 @@
                 }
                 
             } catch (error) {
+                if (requestId !== viewLoadId) return;
                 console.error('載入股票列表失敗:', error);
                 chartContent.innerHTML = `
                     <div style="text-align: center; padding: 40px; color: #e74c3c;">
@@ -1257,6 +1315,9 @@
             }
             
             const list = isReverseOrder ? [...allStocksList].reverse() : allStocksList;
+            selector.disabled = list.length === 0;
+            document.getElementById('prevStockBtn').disabled = list.length === 0;
+            document.getElementById('nextStockBtn').disabled = list.length === 0;
             
             // 使用 DocumentFragment 提高效能並確保不重複
             const fragment = document.createDocumentFragment();
@@ -1264,7 +1325,8 @@
             list.forEach((stock, idx) => {
                 const option = document.createElement('option');
                 option.value = idx;
-                option.textContent = `${stock.code}_${stock.name}`;
+                const candidate = currentCategory === 'breakout' ? breakoutCandidates.get(stock.code) : null;
+                option.textContent = `${stock.code}_${stock.name}${candidate ? ` · ${Number(candidate.volume_multiple).toFixed(1)} 倍量` : ''}`;
                 fragment.appendChild(option);
             });
             
@@ -1349,6 +1411,7 @@
 
         async function loadStockChart(stockCode, stockName) {
             showStockChartView();
+            showBreakoutDetails(stockCode);
             const chartContent = document.getElementById('stockChartContent');
             chartContent.innerHTML = '<div style="text-align: center; padding: 40px; color: #95a5a6;">生成圖表中...</div>';
             
@@ -1405,9 +1468,10 @@
                 const ma20 = allMA20.slice(-75);
                 const ma60 = allMA60.slice(-75);
                 
-                const foreign = chartData.map(d => parseFloat(String(d['外陸資買賣超張數'] || 0).replace(/,/g, '')) || 0);
-                const trust = chartData.map(d => parseFloat(String(d['投信買賣超張數'] || 0).replace(/,/g, '')) || 0);
-                const dealer = chartData.map(d => parseFloat(String(d['自營商買賣超張數'] || 0).replace(/,/g, '')) || 0);
+                const flow = (d, key) => d[key] == null ? null : (parseFloat(String(d[key]).replace(/,/g, '')) || 0);
+                const foreign = chartData.map(d => flow(d, '外陸資買賣超張數'));
+                const trust = chartData.map(d => flow(d, '投信買賣超張數'));
+                const dealer = chartData.map(d => flow(d, '自營商買賣超張數'));
                 
                 const foreignCum = cumsum(foreign);
                 const trustCum = cumsum(trust);
@@ -1447,142 +1511,41 @@
         function cumsum(arr) {
             let sum = 0;
             return arr.map(val => {
+                if (val == null) return null;
                 sum += val;
                 return sum;
             });
         }
 
-        async function loadCurrentStockAnalysis(stockCode) {
-            const analysisDiv = document.getElementById('currentStockAnalysis');
-            const cardDiv = document.getElementById('stockAnalysisCard');
-            
-            if (!stockCode) {
-                analysisDiv.style.display = 'none';
-                return;
-            }
-            
-            cardDiv.innerHTML = '<div style="text-align: center; padding: 20px; color: #95a5a6;">載入分析資料中...</div>';
-            
-            try {
-                const db = await getHotDatabase();
-
-                // 查詢特定股票的資料，只取有分析資料的最新記錄
-                const query = `SELECT * FROM hot_stocks 
-                              WHERE 股票代碼 = '${stockCode}' 
-                              AND 操作建議 != '' 
-                              AND 操作建議 IS NOT NULL
-                              ORDER BY 日期 DESC 
-                              LIMIT 1`;
-                const result = db.exec(query);
-                
-                if (result.length === 0 || result[0].values.length === 0) {
-                    analysisDiv.style.display = 'none';
-                    return;
-                }
-                
-                const columns = result[0].columns;
-                const row = result[0].values[0];
-                
-                // 將資料轉換為物件
-                const stock = {};
-                columns.forEach((col, idx) => {
-                    stock[col] = row[idx];
-                });
-                
-                // 顯示分析區塊
-                analysisDiv.style.display = 'block';
-                
-                // 解析信號列表（JSON 格式）
-                let signalList = '';
-                try {
-                    const signals = JSON.parse(stock['信號列表']);
-                    if (Array.isArray(signals) && signals.length > 0) {
-                        signalList = signals.map(signal => `<div style="margin: 3px 0;">• ${signal}</div>`).join('');
-                    } else {
-                        signalList = '<div style="color: #999;">無信號</div>';
-                    }
-                } catch (e) {
-                    // 如果不是有效的 JSON，顯示原始字串或預設值
-                    signalList = stock['信號列表'] ? `<div>${stock['信號列表']}</div>` : '<div style="color: #999;">無信號</div>';
-                }
-                
-                // 設定風險等級顏色
-                let riskColor = '#2c3e50';
-                if (stock['風險等級'] === '高') {
-                    riskColor = '#e74c3c';
-                } else if (stock['風險等級'] === '中') {
-                    riskColor = '#f39c12';
-                } else if (stock['風險等級'] === '低') {
-                    riskColor = '#27ae60';
-                }
-                
-                // 設定操作建議顏色
-                let actionColor = '#ffffff';
-                let actionBg = '#6c757d';
-                if (stock['操作建議'] === '買進' || stock['操作建議'] === '上車') {
-                    actionBg = '#27ae60';
-                } else if (stock['操作建議'] === '賣出' || stock['操作建議'].includes('賣')) {
-                    actionBg = '#e74c3c';
-                } else if (stock['操作建議'] === '觀望') {
-                    actionBg = '#6c757d';
-                }
-                
-                // 顯示卡片內容
-                cardDiv.innerHTML = `
-                    <div style="display: flex; flex-direction: column; gap: 8px;">
-                        <div style="padding: 8px 10px; background: #f0f0f0; border-radius: 6px; text-align: center;">
-                            <span style="color: #666; font-size: 0.9em;">分析日期：${stock['日期'] || '-'}</span>
-                        </div>
-                        
-                        <div style="padding: 10px; background: #e3f2fd; border-radius: 8px; border-left: 4px solid #2196f3;">
-                            <div style="font-weight: 600; color: #1976d2; font-size: 0.9em; margin-bottom: 3px;">走勢分析</div>
-                            <div style="color: #424242; font-size: 0.95em;">${stock['走勢分析'] || '<span style="color: #999;">無分析資料</span>'}</div>
-                        </div>
-                        
-                        <div style="padding: 10px; background: #fff3cd; border-radius: 8px; border-left: 4px solid #ffc107;">
-                            <div style="font-weight: 600; color: #856404; font-size: 0.9em; margin-bottom: 3px;">信號列表</div>
-                            <div style="color: #856404; font-size: 0.9em;">${signalList}</div>
-                        </div>
-                        
-                        <div style="padding: 12px; background: ${actionBg}; border-radius: 8px; text-align: center;">
-                            <div style="font-weight: 600; color: ${actionColor}; font-size: 1.05em;">建議：${stock['操作建議'] || '觀望'}</div>
-                        </div>
-                        
-                        <div style="display: flex; gap: 10px;">
-                            <div style="flex: 1; padding: 10px; background: #f8f9fa; border-radius: 8px; border: 2px solid #dee2e6; text-align: center;">
-                                <div style="font-weight: 600; color: #495057; font-size: 0.85em; margin-bottom: 3px;">風險等級</div>
-                                <div style="font-weight: 700; color: ${riskColor}; font-size: 1.15em;">${stock['風險等級'] || '中'}</div>
-                            </div>
-                            <div style="flex: 1; padding: 10px; background: #f8f9fa; border-radius: 8px; border: 2px solid #dee2e6; text-align: center;">
-                                <div style="font-weight: 600; color: #495057; font-size: 0.85em; margin-bottom: 3px;">評分</div>
-                                <div style="font-weight: 700; color: #667eea; font-size: 1.15em;">${stock['評分'] != null ? stock['評分'] + ' 分' : '- 分'}</div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                
-            } catch (error) {
-                console.error('載入分析資料失敗:', error);
-                // 如果沒有分析資料，就隱藏整個區塊
-                analysisDiv.style.display = 'none';
-            }
-        }
-
         async function loadWatchlistStocks() {
             const chartContent = document.getElementById('stockChartContent');
             chartContent.innerHTML = '<div style="text-align: center; padding: 40px; color: #95a5a6;">載入追蹤股票...</div>';
+            allStocksList = [];
+            currentStockIndex = 0;
+            updateWatchlistSelector();
+            watchCandidates = new Map();
+            const summary = document.getElementById('breakoutSummary');
+            summary.style.display = 'block';
+            const watch = manifest?.watchlist;
+            summary.textContent = watch ? `五日爆量追蹤 ${watch.candidates} 檔（上市＋上櫃）。入選當日為第 1 天，保留最近 ${watch.watch_days} 個交易日；每天更新價格，未再爆量或跌回盤整區仍保留至第 5 天，第 6 天自動移出。上市資料 ${watch.market_dates.TSE}；上櫃資料 ${watch.market_dates.OTC}。` : '載入五日追蹤資料…';
             
             try {
                 const requestId = ++viewLoadId;
                 const hotDB = await getHotDatabase();
                 if (requestId !== viewLoadId) return;
                 if (sqlDB && sqlDB !== hotDB) sqlDB.close();
+                sqlDB = hotDB;
+                const candidateRows = hotDB.exec('SELECT * FROM watch_candidates')[0];
+                watchCandidates = new Map((candidateRows?.values || []).map(values => {
+                    const candidate = Object.fromEntries(candidateRows.columns.map((col, i) => [col, values[i]]));
+                    return [`${candidate.market}:${candidate.code}`, candidate];
+                }));
 
                 // 讀取追蹤股票清單 (使用正確的中文欄位名稱)
                 // 使用 DISTINCT 去重,避免歷史資料重複
-                // 加入 IS_FOCUS 欄位來標記是否為追蹤股票
+                // 五日追蹤名單已由每日掃描建立
                 const hotQuery = `
-                    SELECT DISTINCT 股票代碼, 股票名稱, 類型, IS_FOCUS 
+                    SELECT DISTINCT 股票代碼, 股票名稱, 類型
                     FROM hot_stocks 
                     ORDER BY 股票代碼
                 `;
@@ -1590,33 +1553,38 @@
                 // 不要關閉資料庫,後續還需要使用
                 
                 if (hotResult.length === 0 || hotResult[0].values.length === 0) {
-                    chartContent.innerHTML = '<div style="text-align: center; padding: 40px; color: #95a5a6;">沒有追蹤的股票</div>';
+                    chartContent.innerHTML = '<div style="text-align: center; padding: 40px; color: #65758a;">最近 5 個交易日沒有爆量候選，追蹤名單目前為空。</div>';
                     return;
                 }
                 
                 // 從資料庫讀取股票清單,類型欄位已經包含「上市」或「上櫃」資訊
-                const watchlist = hotResult[0].values.map(([code, name, type, isFocus]) => ({ 
+                const watchlist = hotResult[0].values.map(([code, name, type]) => ({
                     code, 
                     name, 
-                    market: type === '上市' ? 'TSE' : 'OTC',  // 直接使用資料庫中的類型欄位
-                    isFocus: isFocus === 1  // 將 1 轉換為 true, 0 轉換為 false
+                    market: type === '上市' ? 'TSE' : 'OTC'
                 }));
+                watchlist.sort((a, b) => {
+                    const left = watchCandidates.get(`${a.market}:${a.code}`);
+                    const right = watchCandidates.get(`${b.market}:${b.code}`);
+                    return (right?.signal_date || '').localeCompare(left?.signal_date || '') ||
+                        (right?.volume_multiple || 0) - (left?.volume_multiple || 0) || a.code.localeCompare(b.code);
+                });
                 
-                // 追蹤股票模式：直接使用 stock_hot.db（已包含完整歷史資料）
+                // 追蹤股票模式：直接使用 stock_breakout_watch.db（已包含完整歷史資料）
                 // 不需要再載入 stock_tse.db 和 stock_otc.db,因為:
-                // 1. stock_hot.db 已包含所有追蹤股票的完整交易歷史
+                // 1. stock_breakout_watch.db 已包含所有追蹤股票的完整交易歷史
                 // 2. stock_tse.db 和 stock_otc.db 檔案可能不存在
                 
                 // 儲存股票清單和數據庫引用
                 allStocksList = watchlist;
-                sqlDB = hotDB;  // 直接使用 stock_hot.db
+                sqlDB = hotDB;  // 直接使用 stock_breakout_watch.db
                 
                 // 填充下拉選單
                 updateWatchlistSelector();
                 
                 // 載入第一個股票
                 currentStockIndex = 0;
-                const firstStock = allStocksList[0];
+                const firstStock = getStockAtIndex(0);
                 if (firstStock) {
                     await loadWatchlistStockChart(firstStock.code, firstStock.name, firstStock.market);
                 }
@@ -1633,6 +1601,9 @@
         
         function updateWatchlistSelector() {
             const selector = document.getElementById('stockSelector');
+            selector.disabled = allStocksList.length === 0;
+            document.getElementById('prevStockBtn').disabled = allStocksList.length === 0;
+            document.getElementById('nextStockBtn').disabled = allStocksList.length === 0;
             
             // 確保完全清空現有選項
             while (selector.firstChild) {
@@ -1647,7 +1618,8 @@
             list.forEach((stock, idx) => {
                 const option = document.createElement('option');
                 option.value = idx;
-                option.textContent = `${stock.code}_${stock.name} (${stock.market})`;
+                const candidate = watchCandidates.get(`${stock.market}:${stock.code}`);
+                option.textContent = `${stock.code}_${stock.name} (${stock.market === 'TSE' ? '上市' : '上櫃'}) · 第 ${candidate.signal_age} 天 / ${candidate.status}`;
                 fragment.appendChild(option);
             });
             
@@ -1659,16 +1631,14 @@
         
         async function loadWatchlistStockChart(stockCode, stockName, market) {
             showStockChartView();
+            showBreakoutDetails(stockCode);
             const chartContent = document.getElementById('stockChartContent');
             chartContent.innerHTML = '<div style="text-align: center; padding: 40px; color: #95a5a6;">生成圖表中...</div>';
             
-            // 獲取當前股票的isFocus狀態
-            const currentStock = allStocksList.find(s => s.code === stockCode);
-            const isFocusStock = currentStock && currentStock.isFocus;
             
             try {
-                // 追蹤股票模式：直接從 stock_hot.db 的 hot_stocks 表讀取
-                const query = `SELECT * FROM hot_stocks WHERE 股票代碼 = '${stockCode}' ORDER BY 日期`;
+                // 追蹤股票模式：直接從 stock_breakout_watch.db 的 hot_stocks 表讀取
+                const query = `SELECT * FROM hot_stocks WHERE 股票代碼 = '${stockCode}' AND 類型 = '${market === 'TSE' ? '上市' : '上櫃'}' ORDER BY 日期`;
                 const result = sqlDB.exec(query);
                 
                 if (result.length === 0 || result[0].values.length === 0) {
@@ -1720,9 +1690,10 @@
                 const ma20 = allMA20.slice(-75);
                 const ma60 = allMA60.slice(-75);
                 
-                const foreign = chartData.map(d => parseFloat(String(d['外陸資買賣超張數'] || 0).replace(/,/g, '')) || 0);
-                const trust = chartData.map(d => parseFloat(String(d['投信買賣超張數'] || 0).replace(/,/g, '')) || 0);
-                const dealer = chartData.map(d => parseFloat(String(d['自營商買賣超張數'] || 0).replace(/,/g, '')) || 0);
+                const flow = (d, key) => d[key] == null ? null : (parseFloat(String(d[key]).replace(/,/g, '')) || 0);
+                const foreign = chartData.map(d => flow(d, '外陸資買賣超張數'));
+                const trust = chartData.map(d => flow(d, '投信買賣超張數'));
+                const dealer = chartData.map(d => flow(d, '自營商買賣超張數'));
                 
                 const foreignCum = cumsum(foreign);
                 const trustCum = cumsum(trust);
@@ -1734,10 +1705,9 @@
                     ma5, ma10, ma20, ma60,
                     foreign, trust, dealer,
                     foreignCum, trustCum, dealerCum
-                }, isFocusStock);
+                });
                 
-                // 載入當前股票的熱門股分析資料
-                await loadCurrentStockAnalysis(stockCode);
+
                 
             } catch (error) {
                 console.error('生成圖表失敗:', error);
@@ -1786,7 +1756,7 @@
             };
         }
 
-        function generatePlotlyChart(container, data, isFocusStock = false) {
+        function generatePlotlyChart(container, data) {
             const {
                 stockCode, stockName,
                 dates, rawDates, opens, highs, lows, closes, volumes,
@@ -1796,7 +1766,7 @@
             } = data;
             
             container.innerHTML = '<div id="plotlyChart"></div>';
-            currentChartTitle = `${isFocusStock ? '📌 ' : ''}${stockCode} ${stockName} 技術分析圖表 (最近75筆)`;
+            currentChartTitle = `${stockCode} ${stockName} 技術分析圖表 (最近75筆)`;
             
             // 計算只顯示週一和最新日期的 tick 設定
             const tickvals = [];

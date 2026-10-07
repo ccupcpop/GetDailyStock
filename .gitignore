@@ -14,3 +14,4 @@ output_charts/
 data/
 tests/.tmp-*/
 .site-build-*/
+/StockInfo/*.tmp.db

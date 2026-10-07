@@ -12,7 +12,6 @@ on:
       - 'index.html'
       - 'requirements.txt'
       - 'tests/**'
-      - 'StockInfo/focus_stocks.csv'
       - 'StockInfo/*company_list.csv'
       - 'StockInfo/*concept_stocks.csv'
       - '.github/workflows/daily_stock_analysis.yml'

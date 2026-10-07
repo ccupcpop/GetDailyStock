@@ -36,6 +36,7 @@ def main():
     if charts.exists():
         shutil.rmtree(charts)
     subprocess.run([sys.executable, str(base / 'stock_trend.py')], cwd=base, env=env, check=True)
+    subprocess.run([sys.executable, str(base / 'stock_breakout.py')], cwd=base, env=env, check=True)
     build_site(base)
 
 
