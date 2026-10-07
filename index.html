@@ -752,6 +752,24 @@
             height: 800px;
         }
 
+        .signal-mobile { display: none; }
+        .mobile-chart-header { margin: 16px 0 12px; }
+        .mobile-chart-title { font-size: 18px; line-height: 1.5; margin: 0 0 8px; }
+        .mobile-chart-range { color: #617083; font-size: 13px; line-height: 1.6; margin-bottom: 10px; }
+        .mobile-chart-navigation { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+        .mobile-chart-navigation button {
+            min-height: 44px; border: 1px solid #dce2ee; border-radius: 9px;
+            background: #f6f8fc; color: #344463; font: inherit; font-size: 14px;
+            cursor: pointer;
+        }
+        .mobile-chart-navigation button:disabled { opacity: 0.4; cursor: default; }
+        .mobile-chart-card { padding-top: 16px; border-top: 1px solid #e7ebf2; margin-top: 16px; }
+        .mobile-chart-card h3 { font-size: 15px; color: #344463; margin: 0 0 6px; line-height: 1.5; }
+        .mobile-chart-plot { width: 100%; min-width: 0; touch-action: pan-y pinch-zoom; }
+        #mobilePriceChart { height: 340px; }
+        #mobileVolumeChart { height: 200px; }
+        #mobileFlowChart, #mobileCumulativeChart { height: 245px; }
+
         @media (max-width: 767px) {
             body {
                 padding: 8px;
@@ -896,6 +914,11 @@
                 height: 1000px;
             }
 
+            .signal-desktop { display: none; }
+            .signal-mobile { display: block; font-size: 13px; }
+            .signal-mobile summary { padding: 10px 0; min-height: 44px; cursor: pointer; }
+            .signal-mobile p { margin: 0 0 12px; line-height: 1.8; }
+
             .loading {
                 width: min(280px, calc(100% - 32px));
                 padding: 24px;
@@ -999,6 +1022,11 @@
         let reportResizeObserver = null;
         let currentChartTitle = '';
         let currentChartTicks = { values: [], text: [] };
+        let currentPlotData = null;
+        let currentChartData = null;
+        let currentChartMobile = null;
+        let mobileChartEnd = 0;
+        const MOBILE_CHART_WINDOW = 30;
         let allStocksList = [];
         let currentStockIndex = 0;
         let isReverseOrder = false;
@@ -1226,7 +1254,18 @@
             panel.style.display = candidate ? 'block' : 'none';
             if (!candidate) return;
             const pct = value => `${(Number(value) * 100).toFixed(2)}%`;
-            panel.textContent = `首次突破 ${candidate.signal_date} ｜ 追蹤第 ${candidate.signal_age} 天 ｜ ${Number(candidate.volume_multiple).toFixed(2)} 倍量 ｜ 當日漲幅 ${pct(candidate.day_gain)} ｜ 入選後漲幅 ${pct(candidate.return_since_signal)} ｜ ${candidate.status}（盤整上緣 ${Number(candidate.base_high).toFixed(2)}；價格日期 ${candidate.latest_price_date}）`;
+            const description = `首次突破 ${candidate.signal_date} ｜ 追蹤第 ${candidate.signal_age} 天 ｜ ${Number(candidate.volume_multiple).toFixed(2)} 倍量 ｜ 當日漲幅 ${pct(candidate.day_gain)} ｜ 入選後漲幅 ${pct(candidate.return_since_signal)} ｜ ${candidate.status}（盤整上緣 ${Number(candidate.base_high).toFixed(2)}；價格日期 ${candidate.latest_price_date}）`;
+            const desktop = document.createElement('span');
+            desktop.className = 'signal-desktop';
+            desktop.textContent = description;
+            const mobile = document.createElement('details');
+            mobile.className = 'signal-mobile';
+            const label = document.createElement('summary');
+            label.textContent = `第 ${candidate.signal_age} 天 · ${Number(candidate.volume_multiple).toFixed(1)} 倍量 · ${candidate.status}`;
+            const body = document.createElement('p');
+            body.textContent = description;
+            mobile.append(label, body);
+            panel.replaceChildren(desktop, mobile);
             panel.style.color = candidate.status === '跌回盤整區' ? '#ae3434' : '#334563';
         }
 
@@ -1524,10 +1563,7 @@
             currentStockIndex = 0;
             updateWatchlistSelector();
             watchCandidates = new Map();
-            const summary = document.getElementById('breakoutSummary');
-            summary.style.display = 'block';
-            const watch = manifest?.watchlist;
-            summary.textContent = watch ? `五日爆量追蹤 ${watch.candidates} 檔（上市＋上櫃）。入選當日為第 1 天，保留最近 ${watch.watch_days} 個交易日；每天更新價格，未再爆量或跌回盤整區仍保留至第 5 天，第 6 天自動移出。上市資料 ${watch.market_dates.TSE}；上櫃資料 ${watch.market_dates.OTC}。` : '載入五日追蹤資料…';
+            document.getElementById('breakoutSummary').style.display = 'none';
             
             try {
                 const requestId = ++viewLoadId;
@@ -1765,8 +1801,9 @@
                 foreignCum, trustCum, dealerCum
             } = data;
             
-            container.innerHTML = '<div id="plotlyChart"></div>';
-            currentChartTitle = `${stockCode} ${stockName} 技術分析圖表 (最近75筆)`;
+            currentChartData = data;
+            mobileChartEnd = dates.length;
+            currentChartTitle = `${stockCode} ${stockName} 技術分析圖表 (最近${dates.length}筆)`;
             
             // 計算只顯示週一和最新日期的 tick 設定
             const tickvals = [];
@@ -1929,13 +1966,46 @@
                 legendgroup: 'dealer'
             };
             
-            const plotData = [
+            currentPlotData = [
                 candlestick, ma5Trace, ma10Trace, ma20Trace, ma60Trace,
                 volumeTrace,
                 foreignTrace, trustTrace, dealerTrace,
                 foreignCumTrace, trustCumTrace, dealerCumTrace
             ];
-            
+            renderResponsiveChart(container);
+        }
+
+        function renderResponsiveChart(container) {
+            container.querySelectorAll('.js-plotly-plot').forEach(chart => Plotly.purge(chart));
+            currentChartMobile = window.matchMedia('(max-width: 767px)').matches;
+            if (currentChartMobile) {
+                container.innerHTML = `
+                    <div class="mobile-chart-header">
+                        <h2 class="mobile-chart-title" id="mobileChartTitle"></h2>
+                        <div class="mobile-chart-range" id="mobileChartRange" role="status" aria-live="polite"></div>
+                        <div class="mobile-chart-navigation" aria-label="圖表日期範圍">
+                            <button id="earlierChartBtn" type="button">← 較早</button>
+                            <button id="latestChartBtn" type="button">回到最新</button>
+                            <button id="laterChartBtn" type="button">較新 →</button>
+                        </div>
+                    </div>
+                    <section class="mobile-chart-card"><h3>日 K 線與均線（元）</h3><div class="mobile-chart-plot" id="mobilePriceChart"></div></section>
+                    <section class="mobile-chart-card"><h3>成交量（張）</h3><div class="mobile-chart-plot" id="mobileVolumeChart"></div></section>
+                    <section class="mobile-chart-card"><h3>法人每日買賣超（張）</h3><div class="mobile-chart-plot" id="mobileFlowChart"></div></section>
+                    <section class="mobile-chart-card"><h3>所選區間法人累積買賣超（張）</h3><div class="mobile-chart-plot" id="mobileCumulativeChart"></div></section>`;
+                document.getElementById('mobileChartTitle').textContent = `${currentChartData.stockCode} ${currentChartData.stockName}`;
+                const moveWindow = change => {
+                    const total = currentChartData.dates.length;
+                    mobileChartEnd = Math.max(Math.min(MOBILE_CHART_WINDOW, total), Math.min(total, mobileChartEnd + change));
+                    renderMobileChartWindow();
+                };
+                document.getElementById('earlierChartBtn').onclick = () => moveWindow(-15);
+                document.getElementById('laterChartBtn').onclick = () => moveWindow(15);
+                document.getElementById('latestChartBtn').onclick = () => moveWindow(currentChartData.dates.length);
+                renderMobileChartWindow();
+                return;
+            }
+            container.innerHTML = '<div id="plotlyChart"></div>';
             const layout = {
                 yaxis: {
                     domain: [0.71, 1],
@@ -1973,7 +2043,59 @@
                 doubleClick: false
             };
             
-            Plotly.newPlot('plotlyChart', plotData, layout, config);
+            Plotly.newPlot('plotlyChart', currentPlotData, layout, config);
+        }
+
+        function renderMobileChartWindow() {
+            const total = currentChartData.dates.length;
+            const end = mobileChartEnd;
+            const start = Math.max(0, end - MOBILE_CHART_WINDOW);
+            const dates = currentChartData.dates.slice(start, end);
+            const ticks = [...new Set(Array.from({length: Math.min(4, dates.length)}, (_, i) =>
+                Math.round(i * (dates.length - 1) / Math.max(1, Math.min(4, dates.length) - 1))))];
+            document.getElementById('mobileChartRange').textContent = `${dates[0]}－${dates[dates.length - 1]} · 第 ${start + 1}–${end} 筆／共 ${total} 筆`;
+            document.getElementById('earlierChartBtn').disabled = start === 0;
+            document.getElementById('laterChartBtn').disabled = end === total;
+            document.getElementById('latestChartBtn').disabled = end === total;
+            const panels = [
+                {id: 'mobilePriceChart', indices: [0, 1, 2, 3, 4], height: 340, legend: true},
+                {id: 'mobileVolumeChart', indices: [5], height: 200, legend: false},
+                {id: 'mobileFlowChart', indices: [6, 7, 8], height: 245, legend: true},
+                {id: 'mobileCumulativeChart', indices: [9, 10, 11], height: 245, legend: true},
+            ];
+            panels.forEach(panel => {
+                const traces = panel.indices.map(index => {
+                    const trace = {...currentPlotData[index], x: dates, xaxis: 'x', yaxis: 'y'};
+                    for (const key of ['y', 'open', 'high', 'low', 'close']) {
+                        if (Array.isArray(trace[key])) trace[key] = trace[key].slice(start, end);
+                    }
+                    if (Array.isArray(trace.marker?.color)) trace.marker = {...trace.marker, color: trace.marker.color.slice(start, end)};
+                    if (index >= 9) {
+                        trace.y = cumsum(currentPlotData[index - 3].y.slice(start, end));
+                        trace.name = trace.name.replace('累積', '');
+                    }
+                    return trace;
+                });
+                Plotly.react(panel.id, traces, {
+                    width: document.getElementById(panel.id).clientWidth,
+                    height: panel.height,
+                    margin: {t: panel.legend ? 48 : 12, b: 36, l: 44, r: 24},
+                    font: {family: 'Microsoft JhengHei, Arial, sans-serif', size: 12},
+                    xaxis: {type: 'category', categoryorder: 'array', categoryarray: dates,
+                        range: [-0.5, dates.length - 0.5],
+                        tickmode: 'array', tickvals: ticks.map(i => dates[i]), tickangle: 0,
+                        rangeslider: {visible: false}, fixedrange: true, showgrid: false},
+                    yaxis: {fixedrange: true, automargin: true, nticks: 4,
+                        tickformat: panel.id === 'mobilePriceChart' ? undefined : '~s',
+                        gridcolor: '#edf0f5', zerolinecolor: '#cbd3df'},
+                    showlegend: panel.legend,
+                    legend: {orientation: 'h', yanchor: 'bottom', y: 1.03, x: 0,
+                        xanchor: 'left', font: {size: 11}, itemsizing: 'constant'},
+                    hovermode: 'x unified', hoverlabel: {font: {size: 12}},
+                    barmode: 'relative', dragmode: false, paper_bgcolor: '#fff', plot_bgcolor: '#fff',
+                }, {responsive: false, displayModeBar: false, displaylogo: false,
+                    scrollZoom: false, doubleClick: false});
+            });
         }
 
         async function autoLoadData() {
@@ -2018,9 +2140,13 @@
                 cancelAnimationFrame(resizeFrame);
                 resizeFrame = requestAnimationFrame(() => {
                     resizeExternalFrame();
-                    const chart = document.getElementById('plotlyChart');
-                    if (chart?.data && document.getElementById('stockChartContainer').style.display !== 'none') {
-                        Plotly.relayout(chart, getChartViewportLayout(currentChartTitle));
+                    const container = document.getElementById('stockChartContent');
+                    if (currentPlotData && document.getElementById('stockChartContainer').style.display !== 'none'
+                            && container.querySelector('.js-plotly-plot')) {
+                        const mobile = window.matchMedia('(max-width: 767px)').matches;
+                        if (mobile !== currentChartMobile) renderResponsiveChart(container);
+                        else if (mobile) renderMobileChartWindow();
+                        else if (!mobile) Plotly.relayout('plotlyChart', getChartViewportLayout(currentChartTitle));
                     }
                 });
             });
